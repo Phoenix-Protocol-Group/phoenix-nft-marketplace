@@ -713,6 +713,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "phoenix-nft-auctions"
+version = "1.0.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
+name = "phoenix-nft-collections"
+version = "1.0.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
 name = "pkcs8"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

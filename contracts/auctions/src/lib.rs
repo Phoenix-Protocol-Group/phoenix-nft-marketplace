@@ -1,8 +1,9 @@
 #![no_std]
 
-use soroban_sdk::{contract, Address, BytesN, Env, Vec};
+use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, Vec};
 
 #[derive(Clone)]
+#[contracttype]
 pub struct Auction {
     pub id: u64,
     pub item_address: Address, // Can be an NFT contract address or a collection contract address
@@ -15,6 +16,7 @@ pub struct Auction {
 }
 
 #[derive(Clone, PartialEq)]
+#[contracttype]
 pub enum AuctionStatus {
     Active,
     Ended,

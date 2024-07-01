@@ -1,26 +1,21 @@
 use crate::storage_types::DataKey;
-use soroban_auth::{Identifier, Signature};
-use soroban_sdk::Env;
+use soroban_sdk::{Address, Env};
 
 pub fn has_administrator(env: &Env) -> bool {
     let key = DataKey::Admin;
-    env.storage().has(key)
+    env.storage().persistent().has(&key)
 }
 
-pub fn read_administrator(env: &Env) -> Identifier {
+pub fn read_administrator(env: &Env) -> Address {
     let key = DataKey::Admin;
-    env.storage().get_unchecked(key).unwrap()
+    env.storage().persistent().get(&key).unwrap()
 }
 
-pub fn write_administrator(env: &Env, id: Identifier) {
+pub fn write_administrator(env: &Env, id: Address) {
     let key = DataKey::Admin;
-    env.storage().set(key, id);
+    env.storage().persistent().set(&key, &id);
 }
 
-pub fn check_admin(env: &Env, auth: &Signature) {
-    let auth_id = auth.identifier(env);
-    assert!(
-        auth_id == read_administrator(env),
-        "not authorized by admin"
-    );
+pub fn check_admin(env: &Env, auth: &Address) {
+    assert!(auth == &read_administrator(env), "not authorized by admin");
 }

@@ -4,22 +4,22 @@ pub trait NonFungibleTokenTrait {
     // --------------------------------------------------------------------------------
 
     // Returns the current nonce for "id".
-    fn nonce(env: soroban_sdk::Env, id: soroban_auth::Identifier) -> i128;
+    fn nonce(env: soroban_sdk::Env, id: soroban_sdk::Address) -> i128;
 
     // --------------------------------------------------------------------------------
     // Admin interface
     // --------------------------------------------------------------------------------
 
     /// Returns the current administrator
-    fn admin(env: soroban_sdk::Env) -> soroban_auth::Identifier;
+    fn admin(env: soroban_sdk::Env) -> soroban_sdk::Address;
 
     /// If "admin" is the administrator, set the administrator to "new_admin".
     /// Emit event with topics = ["set_admin", admin: Identifier], data = [new_admin: Identifier]
     fn set_admin(
         env: soroban_sdk::Env,
-        admin: soroban_auth::Signature,
+        admin: soroban_sdk::Address,
         nonce: i128,
-        new_admin: soroban_auth::Identifier,
+        new_admin: soroban_sdk::Address,
     );
 
     // --------------------------------------------------------------------------------
@@ -43,9 +43,9 @@ pub trait NonFungibleTokenTrait {
     /// Emit event with topics = ["appr", operator: Identifier], data = [id: i128]
     fn appr(
         env: soroban_sdk::Env,
-        owner: soroban_auth::Signature,
+        owner: soroban_sdk::Address,
         nonce: i128,
-        operator: soroban_auth::Identifier,
+        operator: soroban_sdk::Address,
         id: i128,
     );
 
@@ -53,45 +53,45 @@ pub trait NonFungibleTokenTrait {
     /// Emit event with topics = ["appr_all", operator: Identifier], data = [owner: Identifier]
     fn appr_all(
         env: soroban_sdk::Env,
-        owner: soroban_auth::Signature,
+        owner: soroban_sdk::Address,
         nonce: i128,
-        operator: soroban_auth::Identifier,
+        operator: soroban_sdk::Address,
         approved: bool,
     );
 
     /// Returns the identifier approved for token "id".
-    fn get_appr(env: soroban_sdk::Env, id: i128) -> soroban_auth::Identifier;
+    fn get_appr(env: soroban_sdk::Env, id: i128) -> soroban_sdk::Address;
 
     /// If "operator" is allowed to manage assets of "owner", return true.
     fn is_appr(
         env: soroban_sdk::Env,
-        owner: soroban_auth::Identifier,
-        operator: soroban_auth::Identifier,
+        owner: soroban_sdk::Address,
+        operator: soroban_sdk::Address,
     ) -> bool;
 
     /// Get the balance of "id".
-    fn balance(env: soroban_sdk::Env, owner: soroban_auth::Identifier) -> i128;
+    fn balance(env: soroban_sdk::Env, owner: soroban_sdk::Address) -> i128;
 
     /// Get the owner of "id" token.
-    fn owner(env: soroban_sdk::Env, id: i128) -> soroban_auth::Identifier;
+    fn owner(env: soroban_sdk::Env, id: i128) -> soroban_sdk::Address;
 
     /// Transfer token "id" from "from" to "to.
     /// Emit event with topics = ["transfer", from: Identifier, to: Identifier], data = [id: i128]
-    fn xfer(
+    fn transfer(
         env: soroban_sdk::Env,
-        from: soroban_auth::Signature,
+        from: soroban_sdk::Address,
         nonce: i128,
-        to: soroban_auth::Identifier,
+        to: soroban_sdk::Address,
         id: i128,
     );
 
     /// Transfer token "id" from "from" to "to", consuming the allowance of "spender".
     /// Emit event with topics = ["transfer", from: Identifier, to: Identifier], data = [id: i128]
-    fn xfer_from(
+    fn transfer_from(
         env: soroban_sdk::Env,
-        spender: soroban_auth::Signature,
-        from: soroban_auth::Identifier,
-        to: soroban_auth::Identifier,
+        spender: soroban_sdk::Address,
+        from: soroban_sdk::Address,
+        to: soroban_sdk::Address,
         nonce: i128,
         id: i128,
     );
@@ -100,20 +100,20 @@ pub trait NonFungibleTokenTrait {
     /// Emit event with topics = ["mint", to: Identifier], data = [id: i128]
     fn mint(
         env: soroban_sdk::Env,
-        admin: soroban_auth::Signature,
+        admin: soroban_sdk::Address,
         nonce: i128,
-        to: soroban_auth::Identifier,
+        to: soroban_sdk::Address,
         id: i128,
-        uri:soroban_sdk::Bytes
+        uri: soroban_sdk::Bytes,
     );
 
     /// Mint the next token to "to" for demonstration.
     /// Emit event with topics = ["mint", to: Identifier], data = [id: i128]
-    fn mint_next(env: soroban_sdk::Env, uri:soroban_sdk::Bytes);
+    fn mint_next(env: soroban_sdk::Env, uri: soroban_sdk::Bytes);
 
     /// If "admin" is the administrator or the token owner, burn token "id" from "from".
     /// Emit event with topics = ["burn", from: Identifier], data = [id: i128]
-    fn burn(env: soroban_sdk::Env, admin: soroban_auth::Signature, nonce: i128, id: i128);
+    fn burn(env: soroban_sdk::Env, admin: soroban_sdk::Address, nonce: i128, id: i128);
 
     // --------------------------------------------------------------------------------
     // Implementation Interface
@@ -123,9 +123,12 @@ pub trait NonFungibleTokenTrait {
     /// "symbol" as the symbol.
     fn initialize(
         e: soroban_sdk::Env,
-        admin: soroban_auth::Identifier,
+        admin: soroban_sdk::Address,
         name: soroban_sdk::Bytes,
         symbol: soroban_sdk::Bytes,
+        royalties: u32,
+        content_type: crate::storage_types::ContentType,
+        traits: Option<soroban_sdk::Vec<crate::storage_types::Trait>>,
     );
 }
 

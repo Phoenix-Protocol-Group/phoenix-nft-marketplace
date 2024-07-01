@@ -1,4 +1,4 @@
-use crate::{ storage_types::DataKey};
+use crate::storage_types::DataKey;
 use soroban_sdk::{Bytes, Env};
 
 pub fn read_name(env: &Env) -> Bytes {
@@ -30,5 +30,3 @@ pub fn write_token_uri(env: &Env, id: i128, uri: Bytes) {
     let key = DataKey::URI(id);
     env.storage().set(key, uri)
 }
-
-

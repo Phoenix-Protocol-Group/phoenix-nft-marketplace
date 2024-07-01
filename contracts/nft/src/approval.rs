@@ -1,33 +1,31 @@
 use crate::owner::zero_address;
-use crate::storage_types::DataKey;
-use crate::storage_types::{ApprovalAll, ApprovalKey};
-use soroban_auth::Identifier;
-use soroban_sdk::Env;
+use crate::storage_types::{ApprovalAll, ApprovalKey, DataKey};
+use soroban_sdk::{Address, Env};
 
-pub fn read_approval(env: &Env, id: i128) -> Identifier {
+pub fn read_approval(env: &Env, id: i128) -> Address {
     let key = DataKey::Approval(ApprovalKey::ID(id));
-    if let Some(approval) = env.storage().get(key) {
-        approval.unwrap()
+    if let Some(approval) = env.storage().persistent().get::<_, Address>(&key) {
+        approval
     } else {
         zero_address(&env)
     }
 }
 
-pub fn read_approval_all(env: &Env, owner: Identifier, operator: Identifier) -> bool {
+pub fn read_approval_all(env: &Env, owner: Address, operator: Address) -> bool {
     let key = DataKey::Approval(ApprovalKey::All(ApprovalAll { operator, owner }));
-    if let Some(approval) = env.storage().get(key) {
-        approval.unwrap()
+    if let Some(approval) = env.storage().persistent().get::<_, bool>(&key) {
+        approval
     } else {
         false
     }
 }
 
-pub fn write_approval(env: &Env, id: i128, operator: Identifier) {
+pub fn write_approval(env: &Env, id: i128, operator: Address) {
     let key = DataKey::Approval(ApprovalKey::ID(id));
-    env.storage().set(key, operator);
+    env.storage().persistent().set(&key, &operator);
 }
 
-pub fn write_approval_all(env: &Env, owner: Identifier, operator: Identifier, approved: bool) {
+pub fn write_approval_all(env: &Env, owner: Address, operator: Address, approved: bool) {
     let key = DataKey::Approval(ApprovalKey::All(ApprovalAll { operator, owner }));
-    env.storage().set(key, approved);
+    env.storage().persistent().set(&key, &approved);
 }

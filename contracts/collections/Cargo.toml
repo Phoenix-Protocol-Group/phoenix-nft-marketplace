@@ -1,5 +1,5 @@
 [package]
-name = "phoenix-nft"
+name = "phoenix-nft-collections"
 version = { workspace = true }
 authors = ["Jakub <jakub@moonbite.space>"]
 repository = { workspace = true }

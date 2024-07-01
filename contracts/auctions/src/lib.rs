@@ -21,7 +21,6 @@ pub enum AuctionStatus {
     Cancelled,
 }
 
-
 #[contract]
 pub struct MarketplaceContract;
 

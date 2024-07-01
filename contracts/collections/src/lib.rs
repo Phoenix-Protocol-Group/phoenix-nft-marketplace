@@ -1,10 +1,9 @@
 #![no_std]
 
-use soroban_sdk::{contract, Address, BytesN, Env, Vec};
-
-use soroban_sdk::{contract, contractimpl, Env, Address, Symbol, Vec};
+use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Symbol, Vec};
 
 #[derive(Clone)]
+#[contracttype]
 pub struct Collection {
     pub id: u64,
     pub name: Symbol,
@@ -22,12 +21,7 @@ impl CollectionContract {
         todo!()
     }
 
-    pub fn initialize(
-        env: Env,
-        name: Symbol,
-        description: Symbol,
-        creator: Address,
-    ) -> Collection {
+    pub fn initialize(env: Env, name: Symbol, description: Symbol, creator: Address) -> Collection {
         todo!()
     }
 
@@ -47,4 +41,3 @@ impl CollectionContract {
         todo!()
     }
 }
-

@@ -44,7 +44,7 @@ impl ERC1155Equivalent {
         let mut batch_balances: Vec<u64> = vec![&env];
 
         // we verified that the length of both `accounts` and `ids` is the same
-        for idx in accounts.len().into() {
+        for idx in 0..accounts.len() {
             let temp: u64 = env
                 .storage()
                 .persistent()

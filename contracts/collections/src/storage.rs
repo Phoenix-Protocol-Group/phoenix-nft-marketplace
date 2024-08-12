@@ -38,3 +38,40 @@ pub struct URIValue {
     pub uri: Bytes,
 }
 
+pub mod utils {
+    use soroban_sdk::{Address, Env};
+
+    use crate::error::ContractError;
+
+    use super::DataKey;
+
+    pub fn get_balance_of(env: &Env, owner: &Address, id: u64) -> Result<u64, ContractError> {
+        let result = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Balance(crate::storage::BalanceDataKey {
+                token_id: id,
+                owner: owner.clone(),
+            }))
+            .unwrap_or(0u64);
+
+        Ok(result)
+    }
+
+    pub fn update_balance_of(
+        env: &Env,
+        owner: &Address,
+        id: u64,
+        new_amount: u64,
+    ) -> Result<(), ContractError> {
+        env.storage().persistent().set(
+            &DataKey::Balance(crate::storage::BalanceDataKey {
+                token_id: id,
+                owner: owner.clone(),
+            }),
+            &new_amount,
+        );
+
+        Ok(())
+    }
+}

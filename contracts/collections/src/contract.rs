@@ -1,32 +1,22 @@
-use soroban_sdk::{
-    contract, contractimpl, log, panic_with_error, vec, Address, Bytes, Env, Symbol, Vec,
+use soroban_sdk::{contract, contractimpl, log, vec, Address, Bytes, Env, Vec};
+
+use crate::{
+    error::ContractError,
+    storage::{
+        utils::{get_balance_of, update_balance_of},
+        DataKey, OperatorApprovalKey,
+    },
 };
 
-use crate::error::ContractError;
-
 #[contract]
-pub struct ERC1155Equivalent;
-
-// Proposed storage structures
-//struct Storage;
-//impl Storage {
-//    const BALANCES: Symbol = Symbol::new("balances");
-//    const OPERATORS: Symbol = Symbol::new("operators");
-//    const URIS: Symbol = Symbol::new("uris");
-//}
+pub struct StellarizedERC1155;
 
 #[contractimpl]
-impl ERC1155Equivalent {
+impl StellarizedERC1155 {
     // Returns the balance of the `account` for the token `id`
     #[allow(dead_code)]
     pub fn balance_of(env: Env, account: Address, id: u64) -> Result<u64, ContractError> {
-        let result = env
-            .storage()
-            .persistent()
-            .get(&(account, id))
-            .unwrap_or_default();
-
-        Ok(result)
+        Ok(get_balance_of(&env, &account, id))?
     }
 
     // Returns the balance of multiple `accounts` for multiple `ids`
@@ -45,12 +35,8 @@ impl ERC1155Equivalent {
 
         // we verified that the length of both `accounts` and `ids` is the same
         for idx in 0..accounts.len() {
-            let temp: u64 = env
-                .storage()
-                .persistent()
-                .get(&(accounts.get(idx), ids.get(idx)))
-                .unwrap_or_default();
-            batch_balances.insert(idx, temp);
+            let current = get_balance_of(&env, &accounts.get(idx).unwrap(), ids.get(idx).unwrap())?;
+            batch_balances.insert(idx, current);
         }
 
         Ok(batch_balances)
@@ -58,14 +44,50 @@ impl ERC1155Equivalent {
 
     // Grants or revokes permission to `operator` to manage the caller's tokens
     #[allow(dead_code)]
-    pub fn set_approval_for_all(env: Env, operator: Address, approved: bool) {
-        todo!()
+    pub fn set_approval_for_all(
+        env: Env,
+        sender: Address,
+        operator: Address,
+        approved: bool,
+    ) -> Result<(), ContractError> {
+        sender.require_auth();
+
+        if sender == operator {
+            log!(
+                &env,
+                "Collection: Set approval for all: Cannot set approval for self"
+            );
+            return Err(ContractError::CannotApproveSelf);
+        }
+
+        env.storage().persistent().set(
+            &DataKey::OperatorApproval(OperatorApprovalKey {
+                owner: sender,
+                operator,
+            }),
+            &approved,
+        );
+
+        Ok(())
     }
 
-    // Returns true if `operator` is approved to manage `account`'s tokens
+    // Returns true if `operator` is approved to manage `owner`'s tokens
     #[allow(dead_code)]
-    pub fn is_approved_for_all(env: Env, account: Address, operator: Address) -> bool {
-        todo!()
+    pub fn is_approved_for_all(
+        env: Env,
+        owner: Address,
+        operator: Address,
+    ) -> Result<bool, ContractError> {
+        let result = env
+            .storage()
+            .persistent()
+            .get(&DataKey::OperatorApproval(OperatorApprovalKey {
+                owner,
+                operator,
+            }))
+            .unwrap_or(false);
+
+        Ok(result)
     }
 
     // Transfers `amount` tokens of token type `id` from `from` to `to`
@@ -75,10 +97,28 @@ impl ERC1155Equivalent {
         from: Address,
         to: Address,
         id: u64,
-        amount: u64,
-        data: Bytes,
-    ) {
-        todo!()
+        transfer_amount: u64,
+        _data: Bytes, // we don't have onERC1155Received in Stellar/Soroban
+    ) -> Result<(), ContractError> {
+        from.require_auth();
+        // TODO: check if `to` is not zero address
+
+        let sender_balance = get_balance_of(&env, &from, id)?;
+        let rcpt_balance = get_balance_of(&env, &to, id)?;
+
+        if sender_balance < transfer_amount {
+            log!(&env, "Collection: Safe transfer from: Insuficient Balance");
+            return Err(ContractError::InsuficientBalance);
+        }
+
+        //NOTE: checks if we go over the limit of u64::MAX?
+        // first we reduce the sender's `from` balance
+        update_balance_of(&env, &from, id, sender_balance - transfer_amount)?;
+
+        // next we incrase the recipient's `to` balance
+        update_balance_of(&env, &to, id, rcpt_balance + transfer_amount)?;
+
+        Ok(())
     }
 
     // Transfers multiple types and amounts of tokens from `from` to `to`

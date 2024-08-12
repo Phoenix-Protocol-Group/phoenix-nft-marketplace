@@ -1,4 +1,8 @@
-use soroban_sdk::{contract, contractimpl, Address, Bytes, Env, Symbol};
+use soroban_sdk::{
+    contract, contractimpl, log, panic_with_error, vec, Address, Bytes, Env, Symbol, Vec,
+};
+
+use crate::error::ContractError;
 
 #[contract]
 pub struct ERC1155Equivalent;
@@ -15,17 +19,41 @@ pub struct ERC1155Equivalent;
 impl ERC1155Equivalent {
     // Returns the balance of the `account` for the token `id`
     #[allow(dead_code)]
-    pub fn balance_of(env: Env, account: Address, id: u64) -> u64 {
-        env.storage()
+    pub fn balance_of(env: Env, account: Address, id: u64) -> Result<u64, ContractError> {
+        let result = env
+            .storage()
             .persistent()
             .get(&(account, id))
-            .unwrap_or_default()
+            .unwrap_or_default();
+
+        Ok(result)
     }
 
     // Returns the balance of multiple `accounts` for multiple `ids`
     #[allow(dead_code)]
-    pub fn balance_of_batch(env: Env, accounts: Vec<Address>, ids: Vec<u64>) -> Vec<u64> {
-        todo!()
+    pub fn balance_of_batch(
+        env: Env,
+        accounts: Vec<Address>,
+        ids: Vec<u64>,
+    ) -> Result<Vec<u64>, ContractError> {
+        if accounts.len() != ids.len() {
+            log!(&env, "Collections: Balance of batch: length missmatch");
+            return Err(ContractError::AccountsIdsLengthMissmatch);
+        }
+
+        let mut batch_balances: Vec<u64> = vec![&env];
+
+        // we verified that the length of both `accounts` and `ids` is the same
+        for idx in accounts.len().into() {
+            let temp: u64 = env
+                .storage()
+                .persistent()
+                .get(&(accounts.get(idx), ids.get(idx)))
+                .unwrap_or_default();
+            batch_balances.insert(idx, temp);
+        }
+
+        Ok(batch_balances)
     }
 
     // Grants or revokes permission to `operator` to manage the caller's tokens

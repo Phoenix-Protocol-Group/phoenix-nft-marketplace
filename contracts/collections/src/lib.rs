@@ -1,4 +1,5 @@
 #![no_std]
 
-mod storage;
 mod contract;
+mod error;
+mod storage;

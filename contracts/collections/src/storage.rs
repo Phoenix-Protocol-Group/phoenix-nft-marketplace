@@ -29,7 +29,7 @@ pub struct OperatorApprovalKey {
 pub enum DataKey {
     Balance(BalanceDataKey),
     OperatorApproval(OperatorApprovalKey),
-    URI(u64),
+    Uri(u64),
 }
 
 // Struct to represent token URI

@@ -4,7 +4,7 @@ use crate::{
     error::ContractError,
     storage::{
         utils::{get_balance_of, update_balance_of},
-        DataKey, OperatorApprovalKey,
+        DataKey, OperatorApprovalKey, URIValue,
     },
 };
 
@@ -35,7 +35,10 @@ impl StellarizedERC1155 {
 
         // we verified that the length of both `accounts` and `ids` is the same
         for idx in 0..accounts.len() {
-            let current = get_balance_of(&env, &accounts.get(idx).unwrap(), ids.get(idx).unwrap())?;
+            let account = accounts.get(idx).unwrap();
+            let id = ids.get(idx).unwrap();
+
+            let current = get_balance_of(&env, &account, id)?;
             batch_balances.insert(idx, current);
         }
 
@@ -108,7 +111,7 @@ impl StellarizedERC1155 {
 
         if sender_balance < transfer_amount {
             log!(&env, "Collection: Safe transfer from: Insuficient Balance");
-            return Err(ContractError::InsuficientBalance);
+            return Err(ContractError::InsufficientBalance);
         }
 
         //NOTE: checks if we go over the limit of u64::MAX?
@@ -129,44 +132,160 @@ impl StellarizedERC1155 {
         to: Address,
         ids: Vec<u64>,
         amounts: Vec<u64>,
-        data: Bytes,
-    ) {
-        todo!()
+        _data: Bytes, // we don't have onERC1155Received in Stellar/Soroban
+    ) -> Result<(), ContractError> {
+        from.require_auth();
+        // TODO: check if `to` is not zero address
+
+        if ids.len() != amounts.len() {
+            log!(
+                &env,
+                "Collection: Safe batch transfer from: length mismatch"
+            );
+            return Err(ContractError::IdsAmountsLengthMismatch);
+        }
+
+        for idx in 0..ids.len() {
+            let id = ids.get(idx).unwrap();
+            let amount = amounts.get(idx).unwrap();
+
+            let sender_balance = get_balance_of(&env, &from, id)?;
+            let rcpt_balance = get_balance_of(&env, &to, id)?;
+
+            if sender_balance < amount {
+                log!(
+                    &env,
+                    "Collection: Safe batch transfer from: Insufficient Balance"
+                );
+                return Err(ContractError::InsufficientBalance);
+            }
+
+            // Reduce the sender's balance
+            update_balance_of(&env, &from, id, sender_balance - amount)?;
+
+            // Increase the recipient's balance
+            update_balance_of(&env, &to, id, rcpt_balance + amount)?;
+        }
+
+        Ok(())
     }
 
     // Mints `amount` tokens of token type `id` to `to`
     #[allow(dead_code)]
-    pub fn mint(env: Env, to: Address, id: u64, amount: u64, data: Bytes) {
-        todo!()
+    pub fn mint(
+        env: Env,
+        sender: Address,
+        to: Address,
+        id: u64,
+        amount: u64,
+        _data: Bytes,
+    ) -> Result<(), ContractError> {
+        sender.require_auth();
+        //TODO: probably admin/owner check if the same as sender?
+        let current_balance = get_balance_of(&env, &to, id)?;
+        //TODO: check for overflow?
+        update_balance_of(&env, &to, id, current_balance + amount)?;
+
+        Ok(())
     }
 
     // Mints multiple types and amounts of tokens to `to`
     #[allow(dead_code)]
-    pub fn mint_batch(env: Env, to: Address, ids: Vec<u64>, amounts: Vec<u64>, data: Bytes) {
-        todo!()
+    pub fn mint_batch(
+        env: Env,
+        sender: Address,
+        to: Address,
+        ids: Vec<u64>,
+        amounts: Vec<u64>,
+        _data: Bytes,
+    ) -> Result<(), ContractError> {
+        sender.require_auth();
+        //TODO: probably admin/owner check if the same as sender?
+
+        if ids.len() != amounts.len() {
+            log!(&env, "Collection: Mint batch: length mismatch");
+            return Err(ContractError::IdsAmountsLengthMismatch);
+        }
+
+        for idx in 0..ids.len() {
+            let id = ids.get(idx).unwrap();
+            let amount = amounts.get(idx).unwrap();
+
+            let current_balance = get_balance_of(&env, &to, id)?;
+            //TODO: check for overflow?
+            update_balance_of(&env, &to, id, current_balance + amount)?;
+        }
+
+        Ok(())
     }
 
     // Destroys `amount` tokens of token type `id` from `from`
     #[allow(dead_code)]
-    pub fn burn(env: Env, from: Address, id: u64, amount: u64) {
-        todo!()
+    pub fn burn(env: Env, from: Address, id: u64, amount: u64) -> Result<(), ContractError> {
+        from.require_auth();
+
+        let current_balance = get_balance_of(&env, &from, id)?;
+
+        if current_balance < amount {
+            log!(&env, "Collection: Burn: Insufficient Balance");
+            return Err(ContractError::InsufficientBalance);
+        }
+
+        update_balance_of(&env, &from, id, current_balance - amount)?;
+
+        Ok(())
     }
 
     // Destroys multiple types and amounts of tokens from `from`
     #[allow(dead_code)]
-    pub fn burn_batch(env: Env, from: Address, ids: Vec<u64>, amounts: Vec<u64>) {
-        todo!()
+    pub fn burn_batch(
+        env: Env,
+        from: Address,
+        ids: Vec<u64>,
+        amounts: Vec<u64>,
+    ) -> Result<(), ContractError> {
+        from.require_auth();
+
+        if ids.len() != amounts.len() {
+            log!(&env, "Collection: Burn batch: length mismatch");
+            return Err(ContractError::IdsAmountsLengthMismatch);
+        }
+
+        for idx in 0..ids.len() {
+            let id = ids.get(idx).unwrap();
+            let amount = amounts.get(idx).unwrap();
+
+            let current_balance = get_balance_of(&env, &from, id)?;
+            if current_balance < amount {
+                log!(&env, "Collection: Burn batch: Insufficient Balance");
+                return Err(ContractError::InsufficientBalance);
+            }
+            update_balance_of(&env, &from, id, current_balance - amount)?;
+        }
+
+        Ok(())
     }
 
     // Sets a new URI for a token type `id`
     #[allow(dead_code)]
-    pub fn set_uri(env: Env, id: u64, uri: Bytes) {
-        todo!()
+    pub fn set_uri(env: Env, sender: Address, id: u64, uri: Bytes) -> Result<(), ContractError> {
+        sender.require_auth(); //NOTE: probably with admin check
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::Uri(id), &URIValue { uri });
+
+        Ok(())
     }
 
     // Returns the URI for a token type `id`
     #[allow(dead_code)]
-    pub fn uri(env: Env, id: u64) -> Bytes {
-        todo!()
+    pub fn uri(env: Env, id: u64) -> Result<Bytes, ContractError> {
+        if let Some(uri) = env.storage().persistent().get(&DataKey::Uri(id)) {
+            Ok(uri)
+        } else {
+            log!(&env, "Collections: Uri: No uri set for the given id");
+            Err(ContractError::NoUriSet)
+        }
     }
 }

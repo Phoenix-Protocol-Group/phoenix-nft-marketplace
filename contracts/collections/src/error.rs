@@ -6,5 +6,7 @@ use soroban_sdk::contracterror;
 pub enum ContractError {
     AccountsIdsLengthMissmatch = 0,
     CannotApproveSelf = 1,
-    InsuficientBalance = 2,
+    InsufficientBalance = 2,
+    IdsAmountsLengthMismatch = 3,
+    NoUriSet = 4,
 }

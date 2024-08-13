@@ -275,6 +275,7 @@ impl Collections {
     ) -> Result<(), ContractError> {
         from.require_auth();
 
+        //FIXME: same as above - who can burn?
         if ids.len() != amounts.len() {
             log!(&env, "Collection: Burn batch: length mismatch");
             return Err(ContractError::IdsAmountsLengthMismatch);

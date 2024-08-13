@@ -110,3 +110,57 @@ fn burning() {
     collectoins_client.burn(&user, &1, &1);
     assert_eq!(collectoins_client.balance_of(&user, &1), 1);
 }
+
+#[test]
+fn batch_burning() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    collections_client.mint_batch(
+        &admin,
+        &user,
+        &vec![&env, 1, 2, 3, 4, 5],
+        &vec![&env, 10, 20, 30, 40, 50],
+    );
+
+    assert_eq!(
+        collections_client.balance_of_batch(
+            &vec![
+                &env,
+                user.clone(),
+                user.clone(),
+                user.clone(),
+                user.clone(),
+                user.clone()
+            ],
+            &vec![&env, 1, 2, 3, 4, 5]
+        ),
+        vec![&env, 10, 20, 30, 40, 50]
+    );
+
+    collections_client.burn_batch(
+        &user,
+        &vec![&env, 1, 2, 3, 4, 5],
+        &vec![&env, 5, 10, 15, 20, 25],
+    );
+
+    assert_eq!(
+        collections_client.balance_of_batch(
+            &vec![
+                &env,
+                user.clone(),
+                user.clone(),
+                user.clone(),
+                user.clone(),
+                user.clone()
+            ],
+            &vec![&env, 1, 2, 3, 4, 5]
+        ),
+        vec![&env, 5, 10, 15, 20, 25],
+    );
+}

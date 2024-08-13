@@ -93,3 +93,20 @@ fn approval_tests() {
 
     assert!(collectoins_client.is_approved_for_all(&user, &operator));
 }
+
+#[test]
+fn burning() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let collectoins_client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    collectoins_client.mint(&admin, &user, &1, &2);
+    assert_eq!(collectoins_client.balance_of(&user, &1), 2);
+
+    collectoins_client.burn(&user, &1, &1);
+    assert_eq!(collectoins_client.balance_of(&user, &1), 1);
+}

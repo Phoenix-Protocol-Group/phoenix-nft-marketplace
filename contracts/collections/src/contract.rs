@@ -250,6 +250,7 @@ impl Collections {
     // Destroys `amount` tokens of token type `id` from `from`
     #[allow(dead_code)]
     pub fn burn(env: Env, from: Address, id: u64, amount: u64) -> Result<(), ContractError> {
+        //FIXME: who can burn? - admin/sender/both
         from.require_auth();
 
         let current_balance = get_balance_of(&env, &from, id)?;

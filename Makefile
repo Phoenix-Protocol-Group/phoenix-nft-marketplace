@@ -1,4 +1,4 @@
-SUBDIRS := contracts/nft
+SUBDIRS := contracts/collections
 BUILD_FLAGS ?=
 
 default: build

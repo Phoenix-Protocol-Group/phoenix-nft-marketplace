@@ -1,11 +1,11 @@
 use soroban_sdk::{contracttype, symbol_short, Address, Bytes, String, Symbol};
 
 // Constants for storage bump amounts
-pub(crate) const DAY_IN_LEDGERS: u32 = 17280;
-pub(crate) const INSTANCE_BUMP_AMOUNT: u32 = 7 * DAY_IN_LEDGERS;
-pub(crate) const INSTANCE_LIFETIME_THRESHOLD: u32 = INSTANCE_BUMP_AMOUNT - DAY_IN_LEDGERS;
-pub(crate) const BALANCE_BUMP_AMOUNT: u32 = 30 * DAY_IN_LEDGERS;
-pub(crate) const BALANCE_LIFETIME_THRESHOLD: u32 = BALANCE_BUMP_AMOUNT - DAY_IN_LEDGERS;
+//pub(crate) const DAY_IN_LEDGERS: u32 = 17280;
+//pub(crate) const INSTANCE_BUMP_AMOUNT: u32 = 7 * DAY_IN_LEDGERS;
+//pub(crate) const INSTANCE_LIFETIME_THRESHOLD: u32 = INSTANCE_BUMP_AMOUNT - DAY_IN_LEDGERS;
+//pub(crate) const BALANCE_BUMP_AMOUNT: u32 = 30 * DAY_IN_LEDGERS;
+//pub(crate) const BALANCE_LIFETIME_THRESHOLD: u32 = BALANCE_BUMP_AMOUNT - DAY_IN_LEDGERS;
 
 type NftId = u64;
 
@@ -94,7 +94,7 @@ pub mod utils {
         Ok(())
     }
 
-    pub fn get_config(env: &Env) -> Result<Config, ContractError> {
+    pub fn _get_config(env: &Env) -> Result<Config, ContractError> {
         if let Some(config) = env.storage().persistent().get(&DataKey::Config) {
             Ok(config)
         } else {

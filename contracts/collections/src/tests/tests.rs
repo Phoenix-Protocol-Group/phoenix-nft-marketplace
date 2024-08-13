@@ -1,11 +1,11 @@
 use soroban_sdk::{testutils::Address as _, Address, Bytes, Env, String};
 
-use crate::storage::URIValue;
+use crate::storage::{Config, URIValue};
 
 use super::setup::initialize_collection_contract;
 
 #[test]
-fn test_should_initialize() {
+fn proper_initialization() {
     let env = Env::default();
 
     let admin = Address::generate(&env);
@@ -13,14 +13,19 @@ fn test_should_initialize() {
         uri: Bytes::from_slice(&env, &[64]),
     };
 
-    let collections_client = initialize_collection_contract(
-        &env,
-        &admin,
-        &String::from_str(&env, "Stellar kitties"),
-        &uri_value,
-    );
+    let name = &String::from_str(&env, "Stellar kitties");
 
-    let actual_admin_addr = collections_client.get_admin();
+    let collections_client = initialize_collection_contract(&env, &admin, name, &uri_value);
 
+    let actual_admin_addr = collections_client.show_admin();
     assert_eq!(admin, actual_admin_addr);
+
+    let actual_config = collections_client.show_config();
+    let expected_config = Config {
+        name: name.clone(),
+        image: uri_value,
+    };
+
+    assert_eq!(actual_config.name, expected_config.name);
+    assert_eq!(actual_config.image, expected_config.image);
 }

@@ -36,7 +36,7 @@ pub enum DataKey {
 }
 
 // Struct to represent token URI
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 #[contracttype]
 pub struct URIValue {
     pub uri: Bytes,
@@ -94,7 +94,7 @@ pub mod utils {
         Ok(())
     }
 
-    pub fn _get_config(env: &Env) -> Result<Config, ContractError> {
+    pub fn get_config(env: &Env) -> Result<Config, ContractError> {
         if let Some(config) = env.storage().persistent().get(&DataKey::Config) {
             Ok(config)
         } else {

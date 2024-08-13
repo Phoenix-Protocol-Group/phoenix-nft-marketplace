@@ -323,8 +323,14 @@ impl Collections {
 
     #[cfg(test)]
     #[allow(dead_code)]
-    pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
-        let result = get_admin(env)?;
-        Ok(result)
+    pub fn show_admin(env: &Env) -> Result<Address, ContractError> {
+        let maybe_admin = crate::storage::utils::get_admin(env)?;
+        Ok(maybe_admin)
+    }
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub fn show_config(env: &Env) -> Result<Config, ContractError> {
+        let mabye_config = crate::storage::utils::get_config(env)?;
+        Ok(mabye_config)
     }
 }

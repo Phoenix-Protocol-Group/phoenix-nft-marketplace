@@ -7,6 +7,8 @@ pub(crate) const INSTANCE_LIFETIME_THRESHOLD: u32 = INSTANCE_BUMP_AMOUNT - DAY_I
 pub(crate) const BALANCE_BUMP_AMOUNT: u32 = 30 * DAY_IN_LEDGERS;
 pub(crate) const BALANCE_LIFETIME_THRESHOLD: u32 = BALANCE_BUMP_AMOUNT - DAY_IN_LEDGERS;
 
+type NFT_ID = u64;
+
 // Struct to represent a token balance for a specific address and token ID
 #[derive(Clone)]
 #[contracttype]
@@ -29,11 +31,12 @@ pub struct OperatorApprovalKey {
 pub enum DataKey {
     Balance(BalanceDataKey),
     OperatorApproval(OperatorApprovalKey),
-    Uri(u64),
+    Uri(NFT_ID),
     Config,
 }
 
 // Struct to represent token URI
+#[derive(Clone)]
 #[contracttype]
 pub struct URIValue {
     pub uri: Bytes,
@@ -43,7 +46,7 @@ pub struct URIValue {
 #[contracttype]
 pub struct Config {
     pub name: String,
-    pub symbol: String,
+    pub image: URIValue,
 }
 
 pub const ADMIN: Symbol = symbol_short!("admin");

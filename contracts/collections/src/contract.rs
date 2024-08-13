@@ -9,19 +9,19 @@ use crate::{
 };
 
 #[contract]
-pub struct ERC1155Collections;
+pub struct Collections;
 
 #[contractimpl]
-impl ERC1155Collections {
+impl Collections {
     // takes an address and uses it as an administrator
     #[allow(dead_code)]
     pub fn initialize(
         env: Env,
         admin: Address,
         name: String,
-        symbol: String,
+        image: URIValue,
     ) -> Result<(), ContractError> {
-        let config = Config { name, symbol };
+        let config = Config { name, image };
 
         save_config(&env, config)?;
         save_admin(&env, &admin)?;

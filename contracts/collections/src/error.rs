@@ -12,4 +12,6 @@ pub enum ContractError {
     AdminNotSet = 5,
     ConfigNotFound = 6,
     Unauthorized = 7,
+    InvalidAccountIndex = 8,
+    InvalidIdIndex = 9,
 }

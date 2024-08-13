@@ -1,4 +1,4 @@
-use soroban_sdk::{contract, contractimpl, log, vec, Address, Bytes, Env, String, Vec};
+use soroban_sdk::{contract, contractimpl, log, testutils, vec, Address, Bytes, Env, String, Vec};
 
 use crate::{
     error::ContractError,
@@ -51,8 +51,10 @@ impl Collections {
 
         // we verified that the length of both `accounts` and `ids` is the same
         for idx in 0..accounts.len() {
-            let account = accounts.get(idx).unwrap();
-            let id = ids.get(idx).unwrap();
+            let account = accounts
+                .get(idx)
+                .ok_or(ContractError::InvalidAccountIndex)?;
+            let id = ids.get(idx).ok_or(ContractError::InvalidIdIndex)?;
 
             let current = get_balance_of(&env, &account, id)?;
             batch_balances.insert(idx, current);
@@ -195,7 +197,6 @@ impl Collections {
         to: Address,
         id: u64,
         amount: u64,
-        _data: Bytes,
     ) -> Result<(), ContractError> {
         sender.require_auth();
 
@@ -220,7 +221,6 @@ impl Collections {
         to: Address,
         ids: Vec<u64>,
         amounts: Vec<u64>,
-        _data: Bytes,
     ) -> Result<(), ContractError> {
         sender.require_auth();
 

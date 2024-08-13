@@ -9,10 +9,10 @@ use crate::{
 };
 
 #[contract]
-pub struct StellarizedERC1155;
+pub struct ERC1155Collections;
 
 #[contractimpl]
-impl StellarizedERC1155 {
+impl ERC1155Collections {
     // takes an address and uses it as an administrator
     #[allow(dead_code)]
     pub fn initialize(

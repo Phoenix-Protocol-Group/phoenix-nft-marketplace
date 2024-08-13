@@ -187,6 +187,7 @@ impl Collections {
     }
 
     // Mints `amount` tokens of token type `id` to `to`
+    // FIXME: currently this doesn't check if we have minted the same ID twice.
     #[allow(dead_code)]
     pub fn mint(
         env: Env,

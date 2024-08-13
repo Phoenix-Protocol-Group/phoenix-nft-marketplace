@@ -315,7 +315,7 @@ impl Collections {
 
     // Returns the URI for a token type `id`
     #[allow(dead_code)]
-    pub fn uri(env: Env, id: u64) -> Result<Bytes, ContractError> {
+    pub fn uri(env: Env, id: u64) -> Result<URIValue, ContractError> {
         if let Some(uri) = env.storage().persistent().get(&DataKey::Uri(id)) {
             Ok(uri)
         } else {

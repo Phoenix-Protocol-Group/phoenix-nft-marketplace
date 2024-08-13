@@ -164,3 +164,28 @@ fn batch_burning() {
         vec![&env, 5, 10, 15, 20, 25],
     );
 }
+
+#[test]
+fn test_uri() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    collections_client.mint(&admin, &user, &1, &5);
+
+    let secret_uri = Bytes::from_slice(
+        &env,
+        &[
+            110, 101, 118, 101, 114, 32, 103, 111, 110, 110, 97, 32, 103, 105, 118, 101, 32, 121,
+            111, 117, 32, 117, 112, 44, 32, 110, 101, 118, 101, 114, 32, 103, 111, 110, 110, 97,
+            32, 108, 101, 116, 32, 121, 111, 117, 32, 100, 111, 119, 110,
+        ],
+    );
+    collections_client.set_uri(&admin, &1, &secret_uri);
+
+    assert_eq!(collections_client.uri(&1), URIValue { uri: secret_uri });
+}

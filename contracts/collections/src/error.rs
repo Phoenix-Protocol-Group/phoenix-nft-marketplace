@@ -10,4 +10,6 @@ pub enum ContractError {
     IdsAmountsLengthMismatch = 3,
     NoUriSet = 4,
     AdminNotSet = 5,
+    ConfigNotFound = 6,
+    Unauthorized = 7,
 }

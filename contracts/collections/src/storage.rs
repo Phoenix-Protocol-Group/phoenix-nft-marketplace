@@ -7,7 +7,7 @@ pub(crate) const INSTANCE_LIFETIME_THRESHOLD: u32 = INSTANCE_BUMP_AMOUNT - DAY_I
 pub(crate) const BALANCE_BUMP_AMOUNT: u32 = 30 * DAY_IN_LEDGERS;
 pub(crate) const BALANCE_LIFETIME_THRESHOLD: u32 = BALANCE_BUMP_AMOUNT - DAY_IN_LEDGERS;
 
-type NFT_ID = u64;
+type NftId = u64;
 
 // Struct to represent a token balance for a specific address and token ID
 #[derive(Clone)]
@@ -31,7 +31,7 @@ pub struct OperatorApprovalKey {
 pub enum DataKey {
     Balance(BalanceDataKey),
     OperatorApproval(OperatorApprovalKey),
-    Uri(NFT_ID),
+    Uri(NftId),
     Config,
 }
 
@@ -92,6 +92,15 @@ pub mod utils {
         env.storage().persistent().set(&DataKey::Config, &config);
 
         Ok(())
+    }
+
+    pub fn get_config(env: &Env) -> Result<Config, ContractError> {
+        if let Some(config) = env.storage().persistent().get(&DataKey::Config) {
+            Ok(config)
+        } else {
+            log!(&env, "Collections: Get config: Config not set");
+            Err(ContractError::ConfigNotFound)
+        }
     }
 
     pub fn save_admin(env: &Env, admin: &Address) -> Result<(), ContractError> {

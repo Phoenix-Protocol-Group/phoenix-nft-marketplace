@@ -3,7 +3,7 @@ use soroban_sdk::{contract, contractimpl, log, vec, Address, Bytes, Env, String,
 use crate::{
     error::ContractError,
     storage::{
-        utils::{get_balance_of, save_admin, save_config, update_balance_of},
+        utils::{get_admin, get_balance_of, save_admin, save_config, update_balance_of},
         Config, DataKey, OperatorApprovalKey, URIValue,
     },
 };
@@ -197,7 +197,13 @@ impl Collections {
         _data: Bytes,
     ) -> Result<(), ContractError> {
         sender.require_auth();
-        //TODO: probably admin/owner check if the same as sender?
+
+        let admin = get_admin(&env)?;
+        if admin != sender {
+            log!(&env, "Collections: Set uri: Unauthorized");
+            return Err(ContractError::Unauthorized);
+        }
+
         let current_balance = get_balance_of(&env, &to, id)?;
         //TODO: check for overflow?
         update_balance_of(&env, &to, id, current_balance + amount)?;
@@ -216,7 +222,12 @@ impl Collections {
         _data: Bytes,
     ) -> Result<(), ContractError> {
         sender.require_auth();
-        //TODO: probably admin/owner check if the same as sender?
+
+        let admin = get_admin(&env)?;
+        if admin != sender {
+            log!(&env, "Collections: Set uri: Unauthorized");
+            return Err(ContractError::Unauthorized);
+        }
 
         if ids.len() != amounts.len() {
             log!(&env, "Collection: Mint batch: length mismatch");
@@ -285,7 +296,12 @@ impl Collections {
     // Sets a new URI for a token type `id`
     #[allow(dead_code)]
     pub fn set_uri(env: Env, sender: Address, id: u64, uri: Bytes) -> Result<(), ContractError> {
-        sender.require_auth(); //NOTE: probably with admin check
+        sender.require_auth();
+        let admin = get_admin(&env)?;
+        if admin != sender {
+            log!(&env, "Collections: Set uri: Unauthorized");
+            return Err(ContractError::Unauthorized);
+        }
 
         env.storage()
             .persistent()

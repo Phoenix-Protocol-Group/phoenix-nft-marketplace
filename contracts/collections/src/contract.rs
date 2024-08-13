@@ -13,6 +13,12 @@ pub struct StellarizedERC1155;
 
 #[contractimpl]
 impl StellarizedERC1155 {
+    // takes an address and uses it as an administrator
+    #[allow(dead_code)]
+    pub fn initialize(env: Env, admin: Address) -> Result<(), ContractError> {
+        todo!()
+    }
+
     // Returns the balance of the `account` for the token `id`
     #[allow(dead_code)]
     pub fn balance_of(env: Env, account: Address, id: u64) -> Result<u64, ContractError> {

@@ -9,4 +9,5 @@ pub enum ContractError {
     InsufficientBalance = 2,
     IdsAmountsLengthMismatch = 3,
     NoUriSet = 4,
+    AdminNotSet = 5,
 }

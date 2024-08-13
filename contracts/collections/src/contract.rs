@@ -1,10 +1,10 @@
-use soroban_sdk::{contract, contractimpl, log, vec, Address, Bytes, Env, Vec};
+use soroban_sdk::{contract, contractimpl, log, vec, Address, Bytes, Env, String, Vec};
 
 use crate::{
     error::ContractError,
     storage::{
-        utils::{get_balance_of, update_balance_of},
-        DataKey, OperatorApprovalKey, URIValue,
+        utils::{get_balance_of, save_admin, save_config, update_balance_of},
+        Config, DataKey, OperatorApprovalKey, URIValue,
     },
 };
 
@@ -15,8 +15,18 @@ pub struct StellarizedERC1155;
 impl StellarizedERC1155 {
     // takes an address and uses it as an administrator
     #[allow(dead_code)]
-    pub fn initialize(env: Env, admin: Address) -> Result<(), ContractError> {
-        todo!()
+    pub fn initialize(
+        env: Env,
+        admin: Address,
+        name: String,
+        symbol: String,
+    ) -> Result<(), ContractError> {
+        let config = Config { name, symbol };
+
+        save_config(&env, config)?;
+        save_admin(&env, &admin)?;
+
+        Ok(())
     }
 
     // Returns the balance of the `account` for the token `id`

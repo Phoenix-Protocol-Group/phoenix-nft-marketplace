@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, Bytes};
+use soroban_sdk::{contracttype, symbol_short, Address, Bytes, String, Symbol};
 
 // Constants for storage bump amounts
 pub(crate) const DAY_IN_LEDGERS: u32 = 17280;
@@ -30,6 +30,7 @@ pub enum DataKey {
     Balance(BalanceDataKey),
     OperatorApproval(OperatorApprovalKey),
     Uri(u64),
+    Config,
 }
 
 // Struct to represent token URI
@@ -38,12 +39,21 @@ pub struct URIValue {
     pub uri: Bytes,
 }
 
+#[derive(Clone)]
+#[contracttype]
+pub struct Config {
+    pub name: String,
+    pub symbol: String,
+}
+
+pub const ADMIN: Symbol = symbol_short!("admin");
+
 pub mod utils {
-    use soroban_sdk::{Address, Env};
+    use soroban_sdk::{log, Address, Env};
 
     use crate::error::ContractError;
 
-    use super::DataKey;
+    use super::{Config, DataKey, ADMIN};
 
     pub fn get_balance_of(env: &Env, owner: &Address, id: u64) -> Result<u64, ContractError> {
         let result = env
@@ -73,5 +83,26 @@ pub mod utils {
         );
 
         Ok(())
+    }
+
+    pub fn save_config(env: &Env, config: Config) -> Result<(), ContractError> {
+        env.storage().persistent().set(&DataKey::Config, &config);
+
+        Ok(())
+    }
+
+    pub fn save_admin(env: &Env, admin: &Address) -> Result<(), ContractError> {
+        env.storage().persistent().set(&ADMIN, &admin);
+
+        Ok(())
+    }
+
+    pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
+        if let Some(admin) = env.storage().persistent().get(&ADMIN) {
+            Ok(admin)
+        } else {
+            log!(&env, "Collections: Get admin: Admin not set");
+            Err(ContractError::AdminNotSet)
+        }
     }
 }

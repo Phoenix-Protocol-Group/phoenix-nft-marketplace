@@ -78,3 +78,18 @@ fn mint_batch_and_balance_of_batch() {
 
     assert_eq!(vec![&env, 10, 0, 0, 0, 0], actual);
 }
+
+#[test]
+fn approval_tests() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user = Address::generate(&env);
+    let operator = Address::generate(&env);
+
+    let collectoins_client = initialize_collection_contract(&env, None, None, None);
+
+    collectoins_client.set_approval_for_all(&user, &operator, &true);
+
+    assert!(collectoins_client.is_approved_for_all(&user, &operator));
+}

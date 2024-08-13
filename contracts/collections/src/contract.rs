@@ -320,4 +320,11 @@ impl Collections {
             Err(ContractError::NoUriSet)
         }
     }
+
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
+        let result = get_admin(env)?;
+        Ok(result)
+    }
 }

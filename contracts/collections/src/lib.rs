@@ -5,4 +5,4 @@ mod error;
 mod storage;
 
 #[cfg(test)]
-mod tests;
+mod test;

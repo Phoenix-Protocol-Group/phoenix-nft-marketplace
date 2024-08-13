@@ -17,7 +17,7 @@ fn proper_initialization() {
     let name = &String::from_str(&env, "Stellar kitties");
 
     let collections_client =
-        initialize_collection_contract(&env, Some(&admin), Some(&name), Some(&uri_value));
+        initialize_collection_contract(&env, Some(&admin), Some(name), Some(&uri_value));
 
     let actual_admin_addr = collections_client.show_admin();
     assert_eq!(admin, actual_admin_addr);

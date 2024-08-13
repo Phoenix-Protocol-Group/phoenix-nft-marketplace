@@ -94,6 +94,7 @@ pub mod utils {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn get_config(env: &Env) -> Result<Config, ContractError> {
         if let Some(config) = env.storage().persistent().get(&DataKey::Config) {
             Ok(config)

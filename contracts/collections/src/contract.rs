@@ -19,9 +19,9 @@ impl Collections {
         env: Env,
         admin: Address,
         name: String,
-        image: URIValue,
+        symbol: String,
     ) -> Result<(), ContractError> {
-        let config = Config { name, image };
+        let config = Config { name, symbol };
 
         save_config(&env, config)?;
         save_admin(&env, &admin)?;
@@ -46,7 +46,6 @@ impl Collections {
             log!(&env, "Collections: Balance of batch: length missmatch");
             return Err(ContractError::AccountsIdsLengthMissmatch);
         }
-
         let mut batch_balances: Vec<u64> = vec![&env];
 
         // we verified that the length of both `accounts` and `ids` is the same
@@ -313,6 +312,24 @@ impl Collections {
         Ok(())
     }
 
+    // Sets the main image(logo) for the collection
+    #[allow(dead_code)]
+    pub fn set_collection_uri(env: Env, sender: Address, uri: Bytes) -> Result<(), ContractError> {
+        sender.require_auth();
+        //TODO: maybe the below comparison is not needed
+        let admin = get_admin(&env)?;
+        if admin != sender {
+            log!(&env, "Collections: Set uri: Unauthorized");
+            return Err(ContractError::Unauthorized);
+        }
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::CollectionUri, &URIValue { uri });
+
+        Ok(())
+    }
+
     // Returns the URI for a token type `id`
     #[allow(dead_code)]
     pub fn uri(env: Env, id: u64) -> Result<URIValue, ContractError> {
@@ -320,6 +337,17 @@ impl Collections {
             Ok(uri)
         } else {
             log!(&env, "Collections: Uri: No uri set for the given id");
+            Err(ContractError::NoUriSet)
+        }
+    }
+
+    // Returns the URI for a token type `id`
+    #[allow(dead_code)]
+    pub fn collection_uri(env: Env) -> Result<URIValue, ContractError> {
+        if let Some(uri) = env.storage().persistent().get(&DataKey::CollectionUri) {
+            Ok(uri)
+        } else {
+            log!(&env, "Collections: Uri: No collection uri set");
             Err(ContractError::NoUriSet)
         }
     }

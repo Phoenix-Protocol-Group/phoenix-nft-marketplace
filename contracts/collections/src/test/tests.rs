@@ -10,14 +10,12 @@ fn proper_initialization() {
     env.mock_all_auths();
 
     let admin = Address::generate(&env);
-    let uri_value = URIValue {
-        uri: Bytes::from_slice(&env, &[64]),
-    };
 
     let name = &String::from_str(&env, "Stellar kitties");
+    let symbol = &String::from_str(&env, "STK");
 
     let collections_client =
-        initialize_collection_contract(&env, Some(&admin), Some(name), Some(&uri_value));
+        initialize_collection_contract(&env, Some(&admin), Some(name), Some(symbol));
 
     let actual_admin_addr = collections_client.show_admin();
     assert_eq!(admin, actual_admin_addr);
@@ -25,11 +23,11 @@ fn proper_initialization() {
     let actual_config = collections_client.show_config();
     let expected_config = Config {
         name: name.clone(),
-        image: uri_value,
+        symbol: symbol.clone(),
     };
 
     assert_eq!(actual_config.name, expected_config.name);
-    assert_eq!(actual_config.image, expected_config.image);
+    assert_eq!(actual_config.symbol, expected_config.symbol);
 }
 
 #[test]

@@ -32,6 +32,7 @@ pub enum DataKey {
     Balance(BalanceDataKey),
     OperatorApproval(OperatorApprovalKey),
     Uri(NftId),
+    CollectionUri,
     Config,
 }
 
@@ -46,7 +47,7 @@ pub struct URIValue {
 #[contracttype]
 pub struct Config {
     pub name: String,
-    pub image: URIValue,
+    pub symbol: String,
 }
 
 pub const ADMIN: Symbol = symbol_short!("admin");

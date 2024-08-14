@@ -45,6 +45,7 @@ fn mint_and_check_balance() {
     collections_client.mint(&admin, &user, &2, &10);
 
     assert_eq!(collections_client.balance_of(&user, &1), 10);
+    assert_eq!(collections_client.balance_of(&user, &2), 10);
 }
 
 #[test]
@@ -53,28 +54,30 @@ fn mint_batch_and_balance_of_batch() {
     env.mock_all_auths();
 
     let admin = Address::generate(&env);
-    let user = Address::generate(&env);
+    let user_a = Address::generate(&env);
+    let user_b = Address::generate(&env);
+    let user_c = Address::generate(&env);
+    let user_d = Address::generate(&env);
+    let user_e = Address::generate(&env);
 
     let id_list = vec![&env, 1, 2, 3, 4, 5];
     let amounts_list = vec![&env, 10, 20, 30, 40, 50];
 
     let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
 
-    collections_client.mint_batch(&admin, &user, &id_list, &amounts_list);
+    collections_client.mint_batch(&admin, &user_a, &id_list, &amounts_list);
+    collections_client.mint_batch(&admin, &user_b, &id_list, &amounts_list);
+    collections_client.mint_batch(&admin, &user_c, &id_list, &amounts_list);
+    collections_client.mint_batch(&admin, &user_d, &id_list, &amounts_list);
+    collections_client.mint_batch(&admin, &user_e, &id_list, &amounts_list);
 
     let actual = collections_client.balance_of_batch(
-        &vec![
-            &env,
-            user,
-            Address::generate(&env),
-            Address::generate(&env),
-            Address::generate(&env),
-            Address::generate(&env),
-        ],
+        &vec![&env, user_a, user_b, user_c, user_d, user_e],
         &id_list,
     );
 
-    assert_eq!(vec![&env, 10, 0, 0, 0, 0], actual);
+    // here we compare what amount of each nft_id does each user has
+    assert_eq!(vec![&env, 10, 20, 30, 40, 50], actual);
 }
 
 #[test]

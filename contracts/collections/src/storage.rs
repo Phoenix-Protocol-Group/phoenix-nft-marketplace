@@ -8,14 +8,8 @@ use soroban_sdk::{contracttype, symbol_short, Address, Bytes, String, Symbol};
 //pub(crate) const BALANCE_LIFETIME_THRESHOLD: u32 = BALANCE_BUMP_AMOUNT - DAY_IN_LEDGERS;
 
 type NftId = u64;
-
-// Struct to represent a token balance for a specific address and token ID
-#[derive(Clone)]
-#[contracttype]
-pub struct BalanceDataKey {
-    pub token_id: u64,
-    pub owner: Address,
-}
+type TokenId = u64;
+type Balance = u64;
 
 // Struct to represent the operator approval status
 #[derive(Clone)]
@@ -29,7 +23,7 @@ pub struct OperatorApprovalKey {
 #[derive(Clone)]
 #[contracttype]
 pub enum DataKey {
-    Balance(BalanceDataKey),
+    Balance(Address),
     OperatorApproval(OperatorApprovalKey),
     Uri(NftId),
     CollectionUri,
@@ -53,23 +47,25 @@ pub struct Config {
 pub const ADMIN: Symbol = symbol_short!("admin");
 
 pub mod utils {
-    use soroban_sdk::{log, Address, Env};
+    use soroban_sdk::{log, Address, Env, Map};
 
     use crate::error::ContractError;
 
-    use super::{Config, DataKey, ADMIN};
+    use super::{Balance, Config, DataKey, TokenId, ADMIN};
 
     pub fn get_balance_of(env: &Env, owner: &Address, id: u64) -> Result<u64, ContractError> {
-        let result = env
+        let balance_map = env
             .storage()
             .persistent()
-            .get(&DataKey::Balance(crate::storage::BalanceDataKey {
-                token_id: id,
-                owner: owner.clone(),
-            }))
-            .unwrap_or(0u64);
+            .get(&DataKey::Balance(owner.clone()))
+            .unwrap_or(Map::new(env));
 
-        Ok(result)
+        if let Some(balance) = balance_map.get(id) {
+            Ok(balance)
+        } else {
+            log!(&env, "Id not found!");
+            Err(ContractError::IdNotFound)
+        }
     }
 
     pub fn update_balance_of(
@@ -78,13 +74,17 @@ pub mod utils {
         id: u64,
         new_amount: u64,
     ) -> Result<(), ContractError> {
-        env.storage().persistent().set(
-            &DataKey::Balance(crate::storage::BalanceDataKey {
-                token_id: id,
-                owner: owner.clone(),
-            }),
-            &new_amount,
-        );
+        let mut balance_map: Map<TokenId, Balance> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Balance(owner.clone()))
+            .unwrap_or(Map::new(env));
+
+        balance_map.set(id, new_amount);
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::Balance(owner.clone()), &balance_map);
 
         Ok(())
     }

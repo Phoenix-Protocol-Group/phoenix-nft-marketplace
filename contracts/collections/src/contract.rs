@@ -201,13 +201,11 @@ impl Collections {
 
         let admin = get_admin(&env)?;
         if admin != sender {
-            log!(&env, "Collections: Set uri: Unauthorized");
+            log!(&env, "Collections: Mint: Unauthorized");
             return Err(ContractError::Unauthorized);
         }
 
-        let current_balance = get_balance_of(&env, &to, id)?;
-        //TODO: check for overflow?
-        update_balance_of(&env, &to, id, current_balance + amount)?;
+        update_balance_of(&env, &to, id, amount)?;
 
         Ok(())
     }
@@ -225,7 +223,7 @@ impl Collections {
 
         let admin = get_admin(&env)?;
         if admin != sender {
-            log!(&env, "Collections: Set uri: Unauthorized");
+            log!(&env, "Collections: Mint batch: Unauthorized");
             return Err(ContractError::Unauthorized);
         }
 
@@ -238,9 +236,8 @@ impl Collections {
             let id = ids.get(idx).unwrap();
             let amount = amounts.get(idx).unwrap();
 
-            let current_balance = get_balance_of(&env, &to, id)?;
             //TODO: check for overflow?
-            update_balance_of(&env, &to, id, current_balance + amount)?;
+            update_balance_of(&env, &to, id, amount)?;
         }
 
         Ok(())

@@ -14,4 +14,5 @@ pub enum ContractError {
     Unauthorized = 7,
     InvalidAccountIndex = 8,
     InvalidIdIndex = 9,
+    IdNotFound = 10,
 }

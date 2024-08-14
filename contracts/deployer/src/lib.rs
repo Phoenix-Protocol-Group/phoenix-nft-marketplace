@@ -50,9 +50,17 @@ impl CollectionsDeployer {
         let _: Val = env.invoke_contract(&deployed_multisig, &init_fn, init_fn_args);
 
         save_collection_with_generic_key(&env, name.clone());
-        save_collection_with_admin_key(&env, name, admin);
+        save_collection_with_admin_address_as_key(&env, name, admin);
 
         deployed_multisig
+    }
+
+    pub fn query_all_collections(env: &Env) -> Vec<String> {
+        todo!();
+    }
+
+    pub fn query_collection_by_admin(env: &Env, admin: Address) -> Vec<String> {
+        todo!()
     }
 }
 
@@ -105,7 +113,7 @@ pub fn save_collection_with_generic_key(env: &Env, name: String) {
         .set(&DataKey::AllCollections, &existent_collection);
 }
 
-pub fn save_collection_with_admin_key(env: &Env, name: String, admin: Address) {
+pub fn save_collection_with_admin_address_as_key(env: &Env, name: String, admin: Address) {
     let mut existent_collection: Vec<String> = env
         .storage()
         .persistent()

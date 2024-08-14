@@ -1,4 +1,4 @@
-use soroban_sdk::{contract, contractimpl, log, vec, Address, Bytes, Env, String, Vec};
+use soroban_sdk::{contract, contractimpl, log, vec, Address, Bytes, BytesN, Env, String, Vec};
 
 use crate::{
     error::ContractError,
@@ -347,6 +347,16 @@ impl Collections {
             log!(&env, "Collections: Uri: No collection uri set");
             Err(ContractError::NoUriSet)
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
+        let admin: Address = get_admin(&env)?;
+        admin.require_auth();
+
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+
+        Ok(())
     }
 
     #[cfg(test)]

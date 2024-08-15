@@ -120,6 +120,29 @@ fn approval_tests() {
 }
 
 #[test]
+fn safe_transfer_from() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user_a = Address::generate(&env);
+    let user_b = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    client.mint(&admin, &user_a, &1, &1);
+    client.mint(&admin, &user_b, &2, &1);
+
+    assert_eq!(client.balance_of(&user_a, &1), 1u64);
+    assert_eq!(client.balance_of(&user_b, &2), 1u64);
+
+    client.safe_transfer_from(&user_a, &user_b, &1, &1);
+
+    assert_eq!(client.balance_of(&user_a, &1), 0u64);
+    assert_eq!(client.balance_of(&user_b, &1), 1u64);
+}
+
+#[test]
 fn burning() {
     let env = Env::default();
     env.mock_all_auths();

@@ -275,6 +275,24 @@ fn test_uri() {
 }
 
 #[test]
+fn set_collection_uri_should_work() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user = Address::generate(&env);
+    let client = initialize_collection_contract(&env, Some(&user), None, None);
+
+    assert_eq!(
+        client.try_collection_uri(),
+        Err(Ok(ContractError::NoUriSet))
+    );
+    let uri = Bytes::from_slice(&env, &[42]);
+    client.set_collection_uri(&uri);
+
+    assert_eq!(client.collection_uri(), URIValue { uri });
+}
+
+#[test]
 fn should_fail_when_balance_of_batch_has_different_sizes_for_accounts_and_ids() {
     let env = Env::default();
     env.mock_all_auths();

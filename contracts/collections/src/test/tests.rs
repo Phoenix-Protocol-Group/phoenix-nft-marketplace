@@ -394,3 +394,40 @@ fn mint_should_fail_when_unauthorized() {
         Err(Ok(ContractError::Unauthorized))
     );
 }
+
+#[test]
+fn mint_batch_should_fail_when_unauthorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let client = initialize_collection_contract(&env, None, None, None);
+
+    assert_eq!(
+        client.try_mint_batch(
+            &Address::generate(&env),
+            &Address::generate(&env),
+            &vec![&env, 1],
+            &vec![&env, 1]
+        ),
+        Err(Ok(ContractError::Unauthorized))
+    );
+}
+
+#[test]
+fn mint_batch_should_fail_when_different_lengths_of_vecs() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let admin = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    assert_eq!(
+        client.try_mint_batch(
+            &admin,
+            &Address::generate(&env),
+            &vec![&env, 1, 2],
+            &vec![&env, 1]
+        ),
+        Err(Ok(ContractError::IdsAmountsLengthMismatch))
+    );
+}

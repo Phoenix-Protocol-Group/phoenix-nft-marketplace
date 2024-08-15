@@ -96,6 +96,7 @@ pub mod utils {
     }
 
     #[allow(dead_code)]
+    #[cfg(not(tarpaulin_include))]
     pub fn get_config(env: &Env) -> Result<Config, ContractError> {
         if let Some(config) = env.storage().persistent().get(&DataKey::Config) {
             Ok(config)
@@ -111,6 +112,7 @@ pub mod utils {
         Ok(())
     }
 
+    #[cfg(not(tarpaulin_include))]
     pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
         if let Some(admin) = env.storage().persistent().get(&ADMIN) {
             Ok(admin)

@@ -352,6 +352,7 @@ impl Collections {
     }
 
     #[allow(dead_code)]
+    #[cfg(not(tarpaulin_include))]
     pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
         let admin: Address = get_admin(&env)?;
         admin.require_auth();

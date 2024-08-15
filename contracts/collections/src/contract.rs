@@ -128,7 +128,6 @@ impl Collections {
         to: Address,
         id: u64,
         transfer_amount: u64,
-        _data: Bytes, // we don't have onERC1155Received in Stellar/Soroban
     ) -> Result<(), ContractError> {
         from.require_auth();
         // TODO: check if `to` is not zero address

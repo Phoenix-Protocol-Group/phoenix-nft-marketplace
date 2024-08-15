@@ -55,17 +55,23 @@ pub mod utils {
     use super::{Balance, Config, DataKey, TokenId, ADMIN};
 
     pub fn get_balance_of(env: &Env, owner: &Address, id: u64) -> Result<u64, ContractError> {
-        let balance_map = env
+        let balance_map: Map<TokenId, Balance> = env
             .storage()
             .persistent()
             .get(&DataKey::Balance(owner.clone()))
-            .unwrap_or(Map::new(env));
+            .unwrap_or_else(|| {
+                log!(
+                    &env,
+                    "Collections: Get balance of: Entry with this address is not present"
+                );
+                Err(ContractError::EntryDoesNotExist)
+            })?;
 
         if let Some(balance) = balance_map.get(id) {
             Ok(balance)
         } else {
-            log!(&env, "Id not found!");
-            Err(ContractError::IdNotFound)
+            log!(&env, "No entry for the given NFT Id");
+            Err(ContractError::NftIdNotFound)
         }
     }
 

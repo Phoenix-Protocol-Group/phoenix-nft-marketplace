@@ -214,3 +214,21 @@ fn test_uri() {
 
     assert_eq!(collections_client.uri(&1), URIValue { uri: secret_uri });
 }
+
+#[test]
+fn balance_of_batch_should_fail_when_different_sizes_for_accounts_and_ids() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    // not neceserally to mint, as we expect the test to fali
+
+    assert_eq!(
+        collections_client.try_balance_of_batch(&vec![&env, user], &vec![&env, 1, 2, 3]),
+        Err(Ok(ContractError::AccountsIdsLengthMissmatch))
+    )
+}

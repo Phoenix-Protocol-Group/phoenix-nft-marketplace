@@ -28,6 +28,7 @@ pub enum DataKey {
     Uri(NftId),
     CollectionUri,
     Config,
+    IsInitialized,
 }
 
 // Struct to represent token URI
@@ -118,5 +119,17 @@ pub mod utils {
             log!(&env, "Collections: Get admin: Admin not set");
             Err(ContractError::AdminNotSet)
         }
+    }
+    pub fn is_initialized(env: &Env) -> bool {
+        env.storage()
+            .persistent()
+            .get(&DataKey::IsInitialized)
+            .unwrap_or(false)
+    }
+
+    pub fn set_initialized(env: &Env) {
+        env.storage()
+            .persistent()
+            .set(&DataKey::IsInitialized, &true);
     }
 }

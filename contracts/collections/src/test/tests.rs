@@ -1,6 +1,10 @@
 use soroban_sdk::{testutils::Address as _, vec, Address, Bytes, Env, String};
 
-use crate::storage::{Config, URIValue};
+use crate::{
+    contract::{Collections, CollectionsClient},
+    error::ContractError,
+    storage::{Config, URIValue},
+};
 
 use super::setup::initialize_collection_contract;
 
@@ -28,6 +32,26 @@ fn proper_initialization() {
 
     assert_eq!(actual_config.name, expected_config.name);
     assert_eq!(actual_config.symbol, expected_config.symbol);
+}
+
+#[test]
+fn initialization_should_fail_when_done_twice() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+
+    let name = &String::from_str(&env, "Stellar kitties");
+    let symbol = &String::from_str(&env, "STK");
+
+    let collections = CollectionsClient::new(&env, &env.register_contract(None, Collections {}));
+
+    collections.initialize(&admin, name, symbol);
+
+    assert_eq!(
+        collections.try_initialize(&admin, name, symbol),
+        Err(Ok(ContractError::AlreadyInitialized))
+    );
 }
 
 #[test]

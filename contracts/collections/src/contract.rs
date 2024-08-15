@@ -3,7 +3,10 @@ use soroban_sdk::{contract, contractimpl, log, vec, Address, Bytes, BytesN, Env,
 use crate::{
     error::ContractError,
     storage::{
-        utils::{get_admin, get_balance_of, save_admin, save_config, update_balance_of},
+        utils::{
+            get_admin, get_balance_of, is_initialized, save_admin, save_config, set_initialized,
+            update_balance_of,
+        },
         Config, DataKey, OperatorApprovalKey, URIValue,
     },
 };
@@ -23,8 +26,15 @@ impl Collections {
     ) -> Result<(), ContractError> {
         let config = Config { name, symbol };
 
+        if is_initialized(&env) {
+            log!(&env, "Collections: Initialize: Already initialized");
+            return Err(ContractError::AlreadyInitialized);
+        }
+
         save_config(&env, config)?;
         save_admin(&env, &admin)?;
+
+        set_initialized(&env);
 
         Ok(())
     }

@@ -509,3 +509,14 @@ fn set_uri_should_fail_when_unauthorized() {
         Err(Ok(ContractError::Unauthorized))
     )
 }
+
+#[test]
+fn uri_should_fail_when_none_set() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user = Address::generate(&env);
+    let client = initialize_collection_contract(&env, Some(&user), None, None);
+
+    assert_eq!(client.try_uri(&1), Err(Ok(ContractError::NoUriSet)))
+}

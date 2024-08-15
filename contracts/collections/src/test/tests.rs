@@ -445,3 +445,31 @@ fn burn_should_fail_when_not_enough_balance() {
         Err(Ok(ContractError::InsufficientBalance))
     );
 }
+
+#[test]
+fn burn_batch_should_fail_when_vec_length_missmatch() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user = Address::generate(&env);
+    let client = initialize_collection_contract(&env, Some(&user), None, None);
+
+    assert_eq!(
+        client.try_burn_batch(&user, &vec![&env, 1, 2], &vec![&env, 1]),
+        Err(Ok(ContractError::IdsAmountsLengthMismatch))
+    );
+}
+
+#[test]
+fn burn_batch_should_fail_when_not_enough_balance() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user = Address::generate(&env);
+    let client = initialize_collection_contract(&env, Some(&user), None, None);
+
+    assert_eq!(
+        client.try_burn_batch(&user, &vec![&env, 1], &vec![&env, 1]),
+        Err(Ok(ContractError::InsufficientBalance))
+    );
+}

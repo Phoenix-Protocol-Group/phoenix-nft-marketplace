@@ -330,3 +330,54 @@ fn should_fail_when_sender_balance_not_enough() {
         Err(Ok(ContractError::InsufficientBalance))
     )
 }
+
+#[test]
+fn safe_batch_transfer_should_fail_when_id_mismatch() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user_a = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    let ids = vec![&env, 1, 2, 3, 4, 5];
+    let amounts = vec![&env, 5, 5, 5, 5, 5];
+    client.mint_batch(&admin, &user_a, &ids, &amounts);
+
+    assert_eq!(
+        client.try_safe_batch_transfer_from(
+            &user_a,
+            &Address::generate(&env),
+            &ids,
+            // only 4 amounts, when 5 are needed
+            &vec![&env, 10, 10, 10, 10],
+        ),
+        Err(Ok(ContractError::IdsAmountsLengthMismatch))
+    );
+}
+
+#[test]
+fn safe_batch_transfer_should_fail_when_insufficient_balance() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user_a = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    let ids = vec![&env, 1, 2, 3, 4, 5];
+    let amounts = vec![&env, 5, 5, 5, 5, 5];
+    client.mint_batch(&admin, &user_a, &ids, &amounts);
+
+    assert_eq!(
+        client.try_safe_batch_transfer_from(
+            &user_a,
+            &Address::generate(&env),
+            &ids,
+            &vec![&env, 10, 10, 10, 10, 10],
+        ),
+        Err(Ok(ContractError::InsufficientBalance))
+    );
+}

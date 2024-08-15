@@ -142,6 +142,43 @@ fn safe_transfer_from() {
 }
 
 #[test]
+fn safe_batch_transfer() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user_a = Address::generate(&env);
+    let user_b = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    let ids = vec![&env, 1, 2, 3, 4, 5];
+    let amounts = vec![&env, 5, 5, 5, 5, 5];
+    client.mint_batch(&admin, &user_a, &ids, &amounts);
+
+    // NOTE: I don't see a reason why the length of the address should match the length of the
+    // ids, but this is as close to the `ERC1155` implementation as possible.
+    let accounts = vec![
+        &env,
+        user_a.clone(),
+        user_b.clone(),
+        Address::generate(&env),
+        Address::generate(&env),
+        Address::generate(&env),
+    ];
+    assert_eq!(
+        client.balance_of_batch(&accounts, &ids),
+        vec![&env, 5, 0, 0, 0, 0]
+    );
+
+    client.safe_batch_transfer_from(&user_a, &user_b, &ids, &amounts);
+    assert_eq!(
+        client.balance_of_batch(&accounts, &ids),
+        vec![&env, 0, 5, 0, 0, 0]
+    );
+}
+
+#[test]
 fn burning() {
     let env = Env::default();
     env.mock_all_auths();

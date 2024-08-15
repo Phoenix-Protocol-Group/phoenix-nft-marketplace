@@ -216,7 +216,7 @@ fn test_uri() {
 }
 
 #[test]
-fn balance_of_batch_should_fail_when_different_sizes_for_accounts_and_ids() {
+fn should_fail_when_balance_of_batch_has_different_sizes_for_accounts_and_ids() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -225,10 +225,25 @@ fn balance_of_batch_should_fail_when_different_sizes_for_accounts_and_ids() {
 
     let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
 
-    // not neceserally to mint, as we expect the test to fali
+    // not neceserally to mint anything, as we expect the test to fali
 
     assert_eq!(
         collections_client.try_balance_of_batch(&vec![&env, user], &vec![&env, 1, 2, 3]),
         Err(Ok(ContractError::AccountsIdsLengthMissmatch))
+    )
+}
+
+#[test]
+fn should_fail_when_set_approval_for_all_tries_to_approve_self() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+
+    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    assert_eq!(
+        collections_client.try_set_approval_for_all(&admin, &admin, &true),
+        Err(Ok(ContractError::CannotApproveSelf))
     )
 }

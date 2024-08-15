@@ -59,19 +59,12 @@ pub mod utils {
             .storage()
             .persistent()
             .get(&DataKey::Balance(owner.clone()))
-            .unwrap_or_else(|| {
-                log!(
-                    &env,
-                    "Collections: Get balance of: Entry with this address is not present"
-                );
-                Err(ContractError::EntryDoesNotExist)
-            })?;
+            .unwrap_or(Map::new(env));
 
         if let Some(balance) = balance_map.get(id) {
             Ok(balance)
         } else {
-            log!(&env, "No entry for the given NFT Id");
-            Err(ContractError::NftIdNotFound)
+            Ok(0u64)
         }
     }
 

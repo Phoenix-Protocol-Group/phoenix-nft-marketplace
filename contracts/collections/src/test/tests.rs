@@ -131,10 +131,9 @@ fn safe_transfer_from() {
     let client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     client.mint(&admin, &user_a, &1, &1);
-    client.mint(&admin, &user_b, &2, &1);
 
     assert_eq!(client.balance_of(&user_a, &1), 1u64);
-    assert_eq!(client.balance_of(&user_b, &2), 1u64);
+    assert_eq!(client.balance_of(&user_b, &1), 0u64);
 
     client.safe_transfer_from(&user_a, &user_b, &1, &1);
 
@@ -268,22 +267,6 @@ fn should_fail_when_set_approval_for_all_tries_to_approve_self() {
     assert_eq!(
         collections_client.try_set_approval_for_all(&admin, &admin, &true),
         Err(Ok(ContractError::CannotApproveSelf))
-    )
-}
-
-#[test]
-fn should_fail_when_get_balance_cannot_find_datakey_in_safe_transfer_from() {
-    let env = Env::default();
-    env.mock_all_auths();
-
-    let admin = Address::generate(&env);
-    let user = Address::generate(&env);
-
-    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
-
-    assert_eq!(
-        collections_client.try_safe_transfer_from(&user, &Address::generate(&env), &1, &1),
-        Err(Ok(ContractError::EntryDoesNotExist))
     )
 }
 

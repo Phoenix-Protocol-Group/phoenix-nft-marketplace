@@ -473,3 +473,21 @@ fn burn_batch_should_fail_when_not_enough_balance() {
         Err(Ok(ContractError::InsufficientBalance))
     );
 }
+
+#[test]
+fn set_uri_should_fail_when_unauthorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user = Address::generate(&env);
+    let client = initialize_collection_contract(&env, Some(&user), None, None);
+
+    assert_eq!(
+        client.try_set_uri(
+            &Address::generate(&env),
+            &1,
+            &Bytes::from_slice(&env, &[42])
+        ),
+        Err(Ok(ContractError::Unauthorized))
+    )
+}

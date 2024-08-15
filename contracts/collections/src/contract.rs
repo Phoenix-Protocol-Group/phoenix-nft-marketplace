@@ -320,7 +320,6 @@ impl Collections {
     // Sets the main image(logo) for the collection
     #[allow(dead_code)]
     pub fn set_collection_uri(env: Env, uri: Bytes) -> Result<(), ContractError> {
-        //TODO: maybe the below comparison is not needed
         get_admin(&env)?.require_auth();
 
         env.storage()

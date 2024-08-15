@@ -431,3 +431,17 @@ fn mint_batch_should_fail_when_different_lengths_of_vecs() {
         Err(Ok(ContractError::IdsAmountsLengthMismatch))
     );
 }
+
+#[test]
+fn burn_should_fail_when_not_enough_balance() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let user = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&user), None, None);
+
+    assert_eq!(
+        client.try_burn(&user, &1, &1),
+        Err(Ok(ContractError::InsufficientBalance))
+    );
+}

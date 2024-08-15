@@ -381,3 +381,16 @@ fn safe_batch_transfer_should_fail_when_insufficient_balance() {
         Err(Ok(ContractError::InsufficientBalance))
     );
 }
+
+#[test]
+fn mint_should_fail_when_unauthorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let client = initialize_collection_contract(&env, None, None, None);
+
+    assert_eq!(
+        client.try_mint(&Address::generate(&env), &Address::generate(&env), &1, &1),
+        Err(Ok(ContractError::Unauthorized))
+    );
+}

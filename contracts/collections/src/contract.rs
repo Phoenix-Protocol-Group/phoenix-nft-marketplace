@@ -24,7 +24,10 @@ impl Collections {
         name: String,
         symbol: String,
     ) -> Result<(), ContractError> {
-        let config = Config { name, symbol };
+        let config = Config {
+            name: name.clone(),
+            symbol: symbol.clone(),
+        };
 
         if is_initialized(&env) {
             log!(&env, "Collections: Initialize: Already initialized");
@@ -35,6 +38,11 @@ impl Collections {
         save_admin(&env, &admin)?;
 
         set_initialized(&env);
+
+        env.events()
+            .publish(("initialize", "collection name: "), name);
+        env.events()
+            .publish(("initialize", "collectoin symbol: "), symbol);
 
         Ok(())
     }
@@ -92,11 +100,20 @@ impl Collections {
 
         env.storage().persistent().set(
             &DataKey::OperatorApproval(OperatorApprovalKey {
-                owner: sender,
-                operator,
+                owner: sender.clone(),
+                operator: operator.clone(),
             }),
             &approved,
         );
+
+        env.events()
+            .publish(("Set approval for", "Sender: "), sender);
+        env.events().publish(
+            ("Set approval for", "Set approval for operator: "),
+            operator,
+        );
+        env.events()
+            .publish(("Set approval for", "New approval: "), approved);
 
         Ok(())
     }
@@ -147,6 +164,12 @@ impl Collections {
         // next we incrase the recipient's `to` balance
         update_balance_of(&env, &to, id, rcpt_balance + transfer_amount)?;
 
+        env.events().publish(("safe transfer from", "from: "), from);
+        env.events().publish(("safe transfer from", "to: "), to);
+        env.events().publish(("safe transfer from", "id: "), id);
+        env.events()
+            .publish(("safe transfer from", "transfer amount: "), transfer_amount);
+
         Ok(())
     }
 
@@ -192,6 +215,15 @@ impl Collections {
             update_balance_of(&env, &to, id, rcpt_balance + amount)?;
         }
 
+        env.events()
+            .publish(("safe batch transfer from", "from: "), from);
+        env.events()
+            .publish(("safe batch transfer from", "to: "), to);
+        env.events()
+            .publish(("safe batch transfer from", "ids: "), ids);
+        env.events()
+            .publish(("safe batch transfer from", "amounts: "), amounts);
+
         Ok(())
     }
 
@@ -214,6 +246,11 @@ impl Collections {
         }
 
         update_balance_of(&env, &to, id, amount)?;
+
+        env.events().publish(("mint", "sender: "), sender);
+        env.events().publish(("mint", "to: "), to);
+        env.events().publish(("mint", "id: "), id);
+        env.events().publish(("mint", "amount: "), amount);
 
         Ok(())
     }
@@ -248,6 +285,11 @@ impl Collections {
             update_balance_of(&env, &to, id, amount)?;
         }
 
+        env.events().publish(("mint batch", "sender: "), sender);
+        env.events().publish(("mint batch", "to: "), to);
+        env.events().publish(("mint batch", "ids: "), ids);
+        env.events().publish(("mint batch", "amounts: "), amounts);
+
         Ok(())
     }
 
@@ -265,6 +307,10 @@ impl Collections {
         }
 
         update_balance_of(&env, &from, id, current_balance - amount)?;
+
+        env.events().publish(("burn", "from: "), from);
+        env.events().publish(("burn", "id: "), id);
+        env.events().publish(("burn", "amount: "), amount);
 
         Ok(())
     }
@@ -297,6 +343,10 @@ impl Collections {
             update_balance_of(&env, &from, id, current_balance - amount)?;
         }
 
+        env.events().publish(("burn batch", "from: "), from);
+        env.events().publish(("burn batch", "ids: "), ids);
+        env.events().publish(("burn batch", "amounts: "), amounts);
+
         Ok(())
     }
 
@@ -312,7 +362,11 @@ impl Collections {
 
         env.storage()
             .persistent()
-            .set(&DataKey::Uri(id), &URIValue { uri });
+            .set(&DataKey::Uri(id), &URIValue { uri: uri.clone() });
+
+        env.events().publish(("set uri", "sender: "), sender);
+        env.events().publish(("set uri", "id: "), id);
+        env.events().publish(("set uri", "uri: "), uri);
 
         Ok(())
     }
@@ -324,7 +378,9 @@ impl Collections {
 
         env.storage()
             .persistent()
-            .set(&DataKey::CollectionUri, &URIValue { uri });
+            .set(&DataKey::CollectionUri, &URIValue { uri: uri.clone() });
+
+        env.events().publish(("set collection uri", "uri: "), uri);
 
         Ok(())
     }

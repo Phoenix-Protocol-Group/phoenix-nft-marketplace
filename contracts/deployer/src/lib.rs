@@ -8,7 +8,7 @@ use soroban_sdk::{
 // Metadata that is added on to the WASM custom section
 contractmeta!(
     key = "Description",
-    val = "Phoenix Multisig Deployer Contract"
+    val = "Phoenix Collections Deployer Contract"
 );
 
 #[contract]
@@ -21,9 +21,11 @@ impl CollectionsDeployer {
         if is_initialized(&env) {
             log!(
                 &env,
-                "Multisig Deployer: Initialize: initializing the contract twice is not allowed"
+                "Collections Deployer: Initialize: initializing the contract twice is not allowed"
             );
-            panic!("Multisig Deployer: Initialize: initializing the contract twice is not allowed");
+            panic!(
+                "Collections Deployer: Initialize: initializing the contract twice is not allowed"
+            );
         }
         set_initialized(&env);
 
@@ -36,23 +38,29 @@ impl CollectionsDeployer {
         salt: BytesN<32>,
         admin: Address,
         name: String,
+        symbol: String,
     ) -> Address {
         admin.require_auth();
         let collections_wasm_hash = get_wasm_hash(&env);
 
-        let deployed_multisig = env
+        let deployed_collection = env
             .deployer()
             .with_address(admin.clone(), salt)
             .deploy(collections_wasm_hash);
 
         let init_fn = Symbol::new(&env, "initialize");
-        let init_fn_args: Vec<Val> = vec![&env, admin.into_val(&env), name.into_val(&env)];
-        let _: Val = env.invoke_contract(&deployed_multisig, &init_fn, init_fn_args);
+        let init_fn_args: Vec<Val> = vec![
+            &env,
+            admin.into_val(&env),
+            name.into_val(&env),
+            symbol.into_val(&env),
+        ];
+        let _: Val = env.invoke_contract(&deployed_collection, &init_fn, init_fn_args);
 
         save_collection_with_generic_key(&env, name.clone());
         save_collection_with_admin_address_as_key(&env, name, admin);
 
-        deployed_multisig
+        deployed_collection
     }
 
     pub fn query_all_collections(env: &Env) -> Result<Vec<String>, ContractError> {

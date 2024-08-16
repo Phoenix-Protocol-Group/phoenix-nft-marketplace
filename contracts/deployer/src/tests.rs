@@ -31,8 +31,9 @@ fn test_deploy_collection_from_contract() {
 
     let creator = Address::generate(&env);
     let name = String::from_str(&env, "Stellar Kitties");
+    let symbol = String::from_str(&env, "STK");
 
-    client.deploy_new_collection(&salt, &creator, &name);
+    client.deploy_new_collection(&salt, &creator, &name, &symbol);
 
     assert_eq!(client.query_all_collections(), vec![&env, name.clone()]);
     assert_eq!(
@@ -60,16 +61,34 @@ fn test_deploy_multiple_collections() {
 
     let first_salt = BytesN::from_array(&env, &[0; 32]);
     let first_collection_name = String::from_str(&env, "Stellar Kitties");
+    let first_collection_symbol = String::from_str(&env, "STK");
 
     let second_salt = BytesN::from_array(&env, &[5; 32]);
     let second_collection_name = String::from_str(&env, "Stellar Puppers");
+    let second_collection_symbol = String::from_str(&env, "STP");
 
     let third_salt = BytesN::from_array(&env, &[10; 32]);
     let third_collection_name = String::from_str(&env, "Horror of Cthulhu");
+    let third_collection_symbol = String::from_str(&env, "HoC");
 
-    client.deploy_new_collection(&first_salt, &creator, &first_collection_name);
-    client.deploy_new_collection(&second_salt, &creator, &second_collection_name);
-    client.deploy_new_collection(&third_salt, &bob, &third_collection_name);
+    client.deploy_new_collection(
+        &first_salt,
+        &creator,
+        &first_collection_name,
+        &first_collection_symbol,
+    );
+    client.deploy_new_collection(
+        &second_salt,
+        &creator,
+        &second_collection_name,
+        &second_collection_symbol,
+    );
+    client.deploy_new_collection(
+        &third_salt,
+        &bob,
+        &third_collection_name,
+        &third_collection_symbol,
+    );
 
     assert_eq!(
         client.query_all_collections(),
@@ -93,7 +112,6 @@ fn test_deploy_multiple_collections() {
 }
 
 #[test]
-#[ignore = "once we rebase from main"]
 #[should_panic(
     expected = "Collections Deployer: Initialize: initializing the contract twice is not allowed"
 )]

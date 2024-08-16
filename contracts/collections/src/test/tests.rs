@@ -63,7 +63,7 @@ fn mint_and_check_balance() {
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
 
-    let collections_client = initialize_collection_contract(&env, Some(&admin), None);
+    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     collections_client.mint(&admin, &user, &1, &10);
 
@@ -88,7 +88,7 @@ fn mint_batch_and_balance_of_batch() {
     let id_list = vec![&env, 1, 2, 3, 4, 5];
     let amounts_list = vec![&env, 10, 20, 30, 40, 50];
 
-    let collections_client = initialize_collection_contract(&env, Some(&admin), None);
+    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     collections_client.mint_batch(&admin, &user_a, &id_list, &amounts_list);
     collections_client.mint_batch(&admin, &user_b, &id_list, &amounts_list);
@@ -113,7 +113,7 @@ fn approval_tests() {
     let user = Address::generate(&env);
     let operator = Address::generate(&env);
 
-    let collectoins_client = initialize_collection_contract(&env, None, None);
+    let collectoins_client = initialize_collection_contract(&env, None, None, None);
 
     collectoins_client.set_approval_for_all(&user, &operator, &true);
 
@@ -181,7 +181,7 @@ fn burning() {
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
 
-    let collectoins_client = initialize_collection_contract(&env, Some(&admin), None);
+    let collectoins_client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     collectoins_client.mint(&admin, &user, &1, &2);
     assert_eq!(collectoins_client.balance_of(&user, &1), 2);
@@ -198,7 +198,7 @@ fn batch_burning() {
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
 
-    let collections_client = initialize_collection_contract(&env, Some(&admin), None);
+    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     collections_client.mint_batch(
         &admin,
@@ -252,7 +252,7 @@ fn test_uri() {
     let admin = Address::generate(&env);
     let user = Address::generate(&env);
 
-    let collections_client = initialize_collection_contract(&env, Some(&admin), None);
+    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     collections_client.mint(&admin, &user, &1, &5);
 

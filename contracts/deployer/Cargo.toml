@@ -1,5 +1,5 @@
 [package]
-name = "phoenix-multisig-deployer"
+name = "phoenix-nft-deployer"
 version = { workspace = true }
 authors = ["Jakub <jakub@moonbite.space", "Kaloyan <kaloyan@moonbite.space"]
 repository = { workspace = true }

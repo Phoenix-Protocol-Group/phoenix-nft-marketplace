@@ -1,8 +1,8 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contractimpl, contractmeta, contracttype, log, vec, Address, BytesN, Env, IntoVal,
-    String, Symbol, Val, Vec,
+    contract, contracterror, contractimpl, contractmeta, contracttype, log, vec, Address, BytesN,
+    Env, IntoVal, String, Symbol, Val, Vec,
 };
 
 // Metadata that is added on to the WASM custom section
@@ -55,12 +55,27 @@ impl CollectionsDeployer {
         deployed_multisig
     }
 
-    pub fn query_all_collections(env: &Env) -> Vec<String> {
-        todo!();
+    pub fn query_all_collections(env: &Env) -> Result<Vec<String>, ContractError> {
+        let maybe_all = env
+            .storage()
+            .persistent()
+            .get(&DataKey::AllCollections)
+            .ok_or(ContractError::NoCollectionsSaved)?;
+
+        Ok(maybe_all)
     }
 
-    pub fn query_collection_by_admin(env: &Env, admin: Address) -> Vec<String> {
-        todo!()
+    pub fn query_collection_by_creator(
+        env: &Env,
+        creator: Address,
+    ) -> Result<Vec<String>, ContractError> {
+        let maybe_collections = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Creator(creator))
+            .ok_or(ContractError::CreatorHasNoCollections)?;
+
+        Ok(maybe_collections)
     }
 }
 
@@ -72,7 +87,15 @@ pub enum DataKey {
     IsInitialized,
     CollectionsWasmHash,
     AllCollections,
-    AdminId(Address),
+    Creator(Address),
+}
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum ContractError {
+    NoCollectionsSaved = 0,
+    CreatorHasNoCollections = 1,
 }
 
 pub fn set_initialized(env: &Env) {
@@ -113,17 +136,19 @@ pub fn save_collection_with_generic_key(env: &Env, name: String) {
         .set(&DataKey::AllCollections, &existent_collection);
 }
 
-pub fn save_collection_with_admin_address_as_key(env: &Env, name: String, admin: Address) {
+pub fn save_collection_with_admin_address_as_key(env: &Env, name: String, creator: Address) {
     let mut existent_collection: Vec<String> = env
         .storage()
         .persistent()
-        .get(&DataKey::AdminId(admin.clone()))
+        .get(&DataKey::Creator(creator.clone()))
         .unwrap_or(vec![&env]);
 
     existent_collection.push_back(name);
 
     env.storage()
         .persistent()
-        .set(&DataKey::AdminId(admin), &existent_collection);
+        .set(&DataKey::Creator(creator), &existent_collection);
 }
 
+#[cfg(test)]
+mod tests;

@@ -1,9 +1,12 @@
-use soroban_sdk::{contract, contractimpl, log, vec, Address, Bytes, Env, String, Vec};
+use soroban_sdk::{contract, contractimpl, log, vec, Address, Bytes, BytesN, Env, String, Vec};
 
 use crate::{
     error::ContractError,
     storage::{
-        utils::{get_admin, get_balance_of, save_admin, save_config, update_balance_of},
+        utils::{
+            get_admin, get_balance_of, is_initialized, save_admin, save_config, set_initialized,
+            update_balance_of,
+        },
         Config, DataKey, OperatorApprovalKey, URIValue,
     },
 };
@@ -19,12 +22,27 @@ impl Collections {
         env: Env,
         admin: Address,
         name: String,
-        image: URIValue,
+        symbol: String,
     ) -> Result<(), ContractError> {
-        let config = Config { name, image };
+        let config = Config {
+            name: name.clone(),
+            symbol: symbol.clone(),
+        };
+
+        if is_initialized(&env) {
+            log!(&env, "Collections: Initialize: Already initialized");
+            return Err(ContractError::AlreadyInitialized);
+        }
 
         save_config(&env, config)?;
         save_admin(&env, &admin)?;
+
+        set_initialized(&env);
+
+        env.events()
+            .publish(("initialize", "collection name: "), name);
+        env.events()
+            .publish(("initialize", "collectoin symbol: "), symbol);
 
         Ok(())
     }
@@ -46,7 +64,6 @@ impl Collections {
             log!(&env, "Collections: Balance of batch: length missmatch");
             return Err(ContractError::AccountsIdsLengthMissmatch);
         }
-
         let mut batch_balances: Vec<u64> = vec![&env];
 
         // we verified that the length of both `accounts` and `ids` is the same
@@ -83,11 +100,20 @@ impl Collections {
 
         env.storage().persistent().set(
             &DataKey::OperatorApproval(OperatorApprovalKey {
-                owner: sender,
-                operator,
+                owner: sender.clone(),
+                operator: operator.clone(),
             }),
             &approved,
         );
+
+        env.events()
+            .publish(("Set approval for", "Sender: "), sender);
+        env.events().publish(
+            ("Set approval for", "Set approval for operator: "),
+            operator,
+        );
+        env.events()
+            .publish(("Set approval for", "New approval: "), approved);
 
         Ok(())
     }
@@ -119,7 +145,6 @@ impl Collections {
         to: Address,
         id: u64,
         transfer_amount: u64,
-        _data: Bytes, // we don't have onERC1155Received in Stellar/Soroban
     ) -> Result<(), ContractError> {
         from.require_auth();
         // TODO: check if `to` is not zero address
@@ -139,6 +164,12 @@ impl Collections {
         // next we incrase the recipient's `to` balance
         update_balance_of(&env, &to, id, rcpt_balance + transfer_amount)?;
 
+        env.events().publish(("safe transfer from", "from: "), from);
+        env.events().publish(("safe transfer from", "to: "), to);
+        env.events().publish(("safe transfer from", "id: "), id);
+        env.events()
+            .publish(("safe transfer from", "transfer amount: "), transfer_amount);
+
         Ok(())
     }
 
@@ -150,7 +181,6 @@ impl Collections {
         to: Address,
         ids: Vec<u64>,
         amounts: Vec<u64>,
-        _data: Bytes, // we don't have onERC1155Received in Stellar/Soroban
     ) -> Result<(), ContractError> {
         from.require_auth();
         // TODO: check if `to` is not zero address
@@ -185,6 +215,15 @@ impl Collections {
             update_balance_of(&env, &to, id, rcpt_balance + amount)?;
         }
 
+        env.events()
+            .publish(("safe batch transfer from", "from: "), from);
+        env.events()
+            .publish(("safe batch transfer from", "to: "), to);
+        env.events()
+            .publish(("safe batch transfer from", "ids: "), ids);
+        env.events()
+            .publish(("safe batch transfer from", "amounts: "), amounts);
+
         Ok(())
     }
 
@@ -202,13 +241,16 @@ impl Collections {
 
         let admin = get_admin(&env)?;
         if admin != sender {
-            log!(&env, "Collections: Set uri: Unauthorized");
+            log!(&env, "Collections: Mint: Unauthorized");
             return Err(ContractError::Unauthorized);
         }
 
-        let current_balance = get_balance_of(&env, &to, id)?;
-        //TODO: check for overflow?
-        update_balance_of(&env, &to, id, current_balance + amount)?;
+        update_balance_of(&env, &to, id, amount)?;
+
+        env.events().publish(("mint", "sender: "), sender);
+        env.events().publish(("mint", "to: "), to);
+        env.events().publish(("mint", "id: "), id);
+        env.events().publish(("mint", "amount: "), amount);
 
         Ok(())
     }
@@ -226,7 +268,7 @@ impl Collections {
 
         let admin = get_admin(&env)?;
         if admin != sender {
-            log!(&env, "Collections: Set uri: Unauthorized");
+            log!(&env, "Collections: Mint batch: Unauthorized");
             return Err(ContractError::Unauthorized);
         }
 
@@ -239,10 +281,14 @@ impl Collections {
             let id = ids.get(idx).unwrap();
             let amount = amounts.get(idx).unwrap();
 
-            let current_balance = get_balance_of(&env, &to, id)?;
             //TODO: check for overflow?
-            update_balance_of(&env, &to, id, current_balance + amount)?;
+            update_balance_of(&env, &to, id, amount)?;
         }
+
+        env.events().publish(("mint batch", "sender: "), sender);
+        env.events().publish(("mint batch", "to: "), to);
+        env.events().publish(("mint batch", "ids: "), ids);
+        env.events().publish(("mint batch", "amounts: "), amounts);
 
         Ok(())
     }
@@ -261,6 +307,10 @@ impl Collections {
         }
 
         update_balance_of(&env, &from, id, current_balance - amount)?;
+
+        env.events().publish(("burn", "from: "), from);
+        env.events().publish(("burn", "id: "), id);
+        env.events().publish(("burn", "amount: "), amount);
 
         Ok(())
     }
@@ -293,6 +343,10 @@ impl Collections {
             update_balance_of(&env, &from, id, current_balance - amount)?;
         }
 
+        env.events().publish(("burn batch", "from: "), from);
+        env.events().publish(("burn batch", "ids: "), ids);
+        env.events().publish(("burn batch", "amounts: "), amounts);
+
         Ok(())
     }
 
@@ -308,7 +362,25 @@ impl Collections {
 
         env.storage()
             .persistent()
-            .set(&DataKey::Uri(id), &URIValue { uri });
+            .set(&DataKey::Uri(id), &URIValue { uri: uri.clone() });
+
+        env.events().publish(("set uri", "sender: "), sender);
+        env.events().publish(("set uri", "id: "), id);
+        env.events().publish(("set uri", "uri: "), uri);
+
+        Ok(())
+    }
+
+    // Sets the main image(logo) for the collection
+    #[allow(dead_code)]
+    pub fn set_collection_uri(env: Env, uri: Bytes) -> Result<(), ContractError> {
+        get_admin(&env)?.require_auth();
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::CollectionUri, &URIValue { uri: uri.clone() });
+
+        env.events().publish(("set collection uri", "uri: "), uri);
 
         Ok(())
     }
@@ -322,6 +394,28 @@ impl Collections {
             log!(&env, "Collections: Uri: No uri set for the given id");
             Err(ContractError::NoUriSet)
         }
+    }
+
+    // Returns the URI for a token type `id`
+    #[allow(dead_code)]
+    pub fn collection_uri(env: Env) -> Result<URIValue, ContractError> {
+        if let Some(uri) = env.storage().persistent().get(&DataKey::CollectionUri) {
+            Ok(uri)
+        } else {
+            log!(&env, "Collections: Uri: No collection uri set");
+            Err(ContractError::NoUriSet)
+        }
+    }
+
+    #[allow(dead_code)]
+    #[cfg(not(tarpaulin_include))]
+    pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
+        let admin: Address = get_admin(&env)?;
+        admin.require_auth();
+
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+
+        Ok(())
     }
 
     #[cfg(test)]

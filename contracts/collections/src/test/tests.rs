@@ -7,6 +7,7 @@ use crate::{
 };
 
 use super::setup::initialize_collection_contract;
+use test_case::test_case;
 
 #[test]
 fn proper_initialization() {
@@ -369,8 +370,16 @@ fn safe_batch_transfer_should_fail_when_id_mismatch() {
     );
 }
 
-#[test]
-fn safe_batch_transfer_should_fail_when_insufficient_balance() {
+#[test_case(10, 10, 10, 10, 10; "very greedy")]
+#[test_case(5, 4, 3, 2, 10; "just a single case is greedy")]
+#[test_case(1, 1, 10, 1, 1; "same as the previous")]
+fn safe_batch_transfer_should_fail_when_insufficient_balance(
+    amount_a: u64,
+    amount_b: u64,
+    amount_c: u64,
+    amount_d: u64,
+    amount_e: u64,
+) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -388,7 +397,7 @@ fn safe_batch_transfer_should_fail_when_insufficient_balance() {
             &user_a,
             &Address::generate(&env),
             &ids,
-            &vec![&env, 10, 10, 10, 10, 10],
+            &vec![&env, amount_a, amount_b, amount_c, amount_d, amount_e],
         ),
         Err(Ok(ContractError::InsufficientBalance))
     );

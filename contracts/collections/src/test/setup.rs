@@ -16,9 +16,9 @@ pub fn initialize_collection_contract<'a>(
 
     let admin = admin.unwrap_or(alt_admin);
     let name = name.unwrap_or(alt_name);
-    let image = symbol.unwrap_or(alt_symbol);
+    let symbol = symbol.unwrap_or(alt_symbol);
 
-    collections.initialize(admin, name, image);
+    collections.initialize(admin, name, symbol);
 
     collections
 }

@@ -296,8 +296,8 @@ impl Collections {
     // Destroys `amount` tokens of token type `id` from `from`
     #[allow(dead_code)]
     pub fn burn(env: Env, from: Address, id: u64, amount: u64) -> Result<(), ContractError> {
-        //FIXME: who can burn? - admin/sender/both
-        from.require_auth();
+        let admin = get_admin(&env)?;
+        admin.require_auth();
 
         let current_balance = get_balance_of(&env, &from, id)?;
 
@@ -323,9 +323,9 @@ impl Collections {
         ids: Vec<u64>,
         amounts: Vec<u64>,
     ) -> Result<(), ContractError> {
-        from.require_auth();
+        let admin = get_admin(&env)?;
+        admin.require_auth();
 
-        //FIXME: same as above - who can burn?
         if ids.len() != amounts.len() {
             log!(&env, "Collection: Burn batch: length mismatch");
             return Err(ContractError::IdsAmountsLengthMismatch);

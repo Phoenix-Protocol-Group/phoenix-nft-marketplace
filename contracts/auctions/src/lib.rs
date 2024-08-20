@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, Vec};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env, Vec};
 
 #[derive(Clone)]
 #[contracttype]
@@ -23,13 +23,20 @@ pub enum AuctionStatus {
     Cancelled,
 }
 
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum ContractError {
+    Unauthorized = 0,
+}
+
 #[contract]
 pub struct MarketplaceContract;
 
 #[contractimpl]
 impl MarketplaceContract {
-    fn generate_auction_id(env: &Env) -> u64 {
-        todo!()
+    fn generate_auction_id(env: &Env) -> Result<u64, ContractError> {
+        env.storage()
     }
 
     pub fn create_auction(

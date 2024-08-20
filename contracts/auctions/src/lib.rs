@@ -1,6 +1,8 @@
 #![no_std]
 
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env, Vec};
+use soroban_sdk::{
+    contract, contracterror, contractimpl, contracttype, log, panic_with_error, Address, Env, Vec,
+};
 
 // Values used to extend the TTL of storage
 pub const DAY_IN_LEDGERS: u32 = 17280;
@@ -14,7 +16,7 @@ pub struct Auction {
     pub item_address: Address, // Can be an NFT contract address or a collection contract address
     pub seller: Address,
     pub highest_bid: Option<u64>,
-    pub highest_bidder: Option<Address>,
+    pub highest_bidder: Address,
     pub buy_now_price: u64,
     pub end_time: u64,
     pub status: AuctionStatus,
@@ -33,6 +35,8 @@ pub enum AuctionStatus {
 #[repr(u32)]
 pub enum ContractError {
     Unauthorized = 0,
+    AuctionIdNotFound = 1,
+    IDMissmatch = 2,
 }
 
 #[contracttype]
@@ -76,9 +80,10 @@ impl MarketplaceContract {
         let auction = Auction {
             id,
             item_address,
-            seller,
+            seller: seller.clone(),
             highest_bid: None,
-            highest_bidder: None,
+            // we use the seller's address as we cannot add `Option<Address>` in the struct
+            highest_bidder: seller,
             buy_now_price,
             end_time,
             status: AuctionStatus::Active,
@@ -92,8 +97,23 @@ impl MarketplaceContract {
         Ok(auction)
     }
 
-    pub fn place_bid(env: Env, auction_id: u64, bidder: Address, bid_amount: u64) {
-        todo!()
+    pub fn place_bid(
+        env: Env,
+        auction_id: u64,
+        bidder: Address,
+        bid_amount: u64,
+    ) -> Result<(), ContractError> {
+        bidder.require_auth();
+
+        let mut auction = Self::get_auction_by_id(&env, auction_id)?;
+        if Some(bid_amount) > auction.highest_bid {
+            auction.highest_bid = Some(bid_amount);
+            auction.highest_bidder = bidder;
+        };
+
+        Self::update_auction(&env, auction_id, auction)?;
+
+        Ok(())
     }
 
     pub fn finalize_auction(env: Env, auction_id: u64) {
@@ -130,5 +150,28 @@ impl MarketplaceContract {
 
     pub fn get_highest_bid(env: Env, auction_id: u64) -> (u64, Address) {
         todo!()
+    }
+
+    fn get_auction_by_id(env: &Env, auction_id: u64) -> Result<Auction, ContractError> {
+        env.storage()
+            .instance()
+            .get(&auction_id)
+            .unwrap_or_else(|| {
+                log!(env, "Auction: Get auction by id: Auction not present");
+                panic_with_error!(&env, ContractError::AuctionIdNotFound);
+            })
+    }
+
+    fn update_auction(env: &Env, id: u64, auction: Auction) -> Result<(), ContractError> {
+        if id != auction.id {
+            log!(&env, "Auction update auction: Id missmatch");
+            panic_with_error!(&env, ContractError::IDMissmatch);
+        }
+        env.storage().instance().set(&auction.id, &auction);
+        env.storage()
+            .instance()
+            .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+        Ok(())
     }
 }

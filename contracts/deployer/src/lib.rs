@@ -5,6 +5,11 @@ use soroban_sdk::{
     Env, IntoVal, String, Symbol, Val, Vec,
 };
 
+// Values used to extend the TTL of storage
+pub const DAY_IN_LEDGERS: u32 = 17280;
+pub const BUMP_AMOUNT: u32 = 7 * DAY_IN_LEDGERS;
+pub const LIFETIME_THRESHOLD: u32 = BUMP_AMOUNT - DAY_IN_LEDGERS;
+
 // Metadata that is added on to the WASM custom section
 contractmeta!(
     key = "Description",
@@ -70,6 +75,17 @@ impl CollectionsDeployer {
             .get(&DataKey::AllCollections)
             .ok_or(ContractError::NoCollectionsSaved)?;
 
+        env.storage()
+            .persistent()
+            .has(&DataKey::AllCollections)
+            .then(|| {
+                env.storage().persistent().extend_ttl(
+                    &DataKey::AllCollections,
+                    LIFETIME_THRESHOLD,
+                    BUMP_AMOUNT,
+                )
+            });
+
         Ok(maybe_all)
     }
 
@@ -77,11 +93,18 @@ impl CollectionsDeployer {
         env: &Env,
         creator: Address,
     ) -> Result<Vec<String>, ContractError> {
+        let data_key = DataKey::Creator(creator);
         let maybe_collections = env
             .storage()
             .persistent()
-            .get(&DataKey::Creator(creator))
+            .get(&data_key)
             .ok_or(ContractError::CreatorHasNoCollections)?;
+
+        env.storage().persistent().has(&data_key).then(|| {
+            env.storage()
+                .persistent()
+                .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT)
+        });
 
         Ok(maybe_collections)
     }
@@ -108,26 +131,50 @@ pub enum ContractError {
 
 pub fn set_initialized(env: &Env) {
     env.storage().instance().set(&DataKey::IsInitialized, &());
+    env.storage()
+        .instance()
+        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
 }
 
 pub fn is_initialized(env: &Env) -> bool {
-    env.storage()
+    let is_initialized = env
+        .storage()
         .instance()
         .get::<_, ()>(&DataKey::IsInitialized)
-        .is_some()
+        .is_some();
+
+    env.storage()
+        .instance()
+        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+    is_initialized
 }
 
 pub fn set_wasm_hash(env: &Env, hash: &BytesN<32>) {
     env.storage()
         .instance()
         .set(&DataKey::CollectionsWasmHash, hash);
+    env.storage()
+        .instance()
+        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
 }
 
 pub fn get_wasm_hash(env: &Env) -> BytesN<32> {
-    env.storage()
+    let wasm_hash = env
+        .storage()
         .instance()
         .get(&DataKey::CollectionsWasmHash)
-        .unwrap()
+        .unwrap();
+    env.storage()
+        .instance()
+        .has(&DataKey::CollectionsWasmHash)
+        .then(|| {
+            env.storage()
+                .instance()
+                .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT)
+        });
+
+    wasm_hash
 }
 
 pub fn save_collection_with_generic_key(env: &Env, name: String) {
@@ -142,20 +189,31 @@ pub fn save_collection_with_generic_key(env: &Env, name: String) {
     env.storage()
         .persistent()
         .set(&DataKey::AllCollections, &existent_collection);
+
+    env.storage().persistent().extend_ttl(
+        &DataKey::AllCollections,
+        LIFETIME_THRESHOLD,
+        BUMP_AMOUNT,
+    );
 }
 
 pub fn save_collection_with_admin_address_as_key(env: &Env, name: String, creator: Address) {
+    let data_key = DataKey::Creator(creator);
+
     let mut existent_collection: Vec<String> = env
         .storage()
         .persistent()
-        .get(&DataKey::Creator(creator.clone()))
+        .get(&data_key)
         .unwrap_or(vec![&env]);
 
     existent_collection.push_back(name);
 
     env.storage()
         .persistent()
-        .set(&DataKey::Creator(creator), &existent_collection);
+        .set(&data_key, &existent_collection);
+    env.storage()
+        .persistent()
+        .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
 }
 
 #[cfg(test)]

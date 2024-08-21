@@ -56,6 +56,7 @@ pub enum ContractError {
     AuctionNotFinished = 4,
     NotEnoughBalance = 5,
     InvalidInputs = 6,
+    AuctionNotTakingAnyMoreBids = 7,
 }
 
 #[contracttype]
@@ -77,7 +78,6 @@ impl MarketplaceContract {
         duration: u64,
     ) -> Result<Auction, ContractError> {
         seller.require_auth();
-        // TODO: check if the input params are valid numbers
         let input_values = [
             &duration,
             &item_info.item_id,
@@ -86,7 +86,6 @@ impl MarketplaceContract {
         ];
         Self::validate_input_params(&env, &input_values[..]);
 
-        // TODO: check if the creator actually has the item that they can sell and they own it
         let nft_client = collection::Client::new(&env, &item_info.item_address);
         let item_balance = nft_client.balance_of(&seller, &item_info.item_id);
         // we need at least one item to start an auction
@@ -130,6 +129,14 @@ impl MarketplaceContract {
 
         let mut auction = Self::get_auction_by_id(&env, auction_id)?;
 
+        if auction.status != AuctionStatus::Active {
+            log!(
+                &env,
+                "Auction: Place Bid: Trying to place a bid for inactive/cancelled auction."
+            );
+            return Err(ContractError::AuctionNotTakingAnyMoreBids);
+        }
+
         match Some(bid_amount) > auction.highest_bid {
             true => {
                 auction.highest_bid = Some(bid_amount);
@@ -162,12 +169,12 @@ impl MarketplaceContract {
             return Err(ContractError::AuctionNotFinished);
         }
 
-        let nft_client = collection::Client::new(&env, &auction.item_address);
+        let nft_client = collection::Client::new(&env, &auction.item_info.item_address);
 
         nft_client.safe_transfer_from(
             &auction.seller,
             &auction.highest_bidder,
-            &auction.item_id,
+            &auction.item_info.item_id,
             &1,
         );
         //TODO update the auction in storage

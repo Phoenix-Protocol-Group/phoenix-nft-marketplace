@@ -1,4 +1,4 @@
-SUBDIRS := contracts/collections contracts/deployer
+SUBDIRS := contracts/collections contracts/deployer contracts/auctions contracts/token
 BUILD_FLAGS ?=
 
 default: build

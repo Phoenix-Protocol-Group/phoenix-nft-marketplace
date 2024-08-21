@@ -1,13 +1,20 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, log, panic_with_error, Address, Env, Vec,
+    contract, contracterror, contractimpl, contracttype, log, panic_with_error, token, Address,
+    Env, Vec,
 };
 
 pub mod collection {
     type NftId = u64;
     soroban_sdk::contractimport!(
         file = "../../target/wasm32-unknown-unknown/release/phoenix_nft_collections.wasm"
+    );
+}
+
+pub mod token {
+    soroban_sdk::contractimport!(
+        file = "../../target/wasm32-unknown-unknown/release/soroban_token_contract.wasm"
     );
 }
 
@@ -22,7 +29,7 @@ pub struct ItemInfo {
     pub item_address: Address, // Can be an NFT contract address or a collection contract address
     pub item_id: u64,
     pub minimum_price: Option<u64>,
-    pub buy_now_price: u64,
+    pub buy_now_price: Option<u64>,
 }
 
 #[derive(Clone)]
@@ -35,6 +42,7 @@ pub struct Auction {
     pub highest_bidder: Address,
     pub end_time: u64,
     pub status: AuctionStatus,
+    pub currency: Address,
 }
 
 #[derive(Clone, PartialEq)]
@@ -56,7 +64,9 @@ pub enum ContractError {
     AuctionNotFinished = 4,
     NotEnoughBalance = 5,
     InvalidInputs = 6,
-    AuctionNotTakingAnyMoreBids = 7,
+    AuctionNotActive = 7,
+    MinPriceNotReached = 8,
+    MissingHighestBid = 9,
 }
 
 #[contracttype]
@@ -76,15 +86,18 @@ impl MarketplaceContract {
         item_info: ItemInfo,
         seller: Address,
         duration: u64,
+        currency: Address,
     ) -> Result<Auction, ContractError> {
         seller.require_auth();
         let input_values = [
             &duration,
             &item_info.item_id,
-            &item_info.buy_now_price,
-            &item_info.minimum_price.unwrap_or(0),
+            // we want to valid only valid input, in case of `None` we will simply use 1 as
+            // placeholder
+            &item_info.buy_now_price.unwrap_or(1),
+            &item_info.minimum_price.unwrap_or(1),
         ];
-        Self::validate_input_params(&env, &input_values[..]);
+        Self::validate_input_params(&env, &input_values[..])?;
 
         let nft_client = collection::Client::new(&env, &item_info.item_address);
         let item_balance = nft_client.balance_of(&seller, &item_info.item_id);
@@ -109,6 +122,7 @@ impl MarketplaceContract {
             highest_bidder: seller,
             end_time,
             status: AuctionStatus::Active,
+            currency,
         };
 
         env.storage().instance().set(&id, &auction);
@@ -134,7 +148,7 @@ impl MarketplaceContract {
                 &env,
                 "Auction: Place Bid: Trying to place a bid for inactive/cancelled auction."
             );
-            return Err(ContractError::AuctionNotTakingAnyMoreBids);
+            return Err(ContractError::AuctionNotActive);
         }
 
         match Some(bid_amount) > auction.highest_bid {
@@ -154,13 +168,31 @@ impl MarketplaceContract {
     }
 
     pub fn finalize_auction(env: Env, auction_id: u64) -> Result<(), ContractError> {
-        let auction = Self::get_auction_by_id(&env, auction_id)?;
+        let mut auction = Self::get_auction_by_id(&env, auction_id)?;
         auction.seller.require_auth();
 
         let curr_time = env.ledger().timestamp();
 
-        // check if the auction min price has been reached, check if the bidder is different than
-        // the seller etc.
+        if auction.status != AuctionStatus::Active {
+            log!(
+                &env,
+                "Auction: Finalize auction: Cannot finalize an inactive/ended auction."
+            );
+            return Err(ContractError::AuctionNotActive);
+        }
+
+        if auction
+            .item_info
+            .minimum_price
+            .is_some_and(|min_price| min_price > auction.highest_bid.unwrap())
+        {
+            log!(
+                &env,
+                "Auction: Finalize auction: Miniminal price not reached"
+            );
+            return Err(ContractError::MinPriceNotReached);
+        }
+
         if curr_time > auction.end_time {
             log!(
                 env,
@@ -168,6 +200,8 @@ impl MarketplaceContract {
             );
             return Err(ContractError::AuctionNotFinished);
         }
+
+        Self::pause(env)?;
 
         let nft_client = collection::Client::new(&env, &auction.item_info.item_address);
 
@@ -177,7 +211,10 @@ impl MarketplaceContract {
             &auction.item_info.item_id,
             &1,
         );
-        //TODO update the auction in storage
+
+        auction.status = AuctionStatus::Ended;
+
+        Self::update_auction(&env, auction_id, auction)?;
 
         Ok(())
     }
@@ -186,20 +223,18 @@ impl MarketplaceContract {
         todo!()
     }
 
-    fn distribute_funds(env: Env, auction: Auction) {
+    pub fn pause(env: Env) -> Result<(), ContractError> {
         todo!()
     }
 
-    pub fn pause(env: Env) {
+    pub fn unpause(env: Env) -> Result<(), ContractError> {
         todo!()
     }
 
-    pub fn unpause(env: Env) {
-        todo!()
-    }
+    pub fn get_auction(env: Env, auction_id: u64) -> Result<Auction, ContractError> {
+        let auction = Self::get_auction_by_id(&env, auction_id)?;
 
-    pub fn get_auction(env: Env, auction_id: u64) -> Auction {
-        todo!()
+        Ok(auction)
     }
 
     pub fn get_active_auctions(env: Env) -> Vec<Auction> {
@@ -210,8 +245,13 @@ impl MarketplaceContract {
         todo!()
     }
 
-    pub fn get_highest_bid(env: Env, auction_id: u64) -> (u64, Address) {
-        todo!()
+    pub fn get_highest_bid(
+        env: Env,
+        auction_id: u64,
+    ) -> Result<(Option<u64>, Address), ContractError> {
+        let auction = Self::get_auction_by_id(&env, auction_id)?;
+
+        Ok((auction.highest_bid, auction.highest_bidder))
     }
 
     fn generate_auction_id(env: &Env) -> Result<u64, ContractError> {
@@ -227,6 +267,23 @@ impl MarketplaceContract {
             .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
 
         Ok(id)
+    }
+
+    fn distribute_funds(env: Env, auction: Auction) -> Result<(), ContractError> {
+        let highest_bidder = auction.highest_bidder;
+        let amount_due = auction.highest_bid.unwrap_or_else(|| {
+            log!(
+                env,
+                "Auction: Distribute Funds: Missing value for highest bid."
+            );
+            panic_with_error!(env, ContractError::MissingHighestBid);
+        });
+        let rcpt = auction.seller;
+
+        let token = token::Client::new(&env, &auction.currency);
+        token.transfer(&highest_bidder, &rcpt, &(amount_due as i128));
+
+        Ok(())
     }
 
     fn get_auction_by_id(env: &Env, auction_id: u64) -> Result<Auction, ContractError> {

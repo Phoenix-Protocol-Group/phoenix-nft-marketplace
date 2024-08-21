@@ -51,6 +51,7 @@ pub enum AuctionStatus {
     Active,
     Ended,
     Cancelled,
+    Paused,
 }
 
 #[contracterror]
@@ -67,6 +68,8 @@ pub enum ContractError {
     AuctionNotActive = 7,
     MinPriceNotReached = 8,
     MissingHighestBid = 9,
+    AuctionNotPaused = 10,
+    PaymentProcessingFailed = 11,
 }
 
 #[contracttype]
@@ -201,10 +204,16 @@ impl MarketplaceContract {
             return Err(ContractError::AuctionNotFinished);
         }
 
-        Self::pause(env)?;
+        // first we try to transfer the funds from `highest_bidder` to `seller`
+        // if that fails then we return an error
+
+        let transfer_result = Self::distribute_funds(&env, &auction);
+        if transfer_result.is_err() {
+            log!(&env, "Auction: Finalize Auction: Payment for bid failed.");
+            return Err(ContractError::PaymentProcessingFailed);
+        }
 
         let nft_client = collection::Client::new(&env, &auction.item_info.item_address);
-
         nft_client.safe_transfer_from(
             &auction.seller,
             &auction.highest_bidder,
@@ -223,12 +232,36 @@ impl MarketplaceContract {
         todo!()
     }
 
-    pub fn pause(env: Env) -> Result<(), ContractError> {
-        todo!()
+    pub fn pause(env: Env, auction_id: u64) -> Result<(), ContractError> {
+        let mut auction = Self::get_auction_by_id(&env, auction_id)?;
+        auction.seller.require_auth();
+
+        if auction.status != AuctionStatus::Active {
+            log!(env, "Auction: Pause: Cannot pause inactive/ended auction.");
+            return Err(ContractError::AuctionNotActive);
+        }
+
+        auction.status = AuctionStatus::Paused;
+
+        Self::update_auction(&env, auction_id, auction)?;
+
+        Ok(())
     }
 
-    pub fn unpause(env: Env) -> Result<(), ContractError> {
-        todo!()
+    pub fn unpause(env: &Env, auction_id: u64) -> Result<(), ContractError> {
+        let mut auction = Self::get_auction_by_id(&env, auction_id)?;
+        auction.seller.require_auth();
+
+        if auction.status != AuctionStatus::Paused {
+            log!(env, "Auction: Pause: Cannot activate unpaused auction.");
+            return Err(ContractError::AuctionNotPaused);
+        }
+
+        auction.status = AuctionStatus::Active;
+
+        Self::update_auction(&env, auction_id, auction)?;
+
+        Ok(())
     }
 
     pub fn get_auction(env: Env, auction_id: u64) -> Result<Auction, ContractError> {
@@ -269,8 +302,8 @@ impl MarketplaceContract {
         Ok(id)
     }
 
-    fn distribute_funds(env: Env, auction: Auction) -> Result<(), ContractError> {
-        let highest_bidder = auction.highest_bidder;
+    fn distribute_funds(env: &Env, auction: &Auction) -> Result<(), ContractError> {
+        let highest_bidder = auction.highest_bidder.clone();
         let amount_due = auction.highest_bid.unwrap_or_else(|| {
             log!(
                 env,
@@ -278,7 +311,7 @@ impl MarketplaceContract {
             );
             panic_with_error!(env, ContractError::MissingHighestBid);
         });
-        let rcpt = auction.seller;
+        let rcpt = auction.seller.clone();
 
         let token = token::Client::new(&env, &auction.currency);
         token.transfer(&highest_bidder, &rcpt, &(amount_due as i128));

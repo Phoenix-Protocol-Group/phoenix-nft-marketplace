@@ -37,6 +37,7 @@ pub enum ContractError {
     Unauthorized = 0,
     AuctionIdNotFound = 1,
     IDMissmatch = 2,
+    BidNotEnough = 3,
 }
 
 #[contracttype]
@@ -106,14 +107,21 @@ impl MarketplaceContract {
         bidder.require_auth();
 
         let mut auction = Self::get_auction_by_id(&env, auction_id)?;
-        if Some(bid_amount) > auction.highest_bid {
-            auction.highest_bid = Some(bid_amount);
-            auction.highest_bidder = bidder;
-        };
 
-        Self::update_auction(&env, auction_id, auction)?;
+        match Some(bid_amount) > auction.highest_bid {
+            true => {
+                auction.highest_bid = Some(bid_amount);
+                auction.highest_bidder = bidder;
 
-        Ok(())
+                Self::update_auction(&env, auction_id, auction)?;
+
+                Ok(())
+            }
+            false => {
+                log!(&env, "Auction: Place bid: Bid not enough");
+                Err(ContractError::BidNotEnough)
+            }
+        }
     }
 
     pub fn finalize_auction(env: Env, auction_id: u64) {

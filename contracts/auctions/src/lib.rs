@@ -4,6 +4,13 @@ use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, log, panic_with_error, Address, Env, Vec,
 };
 
+pub mod collection {
+    type NftId = u64;
+    soroban_sdk::contractimport!(
+        file = "../../target/wasm32-unknown-unknown/release/phoenix_nft_collections.wasm"
+    );
+}
+
 // Values used to extend the TTL of storage
 pub const DAY_IN_LEDGERS: u32 = 17280;
 pub const BUMP_AMOUNT: u32 = 7 * DAY_IN_LEDGERS;
@@ -11,13 +18,21 @@ pub const LIFETIME_THRESHOLD: u32 = BUMP_AMOUNT - DAY_IN_LEDGERS;
 
 #[derive(Clone)]
 #[contracttype]
+pub struct ItemInfo {
+    pub item_address: Address, // Can be an NFT contract address or a collection contract address
+    pub item_id: u64,
+    pub minimum_price: Option<u64>,
+    pub buy_now_price: u64,
+}
+
+#[derive(Clone)]
+#[contracttype]
 pub struct Auction {
     pub id: u64,
-    pub item_address: Address, // Can be an NFT contract address or a collection contract address
+    pub item_info: ItemInfo,
     pub seller: Address,
     pub highest_bid: Option<u64>,
     pub highest_bidder: Address,
-    pub buy_now_price: u64,
     pub end_time: u64,
     pub status: AuctionStatus,
 }
@@ -38,6 +53,9 @@ pub enum ContractError {
     AuctionIdNotFound = 1,
     IDMissmatch = 2,
     BidNotEnough = 3,
+    AuctionNotFinished = 4,
+    NotEnoughBalance = 5,
+    InvalidInputs = 6,
 }
 
 #[contracttype]
@@ -52,40 +70,44 @@ pub struct MarketplaceContract;
 
 #[contractimpl]
 impl MarketplaceContract {
-    fn generate_auction_id(env: &Env) -> Result<u64, ContractError> {
-        let id = env
-            .storage()
-            .instance()
-            .get::<_, u64>(&DataKey::AuctionId)
-            .unwrap_or_default()
-            + 1u64;
-        env.storage().instance().set(&DataKey::AuctionId, &id);
-        env.storage()
-            .instance()
-            .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
-
-        Ok(id)
-    }
-
     pub fn create_auction(
         env: Env,
-        item_address: Address,
+        item_info: ItemInfo,
         seller: Address,
-        buy_now_price: u64,
         duration: u64,
     ) -> Result<Auction, ContractError> {
         seller.require_auth();
+        // TODO: check if the input params are valid numbers
+        let input_values = [
+            &duration,
+            &item_info.item_id,
+            &item_info.buy_now_price,
+            &item_info.minimum_price.unwrap_or(0),
+        ];
+        Self::validate_input_params(&env, &input_values[..]);
+
+        // TODO: check if the creator actually has the item that they can sell and they own it
+        let nft_client = collection::Client::new(&env, &item_info.item_address);
+        let item_balance = nft_client.balance_of(&seller, &item_info.item_id);
+        // we need at least one item to start an auction
+        if item_balance < 1 {
+            log!(
+                &env,
+                "Auction: Create Auction: Not enough balance of the item to sell"
+            );
+            return Err(ContractError::NotEnoughBalance);
+        }
 
         let id = Self::generate_auction_id(&env)?;
         let end_time = env.ledger().timestamp() + duration;
+
         let auction = Auction {
             id,
-            item_address,
+            item_info,
             seller: seller.clone(),
             highest_bid: None,
             // we use the seller's address as we cannot add `Option<Address>` in the struct
             highest_bidder: seller,
-            buy_now_price,
             end_time,
             status: AuctionStatus::Active,
         };
@@ -124,8 +146,33 @@ impl MarketplaceContract {
         }
     }
 
-    pub fn finalize_auction(env: Env, auction_id: u64) {
-        todo!()
+    pub fn finalize_auction(env: Env, auction_id: u64) -> Result<(), ContractError> {
+        let auction = Self::get_auction_by_id(&env, auction_id)?;
+        auction.seller.require_auth();
+
+        let curr_time = env.ledger().timestamp();
+
+        // check if the auction min price has been reached, check if the bidder is different than
+        // the seller etc.
+        if curr_time > auction.end_time {
+            log!(
+                env,
+                "Auction: Finalize auction: Auction cannot be ended early"
+            );
+            return Err(ContractError::AuctionNotFinished);
+        }
+
+        let nft_client = collection::Client::new(&env, &auction.item_address);
+
+        nft_client.safe_transfer_from(
+            &auction.seller,
+            &auction.highest_bidder,
+            &auction.item_id,
+            &1,
+        );
+        //TODO update the auction in storage
+
+        Ok(())
     }
 
     pub fn buy_now(env: Env, auction_id: u64, buyer: Address) {
@@ -160,6 +207,21 @@ impl MarketplaceContract {
         todo!()
     }
 
+    fn generate_auction_id(env: &Env) -> Result<u64, ContractError> {
+        let id = env
+            .storage()
+            .instance()
+            .get::<_, u64>(&DataKey::AuctionId)
+            .unwrap_or_default()
+            + 1u64;
+        env.storage().instance().set(&DataKey::AuctionId, &id);
+        env.storage()
+            .instance()
+            .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+        Ok(id)
+    }
+
     fn get_auction_by_id(env: &Env, auction_id: u64) -> Result<Auction, ContractError> {
         env.storage()
             .instance()
@@ -179,6 +241,17 @@ impl MarketplaceContract {
         env.storage()
             .instance()
             .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+        Ok(())
+    }
+
+    fn validate_input_params(env: &Env, values_to_check: &[&u64]) -> Result<(), ContractError> {
+        values_to_check.iter().for_each(|i| {
+            if i < &&1 {
+                log!(&env, "Auction: Validate input: Invalid inputs used");
+                panic_with_error!(&env, ContractError::InvalidInputs);
+            }
+        });
 
         Ok(())
     }

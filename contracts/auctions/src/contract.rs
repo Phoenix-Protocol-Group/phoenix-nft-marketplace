@@ -1,4 +1,4 @@
-use soroban_sdk::{contract, contractimpl, log, panic_with_error, token, Address, Env, Vec};
+use soroban_sdk::{contract, contractimpl, log, token, Address, Env, Vec};
 
 use crate::{
     collection,

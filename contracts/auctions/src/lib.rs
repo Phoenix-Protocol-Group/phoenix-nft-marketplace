@@ -1,8 +1,7 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, log, panic_with_error, token, Address,
-    Env, Vec,
+    contract, contracterror, contractimpl, contracttype, log, panic_with_error, Address, Env, Vec,
 };
 
 pub mod collection {
@@ -70,6 +69,7 @@ pub enum ContractError {
     MissingHighestBid = 9,
     AuctionNotPaused = 10,
     PaymentProcessingFailed = 11,
+    NoBuyNowOption = 12,
 }
 
 #[contracttype]
@@ -207,8 +207,8 @@ impl MarketplaceContract {
         // first we try to transfer the funds from `highest_bidder` to `seller`
         // if that fails then we return an error
 
-        let transfer_result = Self::distribute_funds(&env, &auction);
-        if transfer_result.is_err() {
+        let tx_result = Self::distribute_funds(&env, &auction);
+        if tx_result.is_err() {
             log!(&env, "Auction: Finalize Auction: Payment for bid failed.");
             return Err(ContractError::PaymentProcessingFailed);
         }
@@ -228,8 +228,31 @@ impl MarketplaceContract {
         Ok(())
     }
 
-    pub fn buy_now(env: Env, auction_id: u64, buyer: Address) {
-        todo!()
+    pub fn buy_now(env: Env, auction_id: u64, buyer: Address) -> Result<(), ContractError> {
+        buyer.require_auth();
+
+        let mut auction = Self::get_auction_by_id(&env, auction_id)?;
+        if auction.item_info.buy_now_price.is_none() {
+            log!(
+                env,
+                "Auction: Buy now: trying to buy an item that does not allow `buy now`"
+            );
+            return Err(ContractError::NoBuyNowOption);
+        }
+
+        // we should probably pause the auction while the tx is happening?
+        let token = token::Client::new(&env, &auction.currency);
+        token.transfer(
+            &buyer,
+            &auction.seller,
+            &(auction.item_info.buy_now_price.unwrap() as i128),
+        );
+
+        auction.status = AuctionStatus::Ended;
+
+        Self::update_auction(&env, auction_id, auction)?;
+
+        Ok(())
     }
 
     pub fn pause(env: Env, auction_id: u64) -> Result<(), ContractError> {

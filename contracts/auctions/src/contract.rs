@@ -3,11 +3,11 @@ use soroban_sdk::{contract, contractimpl, log, token, Address, Env, Vec};
 use crate::{
     collection,
     error::ContractError,
-    storage::{Auction, AuctionStatus, ItemInfo, BUMP_AMOUNT, LIFETIME_THRESHOLD},
-    utils::{
+    storage::{
         distribute_funds, generate_auction_id, get_auction_by_id, update_auction,
         validate_input_params,
     },
+    storage::{Auction, AuctionStatus, ItemInfo, BUMP_AMOUNT, LIFETIME_THRESHOLD},
 };
 
 #[contract]

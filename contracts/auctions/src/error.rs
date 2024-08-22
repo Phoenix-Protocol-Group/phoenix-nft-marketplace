@@ -5,7 +5,7 @@ use soroban_sdk::contracterror;
 #[repr(u32)]
 pub enum ContractError {
     Unauthorized = 0,
-    AuctionIdNotFound = 1,
+    AuctionNotFound = 1,
     IDMissmatch = 2,
     BidNotEnough = 3,
     AuctionNotFinished = 4,

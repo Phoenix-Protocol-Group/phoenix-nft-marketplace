@@ -4,10 +4,10 @@ use crate::{
     collection,
     error::ContractError,
     storage::{
-        distribute_funds, generate_auction_id, get_auction_by_id, update_auction,
-        validate_input_params,
+        distribute_funds, generate_auction_id, get_auction_by_id, get_auction_by_seller,
+        get_auctions_by_seller_id, save_auction_by_id, save_auction_by_seller, update_auction,
+        validate_input_params, Auction, AuctionStatus, ItemInfo,
     },
-    storage::{Auction, AuctionStatus, ItemInfo, BUMP_AMOUNT, LIFETIME_THRESHOLD},
 };
 
 #[contract]
@@ -54,16 +54,14 @@ impl MarketplaceContract {
             seller: seller.clone(),
             highest_bid: None,
             // we use the seller's address as we cannot add `Option<Address>` in the struct
-            highest_bidder: seller,
+            highest_bidder: seller.clone(),
             end_time,
             status: AuctionStatus::Active,
             currency,
         };
 
-        env.storage().instance().set(&id, &auction);
-        env.storage()
-            .instance()
-            .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+        save_auction_by_id(&env, id, &auction)?;
+        save_auction_by_seller(&env, &seller, &auction)?;
 
         Ok(auction)
     }
@@ -237,8 +235,13 @@ impl MarketplaceContract {
     }
 
     #[allow(dead_code)]
-    pub fn get_auctions_by_seller(env: Env, seller: Address) -> Vec<Auction> {
-        todo!()
+    pub fn get_auctions_by_seller(
+        env: Env,
+        seller: Address,
+    ) -> Result<Vec<Auction>, ContractError> {
+        let seller_auction_list = get_auctions_by_seller_id(&env, &seller)?;
+
+        Ok(seller_auction_list)
     }
 
     #[allow(dead_code)]

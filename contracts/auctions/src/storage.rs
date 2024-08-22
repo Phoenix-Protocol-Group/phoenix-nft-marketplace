@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, log, panic_with_error, token, Address, Env};
+use soroban_sdk::{contracttype, log, panic_with_error, token, vec, Address, Env, Vec};
 
 use crate::error::ContractError;
 
@@ -78,14 +78,67 @@ pub fn distribute_funds(env: &Env, auction: &Auction) -> Result<(), ContractErro
     Ok(())
 }
 
-pub fn get_auction_by_id(env: &Env, auction_id: u64) -> Result<Auction, ContractError> {
+pub fn save_auction_by_id(
+    env: &Env,
+    auction_id: u64,
+    auction: &Auction,
+) -> Result<(), ContractError> {
+    env.storage().instance().set(&auction_id, auction);
     env.storage()
+        .instance()
+        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+    Ok(())
+}
+
+pub fn save_auction_by_seller(
+    env: &Env,
+    seller: &Address,
+    auction: &Auction,
+) -> Result<(), ContractError> {
+    let mut seller_auctions_list: Vec<Auction> =
+        env.storage().instance().get(seller).unwrap_or(vec![&env]);
+
+    seller_auctions_list.push_back(auction.clone());
+
+    env.storage().instance().set(seller, &seller_auctions_list);
+
+    env.storage()
+        .instance()
+        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+    Ok(())
+}
+
+pub fn get_auction_by_id(env: &Env, auction_id: u64) -> Result<Auction, ContractError> {
+    let auction = env
+        .storage()
         .instance()
         .get(&auction_id)
         .unwrap_or_else(|| {
             log!(env, "Auction: Get auction by id: Auction not present");
-            panic_with_error!(&env, ContractError::AuctionIdNotFound);
-        })
+            panic_with_error!(&env, ContractError::AuctionNotFound);
+        });
+    env.storage()
+        .instance()
+        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+    auction
+}
+
+pub fn get_auctions_by_seller_id(
+    env: &Env,
+    seller: &Address,
+) -> Result<Vec<Auction>, ContractError> {
+    let seller_auctions_list = env.storage().instance().get(seller).unwrap_or_else(|| {
+        log!(env, "Auction: Get auction by seller: No auctions found");
+        panic_with_error!(&env, ContractError::AuctionNotFound);
+    });
+    env.storage()
+        .instance()
+        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+    Ok(seller_auctions_list)
 }
 
 pub fn update_auction(env: &Env, id: u64, auction: Auction) -> Result<(), ContractError> {

@@ -1,12 +1,13 @@
-use soroban_sdk::{contract, contractimpl, log, token, Address, Env, Vec};
+use soroban_sdk::{contract, contractimpl, log, token, vec, Address, Env, Vec};
 
 use crate::{
     collection,
     error::ContractError,
     storage::{
-        distribute_funds, generate_auction_id, get_auction_by_id, get_auction_by_seller,
-        get_auctions_by_seller_id, save_auction_by_id, save_auction_by_seller, update_auction,
-        validate_input_params, Auction, AuctionStatus, ItemInfo,
+        distribute_funds, generate_auction_id, get_all_auctions, get_auction_by_id,
+        get_auctions_by_seller_id, is_initialized, save_auction, save_auction_by_id,
+        save_auction_by_seller, set_initialized, update_auction, validate_input_params, Auction,
+        AuctionStatus, ItemInfo,
     },
 };
 
@@ -24,6 +25,12 @@ impl MarketplaceContract {
         currency: Address,
     ) -> Result<Auction, ContractError> {
         seller.require_auth();
+
+        if is_initialized(&env) {
+            log!(&env, "Collections: Initialize: Already initialized");
+            return Err(ContractError::AlreadyInitialized);
+        }
+
         let input_values = [
             &duration,
             &item_info.item_id,
@@ -60,8 +67,12 @@ impl MarketplaceContract {
             currency,
         };
 
+        save_auction(&env, &auction)?;
+        // TODO: maybe these two can be merged into one key $(auction id, seller)
         save_auction_by_id(&env, id, &auction)?;
         save_auction_by_seller(&env, &seller, &auction)?;
+
+        set_initialized(&env);
 
         Ok(auction)
     }
@@ -230,8 +241,24 @@ impl MarketplaceContract {
     }
 
     #[allow(dead_code)]
-    pub fn get_active_auctions(env: Env) -> Vec<Auction> {
-        todo!()
+    pub fn get_active_auctions(env: Env) -> Result<Vec<Auction>, ContractError> {
+        let all_auctions = get_all_auctions(&env)?;
+
+        let mut filtered_auctions = vec![&env];
+
+        // FromIterator not implemeneted for soroban_vec::<Auction>
+        // let filtered_auctions = get_all_auctions(&env)?
+        //    .into_iter()
+        //    .filter(|auction| auction.status == AuctionStatus::Active)
+        //    .collect::<Vec<Auction>>();
+
+        for auction in all_auctions.iter() {
+            if auction.status == AuctionStatus::Active {
+                filtered_auctions.push_back(auction);
+            }
+        }
+
+        Ok(filtered_auctions)
     }
 
     #[allow(dead_code)]

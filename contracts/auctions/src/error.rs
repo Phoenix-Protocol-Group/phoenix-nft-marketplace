@@ -17,4 +17,5 @@ pub enum ContractError {
     AuctionNotPaused = 10,
     PaymentProcessingFailed = 11,
     NoBuyNowOption = 12,
+    AlreadyInitialized = 13,
 }

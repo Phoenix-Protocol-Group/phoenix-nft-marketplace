@@ -12,6 +12,7 @@ pub const LIFETIME_THRESHOLD: u32 = BUMP_AMOUNT - DAY_IN_LEDGERS;
 pub enum DataKey {
     IsInitialized,
     AuctionId,
+    AllAuctions,
 }
 
 #[derive(Clone)]
@@ -76,6 +77,46 @@ pub fn distribute_funds(env: &Env, auction: &Auction) -> Result<(), ContractErro
     token.transfer(&highest_bidder, &rcpt, &(amount_due as i128));
 
     Ok(())
+}
+
+pub fn save_auction(env: &Env, auction: &Auction) -> Result<(), ContractError> {
+    let mut previous_auctions = env
+        .storage()
+        .instance()
+        .get(&DataKey::AllAuctions)
+        .unwrap_or(vec![&env]);
+
+    previous_auctions.push_back(auction.clone());
+
+    env.storage()
+        .instance()
+        .set(&DataKey::AllAuctions, &previous_auctions);
+
+    env.storage()
+        .instance()
+        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+    Ok(())
+}
+
+pub fn get_all_auctions(env: &Env) -> Result<Vec<Auction>, ContractError> {
+    let all_aucitons = env
+        .storage()
+        .instance()
+        .get(&DataKey::AllAuctions)
+        .unwrap_or_else(|| {
+            log!(
+                env,
+                "Auctions: Get all auctions: No previous auctions found."
+            );
+            panic_with_error!(&env, ContractError::AuctionNotFound);
+        });
+
+    env.storage()
+        .instance()
+        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+    Ok(all_aucitons)
 }
 
 pub fn save_auction_by_id(
@@ -163,4 +204,16 @@ pub fn validate_input_params(env: &Env, values_to_check: &[&u64]) -> Result<(), 
     });
 
     Ok(())
+}
+pub fn is_initialized(env: &Env) -> bool {
+    env.storage()
+        .persistent()
+        .get(&DataKey::IsInitialized)
+        .unwrap_or(false)
+}
+
+pub fn set_initialized(env: &Env) {
+    env.storage()
+        .persistent()
+        .set(&DataKey::IsInitialized, &true);
 }

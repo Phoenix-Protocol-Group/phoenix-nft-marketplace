@@ -41,7 +41,7 @@ impl MarketplaceContract {
         ];
         validate_input_params(&env, &input_values[..])?;
 
-        let nft_client = collection::Client::new(&env, &item_info.item_address);
+        let nft_client = collection::Client::new(&env, &item_info.collection_addr);
         let item_balance = nft_client.balance_of(&seller, &item_info.item_id);
         // we need at least one item to start an auction
         if item_balance < 1 {
@@ -156,7 +156,7 @@ impl MarketplaceContract {
             return Err(ContractError::PaymentProcessingFailed);
         }
 
-        let nft_client = collection::Client::new(&env, &auction.item_info.item_address);
+        let nft_client = collection::Client::new(&env, &auction.item_info.collection_addr);
         nft_client.safe_transfer_from(
             &auction.seller,
             &auction.highest_bidder,

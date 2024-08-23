@@ -15,16 +15,16 @@ pub enum DataKey {
     AllAuctions,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 #[contracttype]
 pub struct ItemInfo {
-    pub item_address: Address, // Can be an NFT contract address or a collection contract address
+    pub collection_addr: Address,
     pub item_id: u64,
     pub minimum_price: Option<u64>,
     pub buy_now_price: Option<u64>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 #[contracttype]
 pub struct Auction {
     pub id: u64,
@@ -37,7 +37,7 @@ pub struct Auction {
     pub currency: Address,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 #[contracttype]
 pub enum AuctionStatus {
     Active,

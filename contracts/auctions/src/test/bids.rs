@@ -116,3 +116,32 @@ fn fail_to_finalyze_auction_when_not_correct_state() {
         Err(Ok(ContractError::AuctionNotActive))
     );
 }
+
+#[test]
+fn fail_to_finalyze_auction_when_minimal_price_not_reached() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.budget().reset_unlimited();
+    let seller = Address::generate(&env);
+    let bidder_a = Address::generate(&env);
+
+    let (mp_client, nft_collection_client) =
+        generate_marketplace_and_collection_client(env.clone(), seller.clone(), None, None);
+    let token_client = token::Client::new(&env, &Address::generate(&env));
+
+    let item_info = ItemInfo {
+        collection_addr: nft_collection_client.address.clone(),
+        item_id: 1u64,
+        minimum_price: Some(10),
+        buy_now_price: Some(50),
+    };
+
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+
+    mp_client.place_bid(&1, &bidder_a, &5);
+
+    assert_eq!(
+        mp_client.try_finalize_auction(&1,),
+        Err(Ok(ContractError::MinPriceNotReached))
+    );
+}

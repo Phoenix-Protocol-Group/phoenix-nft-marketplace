@@ -145,3 +145,31 @@ fn fail_to_finalyze_auction_when_minimal_price_not_reached() {
         Err(Ok(ContractError::MinPriceNotReached))
     );
 }
+
+#[test]
+fn fail_to_finalyze_auction_when_endtime_not_reached() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.budget().reset_unlimited();
+    let seller = Address::generate(&env);
+
+    let (mp_client, nft_collection_client) =
+        generate_marketplace_and_collection_client(env.clone(), seller.clone(), None, None);
+    let token_client = token::Client::new(&env, &Address::generate(&env));
+
+    let item_info = ItemInfo {
+        collection_addr: nft_collection_client.address.clone(),
+        item_id: 1u64,
+        minimum_price: Some(10),
+        buy_now_price: Some(50),
+    };
+
+    mp_client.create_auction(&item_info, &seller, &DAY, &token_client.address);
+
+    env.ledger().with_mut(|li| li.timestamp = WEEKLY);
+
+    assert_eq!(
+        mp_client.try_finalize_auction(&1,),
+        Err(Ok(ContractError::AuctionNotFinished))
+    );
+}

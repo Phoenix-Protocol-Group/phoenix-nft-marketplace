@@ -1,13 +1,13 @@
+use soroban_sdk::{Address, Env, String};
+
 use crate::{
     collection,
     contract::{MarketplaceContract, MarketplaceContractClient},
-    error::ContractError,
-    storage::{Auction, AuctionStatus, ItemInfo},
 };
 
-const WEEKLY: u64 = 604_800u64;
+pub const WEEKLY: u64 = 604_800u64;
 
-fn generate_marketplace_and_collection_client<'a>(
+pub fn generate_marketplace_and_collection_client<'a>(
     env: Env,
     seller: Address,
     name: Option<String>,

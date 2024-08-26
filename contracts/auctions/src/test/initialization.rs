@@ -1,10 +1,9 @@
-use soroban_sdk::{testutils::Address as _, token, Address, Env, String};
+use soroban_sdk::{testutils::Address as _, token, Address, Env};
 
 use crate::{
-    collection,
-    contract::{MarketplaceContract, MarketplaceContractClient},
     error::ContractError,
     storage::{Auction, AuctionStatus, ItemInfo},
+    test::setup::{generate_marketplace_and_collection_client, WEEKLY},
 };
 
 #[test]

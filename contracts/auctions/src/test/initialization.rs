@@ -1,6 +1,7 @@
 use soroban_sdk::{testutils::Address as _, token, Address, Env};
 
 use crate::{
+    collection,
     error::ContractError,
     storage::{Auction, AuctionStatus, ItemInfo},
     test::setup::{generate_marketplace_and_collection_client, WEEKLY},
@@ -67,5 +68,40 @@ fn create_twice_should_fail() {
     assert_eq!(
         mp_client.try_create_auction(&item_info, &seller, &WEEKLY, &token_client.address),
         Err(Ok(ContractError::AlreadyInitialized))
+    );
+}
+
+#[test]
+fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.budget().reset_unlimited();
+    let seller = Address::generate(&env);
+
+    // we don't want to use the collection from the setup method, as this will automatically
+    // mint an item for the auction.
+    let (mp_client, _) =
+        generate_marketplace_and_collection_client(env.clone(), seller.clone(), None, None);
+    let token_client = token::Client::new(&env, &Address::generate(&env));
+
+    let collection_addr = env.register_contract_wasm(None, collection::WASM);
+
+    let collection_client = collection::Client::new(&env, &collection_addr);
+    collection_client.initialize(
+        &seller,
+        &soroban_sdk::String::from_str(&env, "Soroban Kitties"),
+        &soroban_sdk::String::from_str(&env, "SKT"),
+    );
+
+    let item_info = ItemInfo {
+        collection_addr: collection_client.address.clone(),
+        item_id: 1u64,
+        minimum_price: Some(10),
+        buy_now_price: Some(50),
+    };
+
+    assert_eq!(
+        mp_client.try_create_auction(&item_info, &seller, &WEEKLY, &token_client.address),
+        Err(Ok(ContractError::NotEnoughBalance))
     );
 }

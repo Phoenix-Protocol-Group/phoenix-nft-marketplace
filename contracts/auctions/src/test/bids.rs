@@ -1,6 +1,7 @@
 use soroban_sdk::{testutils::Address as _, token, Address, Env};
 
 use crate::{
+    error::ContractError,
     storage::ItemInfo,
     test::setup::{generate_marketplace_and_collection_client, WEEKLY},
 };
@@ -29,9 +30,23 @@ fn should_place_a_bid() {
     mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
 
     mp_client.place_bid(&1, &bidder_a, &10);
-    assert_eq!(mp_client.get_highest_bid(&1), (Some(10u64), bidder_a));
+    assert_eq!(
+        mp_client.get_highest_bid(&1),
+        (Some(10u64), bidder_a.clone())
+    );
 
     mp_client.place_bid(&1, &bidder_b, &20);
+    assert_eq!(
+        mp_client.get_highest_bid(&1),
+        (Some(20u64), bidder_b.clone())
+    );
+
+    //bidder_a tries to place a bid, that's lower than the bid of bidder_b
+    assert_eq!(
+        mp_client.try_place_bid(&1, &bidder_a, &15),
+        Err(Ok(ContractError::BidNotEnough))
+    );
+
     assert_eq!(mp_client.get_highest_bid(&1), (Some(20u64), bidder_b));
 
     mp_client.place_bid(&1, &bidder_c, &40);

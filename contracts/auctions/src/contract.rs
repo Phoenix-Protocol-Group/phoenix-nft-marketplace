@@ -154,7 +154,6 @@ impl MarketplaceContract {
 
         // if the auction is over, but there are no bids placed, we just end it
         if auction.highest_bid.is_none() {
-            soroban_sdk::testutils::arbitrary::std::dbg!();
             auction.status = AuctionStatus::Ended;
             //NOTE: we have 3 diferent storage types, it's either this or we have to
             //use a single function to update all 3 storages

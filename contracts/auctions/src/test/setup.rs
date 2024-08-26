@@ -6,6 +6,7 @@ use crate::{
 };
 
 pub const WEEKLY: u64 = 604_800u64;
+pub const DAY: u64 = 86_400u64;
 
 pub fn generate_marketplace_and_collection_client<'a>(
     env: Env,

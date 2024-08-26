@@ -130,7 +130,12 @@ impl MarketplaceContract {
         if auction
             .item_info
             .minimum_price
-            .is_some_and(|min_price| min_price > auction.highest_bid.unwrap())
+            .and_then(|min_price| {
+                auction
+                    .highest_bid
+                    .map(|highest_bid| min_price > highest_bid)
+            })
+            .unwrap_or(false)
         {
             log!(
                 &env,
@@ -145,6 +150,19 @@ impl MarketplaceContract {
                 "Auction: Finalize auction: Auction cannot be ended early"
             );
             return Err(ContractError::AuctionNotFinished);
+        }
+
+        // if the auction is over, but there are no bids placed, we just end it
+        if auction.highest_bid.is_none() {
+            soroban_sdk::testutils::arbitrary::std::dbg!();
+            auction.status = AuctionStatus::Ended;
+            //NOTE: we have 3 diferent storage types, it's either this or we have to
+            //use a single function to update all 3 storages
+            save_auction(&env, &auction)?;
+            save_auction_by_id(&env, auction_id, &auction)?;
+            save_auction_by_seller(&env, &auction.seller, &auction)?;
+
+            return Ok(());
         }
 
         // first we try to transfer the funds from `highest_bidder` to `seller`

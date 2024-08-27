@@ -18,4 +18,5 @@ pub enum ContractError {
     PaymentProcessingFailed = 11,
     NoBuyNowOption = 12,
     AlreadyInitialized = 13,
+    InvalidBidder = 14,
 }

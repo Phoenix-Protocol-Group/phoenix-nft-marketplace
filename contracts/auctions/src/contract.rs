@@ -4,9 +4,9 @@ use crate::{
     collection,
     error::ContractError,
     storage::{
-        distribute_funds, generate_auction_id, get_all_auctions, get_auction_by_id,
-        get_auctions_by_seller_id, is_initialized, save_auction_by_id, save_auction_by_seller,
-        set_initialized, update_auction, validate_input_params, Auction, AuctionStatus, ItemInfo,
+        generate_auction_id, get_all_auctions, get_auction_by_id, get_auctions_by_seller_id,
+        is_initialized, save_auction_by_id, save_auction_by_seller, set_initialized,
+        update_auction, validate_input_params, Auction, AuctionStatus, ItemInfo,
     },
     token,
 };
@@ -95,18 +95,59 @@ impl MarketplaceContract {
             return Err(ContractError::AuctionNotActive);
         }
 
-        match Some(bid_amount) > auction.highest_bid {
-            true => {
+        if bidder == auction.highest_bidder {
+            log!(&env, "Auction Place Bid: Seller cannot place bids.");
+            return Err(ContractError::InvalidBidder);
+        }
+
+        let token_client = token::Client::new(&env, &auction.currency);
+
+        match auction.highest_bid {
+            Some(old_highest_bid) if bid_amount > old_highest_bid => {
+                // refund the previous highest bidder
+                token_client.transfer(
+                    &env.current_contract_address(),
+                    &auction.highest_bidder,
+                    &(old_highest_bid as i128),
+                );
+
+                // transfer the new bid amount
+                token_client.transfer(
+                    &bidder,
+                    &env.current_contract_address(),
+                    &(bid_amount as i128),
+                );
+
+                // Update auction state
                 auction.highest_bid = Some(bid_amount);
                 auction.highest_bidder = bidder;
-
-                update_auction(&env, auction_id, auction)?;
+                update_auction(&env, auction_id, auction.clone())?;
+                save_auction_by_id(&env, auction_id, &auction)?;
+                save_auction_by_seller(&env, &auction.seller, &auction)?;
 
                 Ok(())
             }
-            false => {
+            Some(_) => {
                 log!(&env, "Auction: Place bid: Bid not enough");
                 Err(ContractError::BidNotEnough)
+            }
+            None => {
+                // this is in case there are no previous bids
+                // transfer the new bid amount
+                token_client.transfer(
+                    &bidder,
+                    &env.current_contract_address(),
+                    &(bid_amount as i128),
+                );
+
+                // Update auction state
+                auction.highest_bid = Some(bid_amount);
+                auction.highest_bidder = bidder;
+                update_auction(&env, auction_id, auction.clone())?;
+                save_auction_by_id(&env, auction_id, &auction)?;
+                save_auction_by_seller(&env, &auction.seller, &auction)?;
+
+                Ok(())
             }
         }
     }
@@ -143,7 +184,7 @@ impl MarketplaceContract {
             return Err(ContractError::MinPriceNotReached);
         }
 
-        if curr_time > auction.end_time {
+        if curr_time < auction.end_time {
             log!(
                 env,
                 "Auction: Finalize auction: Auction cannot be ended early"
@@ -154,22 +195,12 @@ impl MarketplaceContract {
         // if the auction is over, but there are no bids placed, we just end it
         if auction.highest_bid.is_none() {
             auction.status = AuctionStatus::Ended;
-            //NOTE: we have 3 diferent storage types, it's either this or we have to
-            //use a single function to update all 3 storages
             // TODO: get rid of the save_auction (below)
             save_auction_by_id(&env, auction_id, &auction)?;
             save_auction_by_seller(&env, &auction.seller, &auction)?;
+            update_auction(&env, auction_id, auction)?;
 
             return Ok(());
-        }
-
-        // first we try to transfer the funds from `highest_bidder` to `seller`
-        // if that fails then we return an error
-
-        let tx_result = distribute_funds(&env, &auction);
-        if tx_result.is_err() {
-            log!(&env, "Auction: Finalize Auction: Payment for bid failed.");
-            return Err(ContractError::PaymentProcessingFailed);
         }
 
         let nft_client = collection::Client::new(&env, &auction.item_info.collection_addr);
@@ -182,7 +213,9 @@ impl MarketplaceContract {
 
         auction.status = AuctionStatus::Ended;
 
-        update_auction(&env, auction_id, auction)?;
+        update_auction(&env, auction_id, auction.clone())?;
+        save_auction_by_seller(&env, &auction.seller, &auction)?;
+        save_auction_by_id(&env, auction_id, &auction)?;
 
         Ok(())
     }

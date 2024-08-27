@@ -5,12 +5,10 @@ use soroban_sdk::{
 
 use crate::{
     error::ContractError,
-    storage::{ItemInfo, DAY_IN_LEDGERS},
+    storage::ItemInfo,
     test::setup::{generate_marketplace_and_collection_client, DAY, WEEKLY},
     token,
 };
-
-use super::setup::deploy_token_contract;
 
 #[test]
 fn should_place_a_bid() {
@@ -167,9 +165,9 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
         buy_now_price: Some(50),
     };
 
-    mp_client.create_auction(&item_info, &seller, &DAY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
 
-    env.ledger().with_mut(|li| li.timestamp = WEEKLY);
+    env.ledger().with_mut(|li| li.timestamp = DAY);
 
     assert_eq!(
         mp_client.try_finalize_auction(&1,),

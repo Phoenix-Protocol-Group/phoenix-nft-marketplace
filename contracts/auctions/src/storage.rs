@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, log, panic_with_error, token, vec, Address, Env, Vec};
+use soroban_sdk::{contracttype, log, panic_with_error, vec, Address, Env, Vec};
 
 use crate::error::ContractError;
 
@@ -59,24 +59,6 @@ pub fn generate_auction_id(env: &Env) -> Result<u64, ContractError> {
         .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
 
     Ok(id)
-}
-
-pub fn distribute_funds(env: &Env, auction: &Auction) -> Result<(), ContractError> {
-    let highest_bidder = auction.highest_bidder.clone();
-    let amount_due = auction.highest_bid.unwrap_or_else(|| {
-        log!(
-            env,
-            "Auction: Distribute Funds: Missing value for highest bid."
-        );
-        panic_with_error!(env, ContractError::MissingHighestBid);
-    });
-
-    let rcpt = auction.seller.clone();
-
-    let token = token::Client::new(env, &auction.currency);
-    token.transfer(&highest_bidder, &rcpt, &(amount_due as i128));
-
-    Ok(())
 }
 
 // rework this get_all_auctions to use pagination and to use index: Option<u32> and limit:

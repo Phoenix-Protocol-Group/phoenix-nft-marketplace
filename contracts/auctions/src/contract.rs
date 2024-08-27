@@ -157,14 +157,23 @@ impl MarketplaceContract {
         let mut auction = get_auction_by_id(&env, auction_id)?;
         auction.seller.require_auth();
 
-        let curr_time = env.ledger().timestamp();
+        let token_client = token::Client::new(&env, &auction.currency);
 
+        let curr_time = env.ledger().timestamp();
         if auction.status != AuctionStatus::Active {
             log!(
                 &env,
                 "Auction: Finalize auction: Cannot finalize an inactive/ended auction."
             );
             return Err(ContractError::AuctionNotActive);
+        }
+
+        if curr_time < auction.end_time {
+            log!(
+                env,
+                "Auction: Finalize auction: Auction cannot be ended early"
+            );
+            return Err(ContractError::AuctionNotFinished);
         }
 
         if auction
@@ -177,19 +186,24 @@ impl MarketplaceContract {
             })
             .unwrap_or(false)
         {
+            // check if there is a previous bid and if so refund it
+            token_client.transfer(
+                &env.current_contract_address(),
+                &auction.highest_bidder,
+                &(auction.highest_bid.expect("highest bid not available") as i128),
+            );
+
+            auction.status = AuctionStatus::Ended;
+
+            save_auction_by_id(&env, auction_id, &auction)?;
+            save_auction_by_seller(&env, &auction.seller, &auction)?;
+            update_auction(&env, auction_id, auction)?;
+
             log!(
                 &env,
                 "Auction: Finalize auction: Miniminal price not reached"
             );
             return Err(ContractError::MinPriceNotReached);
-        }
-
-        if curr_time < auction.end_time {
-            log!(
-                env,
-                "Auction: Finalize auction: Auction cannot be ended early"
-            );
-            return Err(ContractError::AuctionNotFinished);
         }
 
         // if the auction is over, but there are no bids placed, we just end it

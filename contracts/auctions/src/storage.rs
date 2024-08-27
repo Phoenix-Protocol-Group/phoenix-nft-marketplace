@@ -79,26 +79,8 @@ pub fn distribute_funds(env: &Env, auction: &Auction) -> Result<(), ContractErro
     Ok(())
 }
 
-pub fn save_auction(env: &Env, auction: &Auction) -> Result<(), ContractError> {
-    let mut previous_auctions = env
-        .storage()
-        .instance()
-        .get(&DataKey::AllAuctions)
-        .unwrap_or(vec![&env]);
-
-    previous_auctions.push_back(auction.clone());
-
-    env.storage()
-        .instance()
-        .set(&DataKey::AllAuctions, &previous_auctions);
-
-    env.storage()
-        .instance()
-        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
-
-    Ok(())
-}
-
+// rework this get_all_auctions to use pagination and to use index: Option<u32> and limit:
+// Option<u32>
 pub fn get_all_auctions(env: &Env) -> Result<Vec<Auction>, ContractError> {
     let all_aucitons = env
         .storage()

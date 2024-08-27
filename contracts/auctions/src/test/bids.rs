@@ -1,13 +1,16 @@
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
-    token, Address, Env,
+    Address, Env,
 };
 
 use crate::{
     error::ContractError,
-    storage::ItemInfo,
+    storage::{ItemInfo, DAY_IN_LEDGERS},
     test::setup::{generate_marketplace_and_collection_client, DAY, WEEKLY},
+    token,
 };
+
+use super::setup::deploy_token_contract;
 
 #[test]
 fn should_place_a_bid() {

@@ -13,3 +13,9 @@ pub mod collection {
         file = "../../target/wasm32-unknown-unknown/release/phoenix_nft_collections.wasm"
     );
 }
+
+pub mod token {
+    soroban_sdk::contractimport!(
+        file = "../../target/wasm32-unknown-unknown/release/soroban_token_contract.wasm"
+    );
+}

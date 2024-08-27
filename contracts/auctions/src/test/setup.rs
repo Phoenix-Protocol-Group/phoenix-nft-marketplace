@@ -3,10 +3,15 @@ use soroban_sdk::{Address, Env, String};
 use crate::{
     collection,
     contract::{MarketplaceContract, MarketplaceContractClient},
+    token,
 };
 
 pub const WEEKLY: u64 = 604_800u64;
 pub const DAY: u64 = 86_400u64;
+
+pub fn deploy_token_contract<'a>(env: &Env, admin: &Address) -> token::Client<'a> {
+    token::Client::new(env, &env.register_stellar_asset_contract(admin.clone()))
+}
 
 pub fn generate_marketplace_and_collection_client<'a>(
     env: Env,

@@ -1,14 +1,14 @@
-use soroban_sdk::{contract, contractimpl, log, token, vec, Address, Env, Vec};
+use soroban_sdk::{contract, contractimpl, log, vec, Address, Env, Vec};
 
 use crate::{
     collection,
     error::ContractError,
     storage::{
         distribute_funds, generate_auction_id, get_all_auctions, get_auction_by_id,
-        get_auctions_by_seller_id, is_initialized, save_auction, save_auction_by_id,
-        save_auction_by_seller, set_initialized, update_auction, validate_input_params, Auction,
-        AuctionStatus, ItemInfo,
+        get_auctions_by_seller_id, is_initialized, save_auction_by_id, save_auction_by_seller,
+        set_initialized, update_auction, validate_input_params, Auction, AuctionStatus, ItemInfo,
     },
+    token,
 };
 
 #[contract]
@@ -67,7 +67,6 @@ impl MarketplaceContract {
             currency,
         };
 
-        save_auction(&env, &auction)?;
         // TODO: maybe these two can be merged into one key $(auction id, seller)
         save_auction_by_id(&env, id, &auction)?;
         save_auction_by_seller(&env, &seller, &auction)?;
@@ -157,7 +156,7 @@ impl MarketplaceContract {
             auction.status = AuctionStatus::Ended;
             //NOTE: we have 3 diferent storage types, it's either this or we have to
             //use a single function to update all 3 storages
-            save_auction(&env, &auction)?;
+            // TODO: get rid of the save_auction (below)
             save_auction_by_id(&env, auction_id, &auction)?;
             save_auction_by_seller(&env, &auction.seller, &auction)?;
 

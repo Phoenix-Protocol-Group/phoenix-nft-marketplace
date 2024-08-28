@@ -61,7 +61,7 @@ pub fn generate_auction_id(env: &Env) -> Result<u64, ContractError> {
     Ok(id)
 }
 
-// rework this get_all_auctions to use pagination and to use index: Option<u32> and limit:
+// TODO: rework this get_all_auctions to use pagination and to use index: Option<u32> and limit:
 // Option<u32>
 pub fn get_all_auctions(env: &Env) -> Result<Vec<Auction>, ContractError> {
     let all_aucitons = env
@@ -79,7 +79,6 @@ pub fn get_all_auctions(env: &Env) -> Result<Vec<Auction>, ContractError> {
     env.storage()
         .instance()
         .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
-
     Ok(all_aucitons)
 }
 

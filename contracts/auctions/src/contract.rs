@@ -197,13 +197,14 @@ impl MarketplaceContract {
 
             save_auction_by_id(&env, auction_id, &auction)?;
             save_auction_by_seller(&env, &auction.seller, &auction)?;
-            update_auction(&env, auction_id, auction)?;
+            update_auction(&env, auction_id, auction.clone())?;
 
             log!(
                 &env,
                 "Auction: Finalize auction: Miniminal price not reached"
             );
-            return Err(ContractError::MinPriceNotReached);
+
+            return Ok(());
         }
 
         // if the auction is over, but there are no bids placed, we just end it
@@ -308,12 +309,6 @@ impl MarketplaceContract {
         let all_auctions = get_all_auctions(&env)?;
 
         let mut filtered_auctions = vec![&env];
-
-        // FromIterator not implemeneted for soroban_vec::<Auction>
-        // let filtered_auctions = get_all_auctions(&env)?
-        //    .into_iter()
-        //    .filter(|auction| auction.status == AuctionStatus::Active)
-        //    .collect::<Vec<Auction>>();
 
         for auction in all_auctions.iter() {
             if auction.status == AuctionStatus::Active {

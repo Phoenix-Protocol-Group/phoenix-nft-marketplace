@@ -5,7 +5,7 @@ use soroban_sdk::{
 
 use crate::{
     error::ContractError,
-    storage::ItemInfo,
+    storage::{Auction, AuctionStatus, ItemInfo},
     test::setup::{deploy_token_contract, generate_marketplace_and_collection_client, DAY, WEEKLY},
     token,
 };
@@ -99,7 +99,7 @@ fn fail_to_place_bid_when_auction_inactive() {
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
 
-    env.ledger().with_mut(|li| li.timestamp = DAY);
+    env.ledger().with_mut(|li| li.timestamp = WEEKLY + DAY);
 
     mp_client.finalize_auction(&1);
 
@@ -107,6 +107,9 @@ fn fail_to_place_bid_when_auction_inactive() {
         mp_client.try_place_bid(&1, &bidder_a, &10),
         Err(Ok(ContractError::AuctionNotActive))
     );
+
+    // uncomment when pagination is done
+    //assert_eq!(mp_client.get_active_auctions(), vec![&env]);
 }
 
 #[test]
@@ -172,11 +175,21 @@ fn finalyze_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
     // we try to finalize the auction 2 weeks later
     env.ledger().with_mut(|li| li.timestamp = WEEKLY * 2);
 
-    assert_eq!(
-        mp_client.try_finalize_auction(&1),
-        Err(Ok(ContractError::MinPriceNotReached))
-    );
+    assert!(mp_client.try_finalize_auction(&1).is_ok());
 
+    assert_eq!(
+        mp_client.get_auction(&1),
+        Auction {
+            id: 1,
+            item_info,
+            seller,
+            highest_bid: Some(5),
+            highest_bidder: bidder_a.clone(),
+            end_time: WEEKLY,
+            status: AuctionStatus::Ended,
+            currency: token_client.address.clone()
+        }
+    );
     assert_eq!(token_client.balance(&mp_client.address), 0i128);
     assert_eq!(token_client.balance(&bidder_a), 5i128);
 }
@@ -214,6 +227,8 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
         mp_client.try_finalize_auction(&1,),
         Err(Ok(ContractError::AuctionNotFinished))
     );
+
+    // auction is not yet over, so the bid is still in place
     assert_eq!(token_client.balance(&mp_client.address), 50i128);
     assert_eq!(token_client.balance(&bidder), 0i128);
 }

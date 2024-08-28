@@ -11,6 +11,22 @@ use crate::{
 use super::setup::deploy_token_contract;
 
 #[test]
+fn initialize_and_update_admin_should_work() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.budget().reset_unlimited();
+
+    let admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+    let seller = Address::generate(&env);
+
+    let (mp_client, _) = generate_marketplace_and_collection_client(&env, &seller, None, None);
+
+    mp_client.initialize(&admin);
+    mp_client.update_admin(&new_admin);
+}
+
+#[test]
 fn mp_should_create_auction() {
     let env = Env::default();
     env.mock_all_auths();
@@ -48,28 +64,19 @@ fn mp_should_create_auction() {
 }
 
 #[test]
-fn create_twice_should_fail() {
+fn initialize_twice_should_fail() {
     let env = Env::default();
     env.mock_all_auths();
     env.budget().reset_unlimited();
+
+    let admin = Address::generate(&env);
     let seller = Address::generate(&env);
 
-    let (mp_client, nft_collection_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
-    let token_client = token::Client::new(&env, &Address::generate(&env));
+    let (mp_client, _) = generate_marketplace_and_collection_client(&env, &seller, None, None);
 
-    let item_info = ItemInfo {
-        collection_addr: nft_collection_client.address.clone(),
-        item_id: 1u64,
-        minimum_price: Some(10),
-        buy_now_price: Some(50),
-    };
-
-    // check if we have minted two
-    assert_eq!(nft_collection_client.balance_of(&seller, &1), 2);
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.initialize(&admin);
     assert_eq!(
-        mp_client.try_create_auction(&item_info, &seller, &WEEKLY, &token_client.address),
+        mp_client.try_initialize(&admin),
         Err(Ok(ContractError::AlreadyInitialized))
     );
 }

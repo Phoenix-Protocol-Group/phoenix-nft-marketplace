@@ -15,6 +15,7 @@ pub const DEFAULT_LIMIT: u32 = 10;
 #[contracttype]
 #[derive(Clone)]
 pub enum DataKey {
+    Admin,
     IsInitialized,
     AuctionId,
     AllAuctions,
@@ -184,4 +185,35 @@ pub fn set_initialized(env: &Env) {
     env.storage()
         .persistent()
         .set(&DataKey::IsInitialized, &true);
+}
+
+pub fn save_admin(env: &Env, admin: Address) {
+    env.storage().persistent().set(&DataKey::Admin, &admin);
+    env.storage()
+        .persistent()
+        .extend_ttl(&DataKey::Admin, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+}
+
+pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
+    let admin = env
+        .storage()
+        .persistent()
+        .get(&DataKey::Admin)
+        .unwrap_or_else(|| {
+            log!(env, "Auction: Get Admin: Admin not found");
+            Err(ContractError::AdminNotFound)
+        })?;
+    env.storage().persistent().has(&DataKey::Admin).then(|| {
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Admin, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+    });
+
+    Ok(admin)
+}
+
+pub fn update_admin(env: &Env, new_admin: &Address) -> Result<Address, ContractError> {
+    env.storage().persistent().set(&DataKey::Admin, new_admin);
+
+    Ok(new_admin.clone())
 }

@@ -19,4 +19,5 @@ pub enum ContractError {
     NoBuyNowOption = 12,
     AlreadyInitialized = 13,
     InvalidBidder = 14,
+    AdminNotFound = 15,
 }

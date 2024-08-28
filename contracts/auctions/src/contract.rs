@@ -4,9 +4,9 @@ use crate::{
     collection,
     error::ContractError,
     storage::{
-        generate_auction_id, get_auction_by_id, get_auctions, get_auctions_by_seller_id,
-        is_initialized, save_auction_by_id, save_auction_by_seller, set_initialized,
-        update_auction, validate_input_params, Auction, AuctionStatus, ItemInfo,
+        generate_auction_id, get_admin, get_auction_by_id, get_auctions, get_auctions_by_seller_id,
+        is_initialized, save_admin, save_auction_by_id, save_auction_by_seller, set_initialized,
+        update_admin, update_auction, validate_input_params, Auction, AuctionStatus, ItemInfo,
     },
     token,
 };
@@ -17,6 +17,22 @@ pub struct MarketplaceContract;
 #[contractimpl]
 impl MarketplaceContract {
     #[allow(dead_code)]
+    pub fn initialize(env: Env, sender: Address) -> Result<(), ContractError> {
+        sender.require_auth();
+
+        if is_initialized(&env) {
+            log!(&env, "Marketplace: Initialize: Already initialized");
+            return Err(ContractError::AlreadyInitialized);
+        }
+
+        save_admin(&env, sender);
+
+        set_initialized(&env);
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
     pub fn create_auction(
         env: Env,
         item_info: ItemInfo,
@@ -25,11 +41,6 @@ impl MarketplaceContract {
         currency: Address,
     ) -> Result<Auction, ContractError> {
         seller.require_auth();
-
-        if is_initialized(&env) {
-            log!(&env, "Collections: Initialize: Already initialized");
-            return Err(ContractError::AlreadyInitialized);
-        }
 
         let input_values = [
             &duration,
@@ -69,8 +80,6 @@ impl MarketplaceContract {
 
         save_auction_by_id(&env, id, &auction)?;
         save_auction_by_seller(&env, &seller, &auction)?;
-
-        set_initialized(&env);
 
         Ok(auction)
     }
@@ -340,5 +349,13 @@ impl MarketplaceContract {
         let auction = get_auction_by_id(&env, auction_id)?;
 
         Ok((auction.highest_bid, auction.highest_bidder))
+    }
+
+    #[allow(dead_code)]
+    pub fn update_admin(env: Env, new_admin: Address) -> Result<Address, ContractError> {
+        let old_admin = get_admin(&env)?;
+        old_admin.require_auth();
+
+        Ok(update_admin(&env, &new_admin))?
     }
 }

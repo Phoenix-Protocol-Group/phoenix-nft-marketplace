@@ -21,7 +21,7 @@ fn should_place_a_bid() {
     let bidder_c = Address::generate(&env);
 
     let (mp_client, nft_collection_client) =
-        generate_marketplace_and_collection_client(env.clone(), seller.clone(), None, None);
+        generate_marketplace_and_collection_client(&env, &seller, None, None);
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
     token_client.mint(&bidder_a, &10i128);
     token_client.mint(&bidder_b, &20i128);
@@ -87,7 +87,7 @@ fn fail_to_place_bid_when_auction_inactive() {
     let bidder_a = Address::generate(&env);
 
     let (mp_client, nft_collection_client) =
-        generate_marketplace_and_collection_client(env.clone(), seller.clone(), None, None);
+        generate_marketplace_and_collection_client(&env, &seller, None, None);
     let token_client = token::Client::new(&env, &Address::generate(&env));
 
     let item_info = ItemInfo {
@@ -120,7 +120,7 @@ fn fail_to_finalyze_auction_when_not_correct_state() {
     let seller = Address::generate(&env);
 
     let (mp_client, nft_collection_client) =
-        generate_marketplace_and_collection_client(env.clone(), seller.clone(), None, None);
+        generate_marketplace_and_collection_client(&env, &seller, None, None);
     let token_client = token::Client::new(&env, &Address::generate(&env));
 
     let item_info = ItemInfo {
@@ -152,7 +152,7 @@ fn finalyze_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
     let bidder_a = Address::generate(&env);
 
     let (mp_client, nft_collection_client) =
-        generate_marketplace_and_collection_client(env.clone(), seller.clone(), None, None);
+        generate_marketplace_and_collection_client(&env, &seller, None, None);
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
     token_client.mint(&bidder_a, &5);
 
@@ -203,7 +203,7 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
     let bidder = Address::generate(&env);
 
     let (mp_client, nft_collection_client) =
-        generate_marketplace_and_collection_client(env.clone(), seller.clone(), None, None);
+        generate_marketplace_and_collection_client(&env, &seller, None, None);
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
 
     token_client.mint(&bidder, &50);

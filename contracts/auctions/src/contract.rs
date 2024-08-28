@@ -4,7 +4,7 @@ use crate::{
     collection,
     error::ContractError,
     storage::{
-        generate_auction_id, get_all_auctions, get_auction_by_id, get_auctions_by_seller_id,
+        generate_auction_id, get_auction_by_id, get_auctions, get_auctions_by_seller_id,
         is_initialized, save_auction_by_id, save_auction_by_seller, set_initialized,
         update_auction, validate_input_params, Auction, AuctionStatus, ItemInfo,
     },
@@ -67,7 +67,6 @@ impl MarketplaceContract {
             currency,
         };
 
-        // TODO: maybe these two can be merged into one key $(auction id, seller)
         save_auction_by_id(&env, id, &auction)?;
         save_auction_by_seller(&env, &seller, &auction)?;
 
@@ -210,7 +209,7 @@ impl MarketplaceContract {
         // if the auction is over, but there are no bids placed, we just end it
         if auction.highest_bid.is_none() {
             auction.status = AuctionStatus::Ended;
-            // TODO: get rid of the save_auction (below)
+
             save_auction_by_id(&env, auction_id, &auction)?;
             save_auction_by_seller(&env, &auction.seller, &auction)?;
             update_auction(&env, auction_id, auction)?;
@@ -305,8 +304,12 @@ impl MarketplaceContract {
     }
 
     #[allow(dead_code)]
-    pub fn get_active_auctions(env: Env) -> Result<Vec<Auction>, ContractError> {
-        let all_auctions = get_all_auctions(&env)?;
+    pub fn get_active_auctions(
+        env: Env,
+        start_index: Option<u32>,
+        limit: Option<u32>,
+    ) -> Result<Vec<Auction>, ContractError> {
+        let all_auctions = get_auctions(&env, start_index, limit)?;
 
         let mut filtered_auctions = vec![&env];
 

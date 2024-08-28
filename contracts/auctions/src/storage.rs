@@ -7,6 +7,11 @@ pub const DAY_IN_LEDGERS: u32 = 17280;
 pub const BUMP_AMOUNT: u32 = 7 * DAY_IN_LEDGERS;
 pub const LIFETIME_THRESHOLD: u32 = BUMP_AMOUNT - DAY_IN_LEDGERS;
 
+// consts for Pagination
+// since we start counting from 1, default would be 1 as well
+pub const DEFAULT_INDEX: u32 = 1;
+pub const DEFAULT_LIMIT: u32 = 10;
+
 #[contracttype]
 #[derive(Clone)]
 pub enum DataKey {
@@ -61,25 +66,25 @@ pub fn generate_auction_id(env: &Env) -> Result<u64, ContractError> {
     Ok(id)
 }
 
-// TODO: rework this get_all_auctions to use pagination and to use index: Option<u32> and limit:
-// Option<u32>
-pub fn get_all_auctions(env: &Env) -> Result<Vec<Auction>, ContractError> {
-    let all_aucitons = env
-        .storage()
-        .instance()
-        .get(&DataKey::AllAuctions)
-        .unwrap_or_else(|| {
-            log!(
-                env,
-                "Auctions: Get all auctions: No previous auctions found."
-            );
-            panic_with_error!(&env, ContractError::AuctionNotFound);
-        });
+pub fn get_auctions(
+    env: &Env,
+    start_index: Option<u32>,
+    limit: Option<u32>,
+) -> Result<Vec<Auction>, ContractError> {
+    let start_index = start_index.unwrap_or(DEFAULT_INDEX);
+    let limit = limit.unwrap_or(DEFAULT_LIMIT);
 
-    env.storage()
-        .instance()
-        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
-    Ok(all_aucitons)
+    let mut auctions = vec![&env];
+
+    for id in start_index..=limit {
+        match get_auction_by_id(env, id as u64) {
+            Ok(auction) => auctions.push_back(auction),
+            Err(ContractError::AuctionNotFound) => break,
+            Err(e) => return Err(e),
+        }
+    }
+
+    Ok(auctions)
 }
 
 pub fn save_auction_by_id(

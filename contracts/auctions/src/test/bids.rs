@@ -179,3 +179,37 @@ fn buy_now_should_fail_when_auction_not_active() {
         Err(Ok(ContractError::AuctionNotActive))
     );
 }
+
+#[test]
+fn buy_now_should_fail_when_no_buy_now_price_has_been_set() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.budget().reset_unlimited();
+
+    let admin = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let fomo_buyer = Address::generate(&env);
+
+    let token_client = deploy_token_contract(&env, &admin);
+
+    token_client.mint(&fomo_buyer, &50);
+
+    let (mp_client, collections_client) =
+        generate_marketplace_and_collection_client(&env, &seller, None, None);
+
+    collections_client.mint(&seller, &seller, &1, &1);
+
+    let item_info = ItemInfo {
+        collection_addr: collections_client.address,
+        item_id: 1,
+        minimum_price: None,
+        buy_now_price: None,
+    };
+
+    mp_client.create_auction(&item_info, &seller, &DAY, &token_client.address);
+
+    assert_eq!(
+        mp_client.try_buy_now(&1, &fomo_buyer),
+        Err(Ok(ContractError::NoBuyNowOption))
+    );
+}

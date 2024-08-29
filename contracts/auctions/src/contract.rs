@@ -321,6 +321,11 @@ impl MarketplaceContract {
             return Err(ContractError::AuctionNotActive);
         }
 
+        if env.ledger().timestamp() > auction.end_time {
+            log!(env, "Auction: Buy now: Auction expired");
+            return Err(ContractError::AuctionNotActive);
+        }
+
         auction.status = AuctionStatus::Paused;
 
         update_auction(&env, auction_id, auction)?;
@@ -336,6 +341,11 @@ impl MarketplaceContract {
         if auction.status != AuctionStatus::Paused {
             log!(env, "Auction: Pause: Cannot activate unpaused auction.");
             return Err(ContractError::AuctionNotPaused);
+        }
+
+        if env.ledger().timestamp() > auction.end_time {
+            log!(env, "Auction: Buy now: Auction expired");
+            return Err(ContractError::AuctionNotActive);
         }
 
         auction.status = AuctionStatus::Active;

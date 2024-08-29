@@ -176,7 +176,6 @@ impl MarketplaceContract {
 
         let token_client = token::Client::new(&env, &auction.currency);
 
-        let curr_time = env.ledger().timestamp();
         if auction.status != AuctionStatus::Active {
             log!(
                 &env,
@@ -185,7 +184,7 @@ impl MarketplaceContract {
             return Err(ContractError::AuctionNotActive);
         }
 
-        if curr_time < auction.end_time {
+        if env.ledger().timestamp() < auction.end_time {
             log!(
                 env,
                 "Auction: Finalize auction: Auction cannot be ended early"
@@ -258,6 +257,12 @@ impl MarketplaceContract {
         buyer.require_auth();
 
         let mut auction = get_auction_by_id(&env, auction_id)?;
+
+        if env.ledger().timestamp() > auction.end_time {
+            log!(env, "Auction: Buy now: Auction has ended");
+            return Err(ContractError::AuctionNotActive);
+        }
+
         if auction.item_info.buy_now_price.is_none() {
             log!(
                 env,
@@ -266,17 +271,32 @@ impl MarketplaceContract {
             return Err(ContractError::NoBuyNowOption);
         }
 
+        let old_highest_bid = get_highest_bid(&env, auction_id)?;
+
         // refund any previous highest bid
         let token = token::Client::new(&env, &auction.currency);
+
+        token.transfer(
+            &env.current_contract_address(),
+            &old_highest_bid.bidder,
+            &(old_highest_bid.bid as i128),
+        );
+
+        // pay for the item
         token.transfer(
             &buyer,
             &auction.seller,
-            &(auction.item_info.buy_now_price.unwrap() as i128),
+            &(auction
+                .item_info
+                .buy_now_price
+                .expect("Buy now price has not been set") as i128),
         );
 
         auction.status = AuctionStatus::Ended;
 
-        update_auction(&env, auction_id, auction)?;
+        update_auction(&env, auction_id, auction.clone())?;
+        save_auction_by_id(&env, auction_id, &auction)?;
+        save_auction_by_seller(&env, &auction.seller, &auction)?;
 
         Ok(())
     }

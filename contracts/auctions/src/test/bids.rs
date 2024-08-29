@@ -476,15 +476,31 @@ fn multiple_auction_by_multiple_sellers() {
     let collection_c_client =
         create_and_initialize_collection(&env, &seller_c, "Seller C Collection", "SCC");
 
-    let item_info_seller_a = ItemInfo {
-        collection_addr: collection_a_client.address,
+    let first_item_info_seller_a = ItemInfo {
+        collection_addr: collection_a_client.address.clone(),
         item_id: 1,
         minimum_price: Some(100),
         buy_now_price: Some(500),
     };
 
+    collection_a_client.mint(&seller_a, &seller_a, &2, &1);
+
     mp_client.create_auction(
-        &item_info_seller_a,
+        &first_item_info_seller_a,
+        &seller_a,
+        &WEEKLY,
+        &token_client.address,
+    );
+
+    let second_item_info_seller_a = ItemInfo {
+        collection_addr: collection_a_client.address,
+        item_id: 2,
+        minimum_price: Some(500),
+        buy_now_price: Some(900),
+    };
+
+    mp_client.create_auction(
+        &second_item_info_seller_a,
         &seller_a,
         &WEEKLY,
         &token_client.address,

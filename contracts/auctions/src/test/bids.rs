@@ -312,7 +312,7 @@ fn buy_now() {
 }
 
 #[test]
-fn pause_auction_should_fail_when_not_active() {
+fn pause_changes_status_and_second_attempt_fails_to_pause() {
     let env = Env::default();
     env.mock_all_auths();
     env.budget().reset_unlimited();

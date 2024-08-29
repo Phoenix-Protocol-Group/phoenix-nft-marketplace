@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, Env, String};
+use soroban_sdk::{testutils::Address as _, xdr::ToXdr, Address, Bytes, Env, String};
 
 use crate::{
     collection::{self, Client},
@@ -62,4 +62,31 @@ pub fn create_multiple_auctions(
         };
         mp_client.create_auction(&item_info, seller, &WEEKLY, currency);
     }
+}
+
+/// This also mints 5 items of id #1 to the owner of the collection
+pub fn create_and_initialize_collection<'a>(
+    env: &Env,
+    seller: &Address,
+    collection_name: &str,
+    collection_symbol: &str,
+) -> collection::Client<'a> {
+    let collection_name = String::from_str(env, collection_name);
+    let collection_symbol = String::from_str(env, collection_symbol);
+
+    let mut salt = Bytes::new(env);
+    salt.append(&seller.clone().to_xdr(env));
+    let salt = env.crypto().sha256(&salt);
+
+    let collection_addr = env
+        .deployer()
+        .with_address(Address::generate(env), salt)
+        .deploy(env.deployer().upload_contract_wasm(collection::WASM));
+
+    let collection_client = collection::Client::new(env, &collection_addr);
+    collection_client.initialize(seller, &collection_name, &collection_symbol);
+
+    collection_client.mint(seller, seller, &1, &5);
+
+    collection_client
 }

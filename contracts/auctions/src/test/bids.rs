@@ -1,9 +1,12 @@
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
-    Address, Env,
+    xdr::ToXdr,
+    Address, Bytes, Env, String,
 };
 
 use crate::{
+    collection,
+    contract::{MarketplaceContract, MarketplaceContractClient},
     error::ContractError,
     storage::{Auction, AuctionStatus, ItemInfo},
     test::setup::{
@@ -11,6 +14,8 @@ use crate::{
     },
     token,
 };
+
+use super::setup::create_and_initialize_collection;
 
 #[test]
 fn should_place_a_bid() {
@@ -437,4 +442,39 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
         mp_client.try_unpause(&1),
         Err(Ok(ContractError::AuctionNotActive))
     );
+}
+
+#[test]
+fn multiple_auction_by_multiple_sellers() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.budget().reset_unlimited();
+
+    let admin = Address::generate(&env);
+
+    let seller_a = Address::generate(&env);
+    let seller_b = Address::generate(&env);
+    let seller_c = Address::generate(&env);
+
+    let bidder_a = Address::generate(&env);
+    let bidder_b = Address::generate(&env);
+    let bidder_c = Address::generate(&env);
+
+    let token_client = deploy_token_contract(&env, &admin);
+
+    token_client.mint(&bidder_a, &1_000);
+    token_client.mint(&bidder_b, &1_000);
+    token_client.mint(&bidder_c, &1_000);
+
+    let mp_client =
+        MarketplaceContractClient::new(&env, &env.register_contract(None, MarketplaceContract {}));
+
+    mp_client.initialize(&admin);
+
+    let collection_a_client =
+        create_and_initialize_collection(&env, &seller_a, "Seller A Collection", "SAC");
+    let collection_b_client =
+        create_and_initialize_collection(&env, &seller_b, "Seller B Collection", "SBC");
+    let collection_c_client =
+        create_and_initialize_collection(&env, &seller_c, "Seller C Collection", "SCC");
 }

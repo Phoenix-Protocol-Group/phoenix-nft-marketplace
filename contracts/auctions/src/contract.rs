@@ -256,7 +256,7 @@ impl MarketplaceContract {
             return Err(ContractError::NoBuyNowOption);
         }
 
-        // we should probably pause the auction while the tx is happening?
+        // refund any previous highest bid
         let token = token::Client::new(&env, &auction.currency);
         token.transfer(
             &buyer,

@@ -19,6 +19,7 @@ pub enum DataKey {
     IsInitialized,
     AuctionId,
     AllAuctions,
+    HighestBid(u64),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -41,6 +42,13 @@ pub struct Auction {
     pub end_time: u64,
     pub status: AuctionStatus,
     pub currency: Address,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[contracttype]
+pub struct HighestBid {
+    pub bid: u64,
+    pub bidder: Address,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -216,4 +224,44 @@ pub fn update_admin(env: &Env, new_admin: &Address) -> Result<Address, ContractE
     env.storage().persistent().set(&DataKey::Admin, new_admin);
 
     Ok(new_admin.clone())
+}
+
+pub fn get_highest_bid(env: &Env, auction_id: u64) -> Result<HighestBid, ContractError> {
+    let highest_bid = env
+        .storage()
+        .persistent()
+        .get(&DataKey::HighestBid(auction_id))
+        .ok_or(ContractError::NoBidFound)?;
+
+    env.storage()
+        .persistent()
+        .has(&DataKey::HighestBid(auction_id))
+        .then(|| {
+            env.storage().persistent().extend_ttl(
+                &DataKey::HighestBid(auction_id),
+                LIFETIME_THRESHOLD,
+                BUMP_AMOUNT,
+            )
+        });
+
+    Ok(highest_bid)
+}
+
+pub fn set_highest_bid(
+    env: &Env,
+    auction_id: u64,
+    bid: u64,
+    bidder: Address,
+) -> Result<(), ContractError> {
+    env.storage().persistent().set(
+        &DataKey::HighestBid(auction_id),
+        &HighestBid { bid, bidder },
+    );
+    env.storage().persistent().extend_ttl(
+        &DataKey::HighestBid(auction_id),
+        LIFETIME_THRESHOLD,
+        BUMP_AMOUNT,
+    );
+
+    Ok(())
 }

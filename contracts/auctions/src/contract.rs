@@ -5,8 +5,9 @@ use crate::{
     error::ContractError,
     storage::{
         generate_auction_id, get_admin, get_auction_by_id, get_auctions, get_auctions_by_seller_id,
-        is_initialized, save_admin, save_auction_by_id, save_auction_by_seller, set_initialized,
-        update_admin, update_auction, validate_input_params, Auction, AuctionStatus, ItemInfo,
+        get_highest_bid, is_initialized, save_admin, save_auction_by_id, save_auction_by_seller,
+        set_highest_bid, set_initialized, update_admin, update_auction, validate_input_params,
+        Auction, AuctionStatus, ItemInfo,
     },
     token,
 };
@@ -113,10 +114,12 @@ impl MarketplaceContract {
         match auction.highest_bid {
             Some(old_highest_bid) if bid_amount > old_highest_bid => {
                 // refund the previous highest bidder
+                let old_bid_info = get_highest_bid(&env, auction_id)?;
+
                 token_client.transfer(
                     &env.current_contract_address(),
-                    &auction.highest_bidder,
-                    &(old_highest_bid as i128),
+                    &old_bid_info.bidder,
+                    &(old_bid_info.bid as i128),
                 );
 
                 // transfer the new bid amount
@@ -126,7 +129,11 @@ impl MarketplaceContract {
                     &(bid_amount as i128),
                 );
 
+                set_highest_bid(&env, auction_id, bid_amount, bidder.clone())?;
+
                 // Update auction state
+                //TODO: in case we have separate storage isn't the two below
+                //redundant?
                 auction.highest_bid = Some(bid_amount);
                 auction.highest_bidder = bidder;
                 update_auction(&env, auction_id, auction.clone())?;
@@ -147,6 +154,8 @@ impl MarketplaceContract {
                     &env.current_contract_address(),
                     &(bid_amount as i128),
                 );
+
+                set_highest_bid(&env, auction_id, bid_amount, bidder.clone())?;
 
                 // Update auction state
                 auction.highest_bid = Some(bid_amount);
@@ -195,10 +204,11 @@ impl MarketplaceContract {
             .unwrap_or(false)
         {
             // check if there is a previous bid and if so refund it
+            let oldest_highest_bid = get_highest_bid(&env, auction_id)?;
             token_client.transfer(
                 &env.current_contract_address(),
-                &auction.highest_bidder,
-                &(auction.highest_bid.expect("highest bid not available") as i128),
+                &oldest_highest_bid.bidder,
+                &(oldest_highest_bid.bid as i128),
             );
 
             auction.status = AuctionStatus::Ended;

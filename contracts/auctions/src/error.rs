@@ -20,4 +20,5 @@ pub enum ContractError {
     AlreadyInitialized = 13,
     InvalidBidder = 14,
     AdminNotFound = 15,
+    NoBidFound = 16,
 }

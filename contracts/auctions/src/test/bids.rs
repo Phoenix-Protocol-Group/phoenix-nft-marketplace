@@ -268,7 +268,7 @@ fn seller_tries_to_place_a_bid_should_fail() {
 }
 
 #[test]
-fn finalize_auctoin() {
+fn finalize_auction() {
     let env = Env::default();
     env.mock_all_auths();
     env.budget().reset_unlimited();
@@ -292,7 +292,7 @@ fn finalize_auctoin() {
     collections_client.mint(&seller, &seller, &1, &1);
 
     let item_info = ItemInfo {
-        collection_addr: collections_client.address,
+        collection_addr: collections_client.address.clone(),
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
@@ -314,4 +314,48 @@ fn finalize_auctoin() {
     assert_eq!(token_client.balance(&bidder_a), 100);
     assert_eq!(token_client.balance(&bidder_b), 90);
     assert_eq!(token_client.balance(&mp_client.address), 10);
+
+    // 12 hours in total pass by and `bidder_c` places a higher bid
+    env.ledger().with_mut(|li| {
+        li.timestamp = FOUR_HOURS * 3;
+    });
+    mp_client.place_bid(&1, &bidder_c, &50);
+    assert_eq!(token_client.balance(&bidder_a), 100);
+    assert_eq!(token_client.balance(&bidder_b), 100);
+    assert_eq!(token_client.balance(&bidder_c), 50);
+    assert_eq!(token_client.balance(&mp_client.address), 50);
+
+    // 13 hours in total pass by and `bidder_b` tries to place a bid, but that's not enough
+    env.ledger().with_mut(|li| {
+        li.timestamp = FOUR_HOURS * 3 + 1;
+    });
+    let _ = mp_client.try_place_bid(&1, &bidder_b, &25);
+    assert_eq!(token_client.balance(&bidder_a), 100);
+    assert_eq!(token_client.balance(&bidder_b), 100);
+    assert_eq!(token_client.balance(&bidder_c), 50);
+    assert_eq!(token_client.balance(&mp_client.address), 50);
+
+    // 16 hours in total pass by and `bidder_a` places the highest bid
+    env.ledger().with_mut(|li| {
+        li.timestamp = FOUR_HOURS * 4;
+    });
+    let _ = mp_client.try_place_bid(&1, &bidder_a, &75);
+    assert_eq!(token_client.balance(&bidder_a), 25);
+    assert_eq!(token_client.balance(&bidder_b), 100);
+    assert_eq!(token_client.balance(&bidder_c), 100);
+    assert_eq!(token_client.balance(&mp_client.address), 75);
+
+    // we wrap it up and the winner is `bidder_a` with a highest bid of 75
+    env.ledger().with_mut(|li| li.timestamp = WEEKLY + DAY);
+    mp_client.finalize_auction(&1);
+
+    // check if the finances are the same
+    assert_eq!(token_client.balance(&bidder_a), 25);
+    assert_eq!(token_client.balance(&bidder_b), 100);
+    assert_eq!(token_client.balance(&bidder_c), 100);
+    assert_eq!(token_client.balance(&mp_client.address), 75);
+
+    // check if `bidder_a` has 1 NFT of the item
+    assert_eq!(collections_client.balance_of(&bidder_a, &1), 1);
+    assert_eq!(collections_client.balance_of(&seller, &1), 0);
 }

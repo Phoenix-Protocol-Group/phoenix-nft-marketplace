@@ -495,7 +495,7 @@ fn multiple_auction_by_multiple_sellers() {
     );
 
     let second_item_info_seller_a = ItemInfo {
-        collection_addr: collection_a_client.address,
+        collection_addr: collection_a_client.address.clone(),
         item_id: 2,
         minimum_price: Some(500),
         buy_now_price: Some(900),
@@ -509,7 +509,7 @@ fn multiple_auction_by_multiple_sellers() {
     );
 
     let item_info_seller_b = ItemInfo {
-        collection_addr: collection_b_client.address,
+        collection_addr: collection_b_client.address.clone(),
         item_id: 1,
         minimum_price: Some(50),
         buy_now_price: None,
@@ -523,7 +523,7 @@ fn multiple_auction_by_multiple_sellers() {
     );
 
     let item_info_seller_c = ItemInfo {
-        collection_addr: collection_c_client.address,
+        collection_addr: collection_c_client.address.clone(),
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
@@ -593,4 +593,19 @@ fn multiple_auction_by_multiple_sellers() {
             },
         ]
     );
+    // ============ Start bidding ============
+
+    // within day #1
+    env.ledger().with_mut(|li| li.timestamp = DAY / 4);
+
+    mp_client.place_bid(&1, &bidder_a, &50);
+    mp_client.place_bid(&2, &bidder_a, &50);
+    mp_client.place_bid(&3, &bidder_b, &25);
+    mp_client.place_bid(&3, &bidder_c, &26);
+    mp_client.place_bid(&4, &bidder_b, &100);
+
+    assert_eq!(token_client.balance(&bidder_a), 900);
+    assert_eq!(token_client.balance(&bidder_b), 900);
+    assert_eq!(token_client.balance(&bidder_c), 974);
+    assert_eq!(token_client.balance(&mp_client.address), 226);
 }

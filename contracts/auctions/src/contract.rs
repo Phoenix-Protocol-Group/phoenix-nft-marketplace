@@ -258,8 +258,8 @@ impl MarketplaceContract {
 
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
-        if env.ledger().timestamp() > auction.end_time {
-            log!(env, "Auction: Buy now: Auction has ended");
+        if env.ledger().timestamp() > auction.end_time || auction.status != AuctionStatus::Active {
+            log!(env, "Auction: Buy now: Auction not active");
             return Err(ContractError::AuctionNotActive);
         }
 

@@ -1,11 +1,9 @@
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
-    xdr::ToXdr,
-    Address, Bytes, Env, String,
+    Address, Env,
 };
 
 use crate::{
-    collection,
     contract::{MarketplaceContract, MarketplaceContractClient},
     error::ContractError,
     storage::{Auction, AuctionStatus, ItemInfo},
@@ -477,4 +475,41 @@ fn multiple_auction_by_multiple_sellers() {
         create_and_initialize_collection(&env, &seller_b, "Seller B Collection", "SBC");
     let collection_c_client =
         create_and_initialize_collection(&env, &seller_c, "Seller C Collection", "SCC");
+
+    let item_info_seller_a = ItemInfo {
+        collection_addr: collection_a_client.address,
+        item_id: 1,
+        minimum_price: Some(100),
+        buy_now_price: Some(500),
+    };
+
+    mp_client.create_auction(
+        &item_info_seller_a,
+        &seller_a,
+        &WEEKLY,
+        &token_client.address,
+    );
+
+    let item_info_seller_b = ItemInfo {
+        collection_addr: collection_b_client.address,
+        item_id: 1,
+        minimum_price: Some(50),
+        buy_now_price: None,
+    };
+
+    mp_client.create_auction(
+        &item_info_seller_b,
+        &seller_b,
+        &WEEKLY,
+        &token_client.address,
+    );
+
+    let item_info_seller_c = ItemInfo {
+        collection_addr: collection_c_client.address,
+        item_id: 1,
+        minimum_price: None,
+        buy_now_price: None,
+    };
+
+    mp_client.create_auction(&item_info_seller_c, &seller_c, &DAY, &token_client.address);
 }

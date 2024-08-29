@@ -555,8 +555,42 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bidder: seller_a.clone(),
                 end_time: WEEKLY,
                 status: AuctionStatus::Active,
-                currency: token_client.address
+                currency: token_client.address.clone()
             }
+        ]
+    );
+
+    assert_eq!(
+        mp_client.get_auctions_by_seller(&seller_b),
+        vec![
+            &env,
+            Auction {
+                id: 3,
+                item_info: item_info_seller_b,
+                seller: seller_b.clone(),
+                highest_bid: None,
+                highest_bidder: seller_b.clone(),
+                end_time: WEEKLY,
+                status: AuctionStatus::Active,
+                currency: token_client.address.clone()
+            },
+        ]
+    );
+
+    assert_eq!(
+        mp_client.get_auctions_by_seller(&seller_c),
+        vec![
+            &env,
+            Auction {
+                id: 4,
+                item_info: item_info_seller_c,
+                seller: seller_c.clone(),
+                highest_bid: None,
+                highest_bidder: seller_c.clone(),
+                end_time: DAY,
+                status: AuctionStatus::Active,
+                currency: token_client.address.clone()
+            },
         ]
     );
 }

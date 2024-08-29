@@ -98,7 +98,7 @@ fn finalize_auction() {
     assert_eq!(token_client.balance(&bidder_a), 25);
     assert_eq!(token_client.balance(&bidder_b), 100);
     assert_eq!(token_client.balance(&bidder_c), 100);
-    assert_eq!(token_client.balance(&mp_client.address), 75);
+    assert_eq!(token_client.balance(&mp_client.address), 0);
 
     // check if `bidder_a` has 1 NFT of the item
     assert_eq!(collections_client.balance_of(&bidder_a, &1), 1);

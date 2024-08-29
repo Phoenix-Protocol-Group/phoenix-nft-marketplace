@@ -600,6 +600,7 @@ fn multiple_auction_by_multiple_sellers() {
 
     mp_client.place_bid(&1, &bidder_a, &50);
     mp_client.place_bid(&2, &bidder_a, &50);
+    // `bidder_b` places a bid, but is immediately outbidden by `bidder_c`
     mp_client.place_bid(&3, &bidder_b, &25);
     mp_client.place_bid(&3, &bidder_c, &26);
     mp_client.place_bid(&4, &bidder_b, &100);
@@ -608,4 +609,18 @@ fn multiple_auction_by_multiple_sellers() {
     assert_eq!(token_client.balance(&bidder_b), 900);
     assert_eq!(token_client.balance(&bidder_c), 974);
     assert_eq!(token_client.balance(&mp_client.address), 226);
+
+    // within day #2
+    // here auction #4 has ended
+    env.ledger().with_mut(|li| li.timestamp = DAY * 2);
+
+    assert_eq!(
+        mp_client.try_place_bid(&4, &bidder_a, &200),
+        Err(Ok(ContractError::AuctionNotActive))
+    );
+
+    mp_client.finalize_auction(&4);
+    assert_eq!(token_client.balance(&bidder_b), 900);
+    assert_eq!(token_client.balance(&seller_c), 100);
+    assert_eq!(collection_c_client.balance_of(&bidder_b, &1), 1);
 }

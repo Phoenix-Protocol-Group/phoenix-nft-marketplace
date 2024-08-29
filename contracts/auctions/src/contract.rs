@@ -97,6 +97,11 @@ impl MarketplaceContract {
 
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
+        if env.ledger().timestamp() > auction.end_time {
+            log!(env, "Auction: Buy now: Auction not active");
+            return Err(ContractError::AuctionNotActive);
+        }
+
         if auction.status != AuctionStatus::Active {
             log!(
                 &env,
@@ -235,6 +240,15 @@ impl MarketplaceContract {
 
             return Ok(());
         }
+
+        let oldest_bid = get_highest_bid(&env, auction_id)?;
+        // the current contract has already taken the bid fromt he bidder, so we send it to
+        // the seller
+        token_client.transfer(
+            &env.current_contract_address(),
+            &auction.seller,
+            &(oldest_bid.bid as i128),
+        );
 
         let nft_client = collection::Client::new(&env, &auction.item_info.collection_addr);
         nft_client.safe_transfer_from(

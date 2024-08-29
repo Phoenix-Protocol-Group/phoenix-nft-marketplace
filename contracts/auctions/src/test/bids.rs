@@ -1,6 +1,6 @@
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
-    Address, Env,
+    vec, Address, Env,
 };
 
 use crate::{
@@ -469,6 +469,7 @@ fn multiple_auction_by_multiple_sellers() {
 
     mp_client.initialize(&admin);
 
+    // ============ Collections client setup ============
     let collection_a_client =
         create_and_initialize_collection(&env, &seller_a, "Seller A Collection", "SAC");
     let collection_b_client =
@@ -476,6 +477,7 @@ fn multiple_auction_by_multiple_sellers() {
     let collection_c_client =
         create_and_initialize_collection(&env, &seller_c, "Seller C Collection", "SCC");
 
+    // ============ Auction item setup ============
     let first_item_info_seller_a = ItemInfo {
         collection_addr: collection_a_client.address.clone(),
         item_id: 1,
@@ -528,4 +530,33 @@ fn multiple_auction_by_multiple_sellers() {
     };
 
     mp_client.create_auction(&item_info_seller_c, &seller_c, &DAY, &token_client.address);
+
+    // ============ Assert everything is before bidding ============
+
+    assert_eq!(
+        mp_client.get_auctions_by_seller(&seller_a),
+        vec![
+            &env,
+            Auction {
+                id: 1,
+                item_info: first_item_info_seller_a,
+                seller: seller_a.clone(),
+                highest_bid: None,
+                highest_bidder: seller_a.clone(),
+                end_time: WEEKLY,
+                status: AuctionStatus::Active,
+                currency: token_client.address.clone()
+            },
+            Auction {
+                id: 2,
+                item_info: second_item_info_seller_a,
+                seller: seller_a.clone(),
+                highest_bid: None,
+                highest_bidder: seller_a.clone(),
+                end_time: WEEKLY,
+                status: AuctionStatus::Active,
+                currency: token_client.address
+            }
+        ]
+    );
 }

@@ -232,3 +232,35 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
     assert_eq!(token_client.balance(&mp_client.address), 50i128);
     assert_eq!(token_client.balance(&bidder), 0i128);
 }
+
+#[test]
+fn seller_tries_to_place_a_bid_should_fail() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.budget().reset_unlimited();
+
+    let seller = Address::generate(&env);
+
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &1);
+    let (mp_client, collection_client) =
+        generate_marketplace_and_collection_client(&env, &seller, None, None);
+
+    collection_client.mint(&seller, &seller, &1, &1);
+
+    let item_info = ItemInfo {
+        collection_addr: collection_client.address,
+        item_id: 1,
+        minimum_price: None,
+        buy_now_price: None,
+    };
+
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+
+    env.ledger().with_mut(|li| li.timestamp = DAY);
+
+    assert_eq!(
+        mp_client.try_place_bid(&1, &seller, &1),
+        Err(Ok(ContractError::InvalidBidder))
+    );
+}

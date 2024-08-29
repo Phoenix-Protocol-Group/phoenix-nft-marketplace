@@ -103,7 +103,7 @@ impl MarketplaceContract {
             return Err(ContractError::AuctionNotActive);
         }
 
-        if bidder == auction.highest_bidder {
+        if bidder == auction.seller {
             log!(&env, "Auction Place Bid: Seller cannot place bids.");
             return Err(ContractError::InvalidBidder);
         }

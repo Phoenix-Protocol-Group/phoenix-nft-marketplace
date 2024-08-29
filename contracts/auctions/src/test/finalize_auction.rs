@@ -6,11 +6,11 @@ use soroban_sdk::{
 use crate::{
     error::ContractError,
     storage::{Auction, AuctionStatus, ItemInfo},
-    test::setup::{deploy_token_contract, generate_marketplace_and_collection_client, DAY, WEEKLY},
+    test::setup::{
+        deploy_token_contract, generate_marketplace_and_collection_client, DAY, FOUR_HOURS, WEEKLY,
+    },
     token,
 };
-
-const FOUR_HOURS: u64 = 14_400u64;
 
 #[test]
 fn finalize_auction() {

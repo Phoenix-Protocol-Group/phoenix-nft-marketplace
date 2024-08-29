@@ -5,8 +5,10 @@ use soroban_sdk::{
 
 use crate::{
     error::ContractError,
-    storage::ItemInfo,
-    test::setup::{deploy_token_contract, generate_marketplace_and_collection_client, DAY, WEEKLY},
+    storage::{Auction, AuctionStatus, ItemInfo},
+    test::setup::{
+        deploy_token_contract, generate_marketplace_and_collection_client, DAY, FOUR_HOURS, WEEKLY,
+    },
     token,
 };
 
@@ -164,7 +166,7 @@ fn buy_now_should_fail_when_auction_not_active() {
     collections_client.mint(&seller, &seller, &1, &1);
 
     let item_info = ItemInfo {
-        collection_addr: collections_client.address,
+        collection_addr: collections_client.address.clone(),
         item_id: 1,
         minimum_price: None,
         buy_now_price: Some(50),
@@ -212,4 +214,99 @@ fn buy_now_should_fail_when_no_buy_now_price_has_been_set() {
         mp_client.try_buy_now(&1, &fomo_buyer),
         Err(Ok(ContractError::NoBuyNowOption))
     );
+}
+
+#[test]
+fn buy_now() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.budget().reset_unlimited();
+
+    let admin = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let bidder_a = Address::generate(&env);
+    let bidder_b = Address::generate(&env);
+    let fomo_buyer = Address::generate(&env);
+
+    let token_client = deploy_token_contract(&env, &admin);
+
+    token_client.mint(&fomo_buyer, &100);
+    token_client.mint(&bidder_a, &100);
+    token_client.mint(&bidder_b, &100);
+
+    let (mp_client, collections_client) =
+        generate_marketplace_and_collection_client(&env, &seller, None, None);
+
+    collections_client.mint(&seller, &seller, &1, &1);
+
+    let item_info = ItemInfo {
+        collection_addr: collections_client.address.clone(),
+        item_id: 1,
+        minimum_price: Some(10),
+        buy_now_price: Some(50),
+    };
+
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+
+    // 4 hours in and we have a first highest bid
+    env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS);
+    mp_client.place_bid(&1, &bidder_a, &5);
+    assert_eq!(token_client.balance(&bidder_a), 95);
+    assert_eq!(token_client.balance(&mp_client.address), 5);
+
+    // 8 hours in and we have a second highest bid
+    env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 2);
+    mp_client.place_bid(&1, &bidder_b, &10);
+    assert_eq!(token_client.balance(&bidder_a), 100);
+    assert_eq!(token_client.balance(&bidder_b), 90);
+    assert_eq!(token_client.balance(&mp_client.address), 10);
+
+    // 16 hours in and we have a third highest bid
+    env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 4);
+    mp_client.place_bid(&1, &fomo_buyer, &25);
+    assert_eq!(token_client.balance(&bidder_a), 100);
+    assert_eq!(token_client.balance(&bidder_b), 100);
+    assert_eq!(token_client.balance(&fomo_buyer), 75);
+    assert_eq!(token_client.balance(&mp_client.address), 25);
+
+    // 24 hours in and we have a 4th highest bid
+    env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 6);
+    mp_client.place_bid(&1, &bidder_b, &30);
+    assert_eq!(token_client.balance(&bidder_a), 100);
+    assert_eq!(token_client.balance(&bidder_b), 70);
+    assert_eq!(token_client.balance(&fomo_buyer), 100);
+    assert_eq!(token_client.balance(&mp_client.address), 30);
+
+    // 36 hours in and we have a 5th highest bid, which is over the buy now price
+    env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 9);
+    mp_client.place_bid(&1, &bidder_a, &60);
+    assert_eq!(token_client.balance(&bidder_a), 40);
+    assert_eq!(token_client.balance(&bidder_b), 100);
+    assert_eq!(token_client.balance(&fomo_buyer), 100);
+    assert_eq!(token_client.balance(&mp_client.address), 60);
+
+    // 40 hours in and the fomo buyer sees the previous user mistake and buys now
+    env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 10);
+    mp_client.buy_now(&1, &fomo_buyer);
+    assert_eq!(token_client.balance(&bidder_a), 100);
+    assert_eq!(token_client.balance(&bidder_b), 100);
+    assert_eq!(token_client.balance(&fomo_buyer), 50);
+    assert_eq!(token_client.balance(&mp_client.address), 0);
+    assert_eq!(token_client.balance(&seller), 50);
+
+    assert_eq!(
+        mp_client.get_auction(&1),
+        Auction {
+            id: 1,
+            item_info,
+            seller,
+            highest_bid: Some(60),
+            highest_bidder: bidder_a,
+            end_time: WEEKLY,
+            status: AuctionStatus::Ended,
+            currency: token_client.address
+        }
+    );
+
+    assert_eq!(collections_client.balance_of(&fomo_buyer, &1), 1);
 }

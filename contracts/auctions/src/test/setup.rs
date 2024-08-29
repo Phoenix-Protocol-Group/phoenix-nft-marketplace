@@ -9,6 +9,7 @@ use crate::{
 
 pub const WEEKLY: u64 = 604_800u64;
 pub const DAY: u64 = 86_400u64;
+pub const FOUR_HOURS: u64 = 14_400u64;
 
 pub fn deploy_token_contract<'a>(env: &Env, admin: &Address) -> token::Client<'a> {
     token::Client::new(env, &env.register_stellar_asset_contract(admin.clone()))

@@ -11,6 +11,7 @@ use crate::{
     },
     token,
 };
+const ONE: u64 = 1u64;
 
 #[contract]
 pub struct MarketplaceContract;
@@ -290,6 +291,15 @@ impl MarketplaceContract {
                 .item_info
                 .buy_now_price
                 .expect("Buy now price has not been set") as i128),
+        );
+
+        let collection_client = collection::Client::new(&env, &auction.item_info.collection_addr);
+
+        collection_client.safe_transfer_from(
+            &auction.seller,
+            &buyer,
+            &auction.item_info.item_id,
+            &ONE,
         );
 
         auction.status = AuctionStatus::Ended;

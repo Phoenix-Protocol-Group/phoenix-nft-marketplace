@@ -242,8 +242,6 @@ impl MarketplaceContract {
         }
 
         let oldest_bid = get_highest_bid(&env, auction_id)?;
-        // the current contract has already taken the bid fromt he bidder, so we send it to
-        // the seller
         token_client.transfer(
             &env.current_contract_address(),
             &auction.seller,
@@ -317,6 +315,13 @@ impl MarketplaceContract {
         );
 
         auction.status = AuctionStatus::Ended;
+        auction.highest_bidder = buyer;
+        auction.highest_bid = Some(
+            auction
+                .item_info
+                .buy_now_price
+                .expect("Buy now price has not been set"),
+        );
 
         update_auction(&env, auction_id, auction.clone())?;
         save_auction_by_id(&env, auction_id, &auction)?;

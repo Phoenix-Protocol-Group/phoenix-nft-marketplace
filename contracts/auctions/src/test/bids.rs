@@ -539,7 +539,7 @@ fn multiple_auction_by_multiple_sellers() {
             &env,
             Auction {
                 id: 1,
-                item_info: first_item_info_seller_a,
+                item_info: first_item_info_seller_a.clone(),
                 seller: seller_a.clone(),
                 highest_bid: None,
                 highest_bidder: seller_a.clone(),
@@ -549,7 +549,7 @@ fn multiple_auction_by_multiple_sellers() {
             },
             Auction {
                 id: 2,
-                item_info: second_item_info_seller_a,
+                item_info: second_item_info_seller_a.clone(),
                 seller: seller_a.clone(),
                 highest_bid: None,
                 highest_bidder: seller_a.clone(),
@@ -682,4 +682,39 @@ fn multiple_auction_by_multiple_sellers() {
     // `bidder_c` has been outbid by `bidder_a` the previous day, thus having his full portfolio of
     // 1_000
     assert_eq!(token_client.balance(&bidder_c), 1_000);
+
+    // day #15
+    // okay, enough bidding, let's close the auctions
+    env.ledger().with_mut(|li| li.timestamp = WEEKLY + DAY);
+
+    mp_client.finalize_auction(&2);
+    mp_client.finalize_auction(&3);
+
+    // let's do some assertions
+    assert_eq!(
+        mp_client.get_auctions_by_seller(&seller_a),
+        vec![
+            &env,
+            Auction {
+                id: 1,
+                item_info: first_item_info_seller_a.clone(),
+                seller: seller_a.clone(),
+                highest_bid: Some(500),
+                highest_bidder: bidder_b.clone(),
+                end_time: WEEKLY,
+                status: AuctionStatus::Ended,
+                currency: token_client.address.clone()
+            },
+            Auction {
+                id: 2,
+                item_info: second_item_info_seller_a,
+                seller: seller_a.clone(),
+                highest_bid: Some(150),
+                highest_bidder: bidder_b,
+                end_time: WEEKLY,
+                status: AuctionStatus::Ended,
+                currency: token_client.address
+            }
+        ]
+    );
 }

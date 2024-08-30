@@ -303,8 +303,8 @@ fn buy_now() {
             id: 1,
             item_info,
             seller,
-            highest_bid: Some(60),
-            highest_bidder: bidder_a,
+            highest_bid: Some(50),
+            highest_bidder: fomo_buyer.clone(),
             end_time: WEEKLY,
             status: AuctionStatus::Ended,
             currency: token_client.address
@@ -680,7 +680,7 @@ fn multiple_auction_by_multiple_sellers() {
     // `bidder_b` has the lowest balance, due to `buy_now`
     assert_eq!(token_client.balance(&bidder_b), 250);
     // `bidder_c` has been outbid by `bidder_a` the previous day, thus having his full portfolio of
-    // 1_000
+    // 1_000 since he was outbid in the last day and got the last 100 refunded
     assert_eq!(token_client.balance(&bidder_c), 1_000);
 
     // day #15
@@ -691,6 +691,8 @@ fn multiple_auction_by_multiple_sellers() {
     mp_client.finalize_auction(&3);
 
     // let's do some assertions
+
+    // assertions of the state of the auctions
     assert_eq!(
         mp_client.get_auctions_by_seller(&seller_a),
         vec![
@@ -751,4 +753,34 @@ fn multiple_auction_by_multiple_sellers() {
             },
         ]
     );
+
+    // assertions of the token balances
+    // because `bidder_b` used `buy_now` for auction #1 and no one was able to put at least 500 as
+    // bid to meet the minimum price
+    assert_eq!(token_client.balance(&seller_a), 500);
+    // `bidder_a` placed a bit of 150 for this auction
+    assert_eq!(token_client.balance(&seller_b), 150);
+    // `bidder_b` bought it with a bid of a 100
+    assert_eq!(token_client.balance(&seller_c), 100);
+
+    // bought the item from `seller_b`
+    assert_eq!(token_client.balance(&bidder_a), 850);
+    // bought with `buy_now` for a 500 tokens and another big and since he did not met the minimum
+    // amount to buy the item and got a refund of 100
+    assert_eq!(token_client.balance(&bidder_b), 400);
+    // `bidder_c` has all the tokens he started with
+    assert_eq!(token_client.balance(&bidder_c), 1_000);
+
+    // make sure that we don't hold any tokens, as we are just intermediary
+    assert_eq!(token_client.balance(&mp_client.address), 0);
+
+    // let's check the item info
+    // auction #1 sold item #1 from `collection_a` and the winner is `bidder_a`
+    assert_eq!(collection_a_client.balance_of(&bidder_b, &1), 1);
+    // auction #1 DID NOT SELL item #2 from collection_a; item remains with `seller_a`
+    assert_eq!(collection_a_client.balance_of(&seller_a, &2), 1);
+    // auction #3 sold item #1 from `collection_b` and the winner is `bidder_a`
+    assert_eq!(collection_b_client.balance_of(&bidder_a, &1), 1);
+    // auction #4 sold item #1 from `collection_c` and the winnder is `bidder_b`
+    assert_eq!(collection_c_client.balance_of(&bidder_b, &1), 1);
 }

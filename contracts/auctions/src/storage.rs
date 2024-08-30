@@ -268,3 +268,23 @@ pub fn set_highest_bid(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use soroban_sdk::Env;
+
+    use super::validate_input_params;
+
+    #[test]
+    #[should_panic(expected = "Auction: Validate input: Invalid inputs used")]
+    fn validate_input_params_should_fail_with_invalid_input() {
+        let env = Env::default();
+        let _ = validate_input_params(&env, &[&1, &2, &3, &0]);
+    }
+
+    #[test]
+    fn validate_input_params_should_work() {
+        let env = Env::default();
+        assert!(validate_input_params(&env, &[&1, &2, &3]).is_ok());
+    }
+}

@@ -177,3 +177,33 @@ fn mp_should_be_able_create_multiple_auctions_and_query_them_with_pagination() {
         (1..=25).collect::<std::vec::Vec<u64>>()
     );
 }
+
+#[test]
+fn get_auction_by_id_should_return_an_err_when_id_not_found() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.budget().reset_unlimited();
+    let seller = Address::generate(&env);
+
+    let (mp_client, _) = generate_marketplace_and_collection_client(&env, &seller, None, None);
+
+    assert_eq!(
+        mp_client.try_get_auction(&5),
+        Err(Ok(ContractError::AuctionNotFound))
+    )
+}
+
+#[test]
+fn get_auction_by_seller_should_return_an_err_when_id_not_found() {
+    let env = Env::default();
+    env.mock_all_auths();
+    env.budget().reset_unlimited();
+    let seller = Address::generate(&env);
+
+    let (mp_client, _) = generate_marketplace_and_collection_client(&env, &seller, None, None);
+
+    assert_eq!(
+        mp_client.try_get_auctions_by_seller(&Address::generate(&env)),
+        Err(Ok(ContractError::AuctionNotFound))
+    )
+}

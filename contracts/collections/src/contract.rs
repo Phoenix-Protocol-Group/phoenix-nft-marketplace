@@ -9,6 +9,7 @@ use crate::{
         },
         Config, DataKey, OperatorApprovalKey, URIValue,
     },
+    ttl::{BUMP_AMOUNT, LIFETIME_THRESHOLD},
 };
 
 #[contract]
@@ -98,13 +99,15 @@ impl Collections {
             return Err(ContractError::CannotApproveSelf);
         }
 
-        env.storage().persistent().set(
-            &DataKey::OperatorApproval(OperatorApprovalKey {
-                owner: sender.clone(),
-                operator: operator.clone(),
-            }),
-            &approved,
-        );
+        let data_key = DataKey::OperatorApproval(OperatorApprovalKey {
+            owner: sender.clone(),
+            operator: operator.clone(),
+        });
+
+        env.storage().persistent().set(&data_key, &approved);
+        env.storage()
+            .persistent()
+            .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
 
         env.events()
             .publish(("Set approval for", "Sender: "), sender);
@@ -125,14 +128,15 @@ impl Collections {
         owner: Address,
         operator: Address,
     ) -> Result<bool, ContractError> {
-        let result = env
-            .storage()
-            .persistent()
-            .get(&DataKey::OperatorApproval(OperatorApprovalKey {
-                owner,
-                operator,
-            }))
-            .unwrap_or(false);
+        let data_key = DataKey::OperatorApproval(OperatorApprovalKey { owner, operator });
+
+        let result = env.storage().persistent().get(&data_key).unwrap_or(false);
+
+        env.storage().persistent().has(&data_key).then(|| {
+            env.storage()
+                .persistent()
+                .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT)
+        });
 
         Ok(result)
     }
@@ -363,6 +367,9 @@ impl Collections {
         env.storage()
             .persistent()
             .set(&DataKey::Uri(id), &URIValue { uri: uri.clone() });
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Uri(id), LIFETIME_THRESHOLD, BUMP_AMOUNT);
 
         env.events().publish(("set uri", "sender: "), sender);
         env.events().publish(("set uri", "id: "), id);
@@ -379,6 +386,11 @@ impl Collections {
         env.storage()
             .persistent()
             .set(&DataKey::CollectionUri, &URIValue { uri: uri.clone() });
+        env.storage().persistent().extend_ttl(
+            &DataKey::CollectionUri,
+            LIFETIME_THRESHOLD,
+            BUMP_AMOUNT,
+        );
 
         env.events().publish(("set collection uri", "uri: "), uri);
 
@@ -389,6 +401,11 @@ impl Collections {
     #[allow(dead_code)]
     pub fn uri(env: Env, id: u64) -> Result<URIValue, ContractError> {
         if let Some(uri) = env.storage().persistent().get(&DataKey::Uri(id)) {
+            env.storage().persistent().extend_ttl(
+                &DataKey::Uri(id),
+                LIFETIME_THRESHOLD,
+                BUMP_AMOUNT,
+            );
             Ok(uri)
         } else {
             log!(&env, "Collections: Uri: No uri set for the given id");
@@ -400,6 +417,11 @@ impl Collections {
     #[allow(dead_code)]
     pub fn collection_uri(env: Env) -> Result<URIValue, ContractError> {
         if let Some(uri) = env.storage().persistent().get(&DataKey::CollectionUri) {
+            env.storage().persistent().extend_ttl(
+                &DataKey::CollectionUri,
+                LIFETIME_THRESHOLD,
+                BUMP_AMOUNT,
+            );
             Ok(uri)
         } else {
             log!(&env, "Collections: Uri: No collection uri set");

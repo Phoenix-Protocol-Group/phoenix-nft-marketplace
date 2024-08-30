@@ -7,7 +7,7 @@ use crate::{
             get_admin, get_balance_of, is_initialized, save_admin, save_config, set_initialized,
             update_balance_of,
         },
-        Config, DataKey, OperatorApprovalKey, URIValue,
+        Config, DataKey, OperatorApprovalKey, TransferApprovalKey, URIValue,
     },
     ttl::{BUMP_AMOUNT, LIFETIME_THRESHOLD},
 };
@@ -114,6 +114,48 @@ impl Collections {
         env.events().publish(
             ("Set approval for", "Set approval for operator: "),
             operator,
+        );
+        env.events()
+            .publish(("Set approval for", "New approval: "), approved);
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub fn set_approval_for_transfer(
+        env: Env,
+        mp_address: Address,
+        approved: bool,
+    ) -> Result<(), ContractError> {
+        let admin = get_admin(&env)?;
+        admin.require_auth();
+
+        if admin == mp_address {
+            log!(
+                &env,
+                "Collection: Set approval for transfer: Trying to authorize self"
+            );
+            return Err(ContractError::CannotApproveSelf);
+        }
+
+        let data_key = DataKey::TransferApproval(TransferApprovalKey {
+            owner: admin.clone(),
+            mp_address: mp_address.clone(),
+        });
+
+        env.storage().persistent().set(&data_key, &approved);
+        env.storage()
+            .persistent()
+            .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+        env.events()
+            .publish(("Set approval for transfer", "Sender: "), admin);
+        env.events().publish(
+            (
+                "Set approval for transfer",
+                "Set approval for market place addr: ",
+            ),
+            mp_address,
         );
         env.events()
             .publish(("Set approval for", "New approval: "), approved);

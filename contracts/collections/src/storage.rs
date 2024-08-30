@@ -12,12 +12,25 @@ pub struct OperatorApprovalKey {
     pub operator: Address,
 }
 
+/// Struct that represents the Transfer approval status
+/// Description.
+///
+/// * `owner` - The `Address` of the owner of the collection.
+/// * `mp_address` - The `Address` of the market place that we will authorize to do the transfer
+#[derive(Clone)]
+#[contracttype]
+pub struct TransferApprovalKey {
+    pub owner: Address,
+    pub mp_address: Address,
+}
+
 // Enum to represent different data keys in storage
 #[derive(Clone)]
 #[contracttype]
 pub enum DataKey {
     Balance(Address),
     OperatorApproval(OperatorApprovalKey),
+    TransferApproval(TransferApprovalKey),
     Uri(NftId),
     CollectionUri,
     Config,

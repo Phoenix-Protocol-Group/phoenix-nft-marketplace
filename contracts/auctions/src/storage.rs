@@ -117,7 +117,10 @@ pub fn save_auction_by_seller(
     let mut seller_auctions_list: Vec<Auction> =
         env.storage().instance().get(seller).unwrap_or(vec![&env]);
 
-    seller_auctions_list.push_back(auction.clone());
+    match seller_auctions_list.iter().position(|a| a.id == auction.id) {
+        Some(existing_idx) => seller_auctions_list.set(existing_idx as u32, auction.clone()),
+        None => seller_auctions_list.push_back(auction.clone()),
+    };
 
     env.storage().instance().set(seller, &seller_auctions_list);
 

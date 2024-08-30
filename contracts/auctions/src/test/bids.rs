@@ -621,7 +621,65 @@ fn multiple_auction_by_multiple_sellers() {
 
     mp_client.finalize_auction(&4);
     assert_eq!(token_client.balance(&mp_client.address), 126);
+    assert_eq!(token_client.balance(&bidder_a), 900);
     assert_eq!(token_client.balance(&bidder_b), 900);
+    assert_eq!(token_client.balance(&bidder_c), 974);
     assert_eq!(token_client.balance(&seller_c), 100);
     assert_eq!(collection_c_client.balance_of(&bidder_b, &1), 1);
+
+    // day #3
+    env.ledger().with_mut(|li| li.timestamp = DAY * 3);
+
+    mp_client.place_bid(&1, &bidder_b, &100);
+    mp_client.place_bid(&2, &bidder_c, &75);
+    mp_client.place_bid(&3, &bidder_a, &50);
+
+    // `bidder_a` has been outbid in both #1 and #2, so he gets his 100 in total back; then he
+    // places a 50 bid on #3 leaving his balance with 950
+    assert_eq!(token_client.balance(&bidder_a), 950);
+    // `bidder_b` has won auctoin #4 with a 100 bid; now he placed another bid for a 100 in auction
+    // #1
+    assert_eq!(token_client.balance(&bidder_b), 800);
+    // `bidder_c` had a bid of 26 for auction #3, but he has been outbid by `bidder_a` and after
+    // `bidder_c`places a bit for 75 he now has 925 in total
+    assert_eq!(token_client.balance(&bidder_c), 925);
+    // total of the assets locked in the contract
+    assert_eq!(token_client.balance(&mp_client.address), 225);
+
+    // day #4
+    env.ledger().with_mut(|li| li.timestamp = DAY * 4);
+    // `bidder_b` fomos and buys the item in auction #1. Right after that `bidder_a`tries to bid on
+    // that item but fails to do as the auction has ended.
+    mp_client.buy_now(&1, &bidder_b);
+    assert_eq!(
+        mp_client.try_place_bid(&1, &bidder_a, &150),
+        Err(Ok(ContractError::AuctionNotActive))
+    );
+
+    // verify the ownership
+    assert_eq!(collection_a_client.balance_of(&bidder_b, &1), 1);
+
+    // we have 2 auctions remaining: #2 and #3
+    // the last highest bid on auction #3 is from `bidder_a` so when `bidder_c` places a bet the
+    // previous bid of 50 is returned back to `bidder_a` making his total balance to 900
+    mp_client.place_bid(&2, &bidder_a, &100);
+    mp_client.place_bid(&3, &bidder_c, &100);
+
+    // day #5
+    env.ledger().with_mut(|li| li.timestamp = DAY * 5);
+
+    // the bid of `bidder_b` for 150 returns the previous bid of `bidder_a`, thus `bidder_a` has a
+    // total of 1000 again
+    mp_client.place_bid(&2, &bidder_b, &150);
+    mp_client.place_bid(&3, &bidder_a, &150);
+
+    // day #6
+    // let's count the balances again
+
+    assert_eq!(token_client.balance(&bidder_a), 850);
+    // `bidder_b` has the lowest balance, due to `buy_now`
+    assert_eq!(token_client.balance(&bidder_b), 250);
+    // `bidder_c` has been outbid by `bidder_a` the previous day, thus having his full portfolio of
+    // 1_000
+    assert_eq!(token_client.balance(&bidder_c), 1_000);
 }

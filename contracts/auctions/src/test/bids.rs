@@ -620,6 +620,7 @@ fn multiple_auction_by_multiple_sellers() {
     );
 
     mp_client.finalize_auction(&4);
+    assert_eq!(token_client.balance(&mp_client.address), 126);
     assert_eq!(token_client.balance(&bidder_b), 900);
     assert_eq!(token_client.balance(&seller_c), 100);
     assert_eq!(collection_c_client.balance_of(&bidder_b, &1), 1);

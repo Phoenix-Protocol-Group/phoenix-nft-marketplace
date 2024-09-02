@@ -139,4 +139,12 @@ pub mod utils {
             .persistent()
             .set(&DataKey::IsInitialized, &true);
     }
+
+    pub fn get_operator(env: &Env, collection: &Address) -> Result<Address, ContractError> {
+        todo!()
+    }
+
+    pub fn set_operator(env: &Env, collection: &Address) -> Result<Address, ContractError> {
+        todo!()
+    }
 }

@@ -187,12 +187,13 @@ impl Collections {
     #[allow(dead_code)]
     pub fn safe_transfer_from(
         env: Env,
+        sender: Address,
         from: Address,
         to: Address,
         id: u64,
         transfer_amount: u64,
     ) -> Result<(), ContractError> {
-        from.require_auth();
+        let operator =  
         // TODO: check if `to` is not zero address
 
         let sender_balance = get_balance_of(&env, &from, id)?;

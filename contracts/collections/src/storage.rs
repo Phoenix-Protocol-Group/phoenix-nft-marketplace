@@ -21,7 +21,7 @@ pub struct OperatorApprovalKey {
 #[contracttype]
 pub struct TransferApprovalKey {
     pub owner: Address,
-    pub mp_address: Address,
+    pub market_place: Address,
 }
 
 // Enum to represent different data keys in storage
@@ -142,58 +142,5 @@ pub mod utils {
         env.storage()
             .persistent()
             .set(&DataKey::IsInitialized, &true);
-    }
-
-    pub fn get_operator(env: &Env, collection: &Address) -> Option<Address> {
-        let maybe_operator = env.storage().persistent().get(collection).unwrap_or(None)?;
-
-        env.storage().persistent().has(&collection).then(|| {
-            env.storage().persistent().extend_ttl(
-                &collection,
-                LIFETIME_THRESHOLD,
-                BALANCE_BUMP_AMOUNT,
-            );
-        });
-
-        Some(maybe_operator)
-    }
-
-    pub fn set_operator(
-        env: &Env,
-        collection: &Address,
-        operator: &Address,
-    ) -> Result<(), ContractError> {
-        env.storage().persistent().set(&collection, operator);
-        env.storage()
-            .persistent()
-            .extend_ttl(&collection, LIFETIME_THRESHOLD, BALANCE_BUMP_AMOUNT);
-
-        Ok(())
-    }
-
-    pub fn get_approved_for_transfer_addr(env: &Env, collection: &Address) -> Option<Address> {
-        let maybe_approved_mp_address =
-            env.storage().persistent().get(collection).unwrap_or(None)?;
-
-        env.storage().persistent().has(&collection).then(|| {
-            env.storage()
-                .persistent()
-                .extend_ttl(&collection, LIFETIME_THRESHOLD, BUMP_AMOUNT)
-        });
-
-        Some(maybe_approved_mp_address)
-    }
-
-    pub fn set_approved_for_transfer_addr(
-        env: &Env,
-        collection: &Address,
-        mp_address: &Address,
-    ) -> Result<(), ContractError> {
-        env.storage().persistent().set(&collection, mp_address);
-        env.storage()
-            .persistent()
-            .extend_ttl(&collection, LIFETIME_THRESHOLD, BALANCE_BUMP_AMOUNT);
-
-        Ok(())
     }
 }

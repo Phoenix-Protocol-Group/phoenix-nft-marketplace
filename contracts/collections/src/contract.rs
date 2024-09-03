@@ -4,9 +4,8 @@ use crate::{
     error::ContractError,
     storage::{
         utils::{
-            get_admin, get_approved_for_transfer_addr, get_balance_of, get_operator,
-            is_initialized, save_admin, save_config, set_approved_for_transfer_addr,
-            set_initialized, set_operator, update_balance_of,
+            get_admin, get_balance_of, is_initialized, save_admin, save_config, set_initialized,
+            update_balance_of,
         },
         Config, DataKey, OperatorApprovalKey, TransferApprovalKey, URIValue,
     },
@@ -110,8 +109,6 @@ impl Collections {
             .persistent()
             .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
 
-        set_operator(&env, &env.current_contract_address(), &operator)?;
-
         env.events()
             .publish(("Set approval for", "Sender: "), sender);
         env.events().publish(
@@ -127,13 +124,13 @@ impl Collections {
     #[allow(dead_code)]
     pub fn set_approval_for_transfer(
         env: Env,
-        mp_address: Address,
+        market_place: Address,
         approved: bool,
     ) -> Result<(), ContractError> {
         let admin = get_admin(&env)?;
         admin.require_auth();
 
-        if admin == mp_address {
+        if admin == market_place {
             log!(
                 &env,
                 "Collection: Set approval for transfer: Trying to authorize self"
@@ -143,15 +140,13 @@ impl Collections {
 
         let data_key = DataKey::TransferApproval(TransferApprovalKey {
             owner: admin.clone(),
-            mp_address: mp_address.clone(),
+            market_place: market_place.clone(),
         });
 
         env.storage().persistent().set(&data_key, &approved);
         env.storage()
             .persistent()
             .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
-
-        set_approved_for_transfer_addr(&env, &env.current_contract_address(), &mp_address)?;
 
         env.events()
             .publish(("Set approval for transfer", "Sender: "), admin);
@@ -160,7 +155,7 @@ impl Collections {
                 "Set approval for transfer",
                 "Set approval for market place addr: ",
             ),
-            mp_address,
+            market_place,
         );
         env.events()
             .publish(("Set approval for", "New approval: "), approved);
@@ -200,18 +195,14 @@ impl Collections {
     ) -> Result<(), ContractError> {
         let admin = get_admin(&env)?;
 
-        let operator = get_operator(&env, &env.current_contract_address());
-        let approved_for_transfer =
-            get_approved_for_transfer_addr(&env, &env.current_contract_address());
-
-        if sender == admin
-            || operator.as_ref().map_or(false, |op| sender == op.clone())
-            || approved_for_transfer
-                .as_ref()
-                .map_or(false, |approved| sender == approved.clone())
-        {
-            sender.require_auth();
-        }
+        //if sender == admin
+        //    || operator.as_ref().map_or(false, |op| sender == op.clone())
+        //    || approved_for_transfer
+        //        .as_ref()
+        //        .map_or(false, |approved| sender == approved.clone())
+        //{
+        //    sender.require_auth();
+        //}
 
         let sender_balance = get_balance_of(&env, &from, id)?;
         let rcpt_balance = get_balance_of(&env, &to, id)?;

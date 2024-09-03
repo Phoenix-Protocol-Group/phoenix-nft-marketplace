@@ -55,7 +55,7 @@ pub const ADMIN: Symbol = symbol_short!("admin");
 
 pub mod utils {
 
-    use soroban_sdk::{log, panic_with_error, Address, Env, Map};
+    use soroban_sdk::{log, Address, Env, Map};
 
     use crate::{
         error::ContractError,

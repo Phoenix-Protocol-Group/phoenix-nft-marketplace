@@ -110,7 +110,7 @@ impl Collections {
             .persistent()
             .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
 
-        set_operator(&env, &env.current_contract_address(), &operator);
+        set_operator(&env, &env.current_contract_address(), &operator)?;
 
         env.events()
             .publish(("Set approval for", "Sender: "), sender);

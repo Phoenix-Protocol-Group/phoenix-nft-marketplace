@@ -136,7 +136,7 @@ fn safe_transfer_from() {
     assert_eq!(client.balance_of(&user_a, &1), 1u64);
     assert_eq!(client.balance_of(&user_b, &1), 0u64);
 
-    client.safe_transfer_from(&user_a, &user_b, &1, &1);
+    client.safe_transfer_from(&user_a, &user_a, &user_b, &1, &1);
 
     assert_eq!(client.balance_of(&user_a, &1), 0u64);
     assert_eq!(client.balance_of(&user_b, &1), 1u64);
@@ -339,7 +339,7 @@ fn should_fail_when_sender_balance_not_enough() {
 
     // try to send 10
     assert_eq!(
-        client.try_safe_transfer_from(&user_a, &user_b, &1, &10),
+        client.try_safe_transfer_from(&user_a, &user_a, &user_b, &1, &10),
         Err(Ok(ContractError::InsufficientBalance))
     )
 }

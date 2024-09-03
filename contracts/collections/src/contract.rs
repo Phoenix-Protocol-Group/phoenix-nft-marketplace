@@ -4,8 +4,9 @@ use crate::{
     error::ContractError,
     storage::{
         utils::{
-            get_admin, get_balance_of, is_initialized, save_admin, save_config, set_initialized,
-            update_balance_of,
+            get_admin, get_approved_for_transfer_addr, get_balance_of, get_operator,
+            is_initialized, save_admin, save_config, set_approved_for_transfer_addr,
+            set_initialized, set_operator, update_balance_of,
         },
         Config, DataKey, OperatorApprovalKey, TransferApprovalKey, URIValue,
     },
@@ -17,7 +18,7 @@ pub struct Collections;
 
 #[contractimpl]
 impl Collections {
-    // takes an address and uses it as an administrator
+    // takes an address and uses it as an administrator/owner of the collection
     #[allow(dead_code)]
     pub fn initialize(
         env: Env,
@@ -81,7 +82,7 @@ impl Collections {
         Ok(batch_balances)
     }
 
-    // Grants or revokes permission to `operator` to manage the caller's tokens
+    // Grants or revokes permission to `operator` to manage the caller's assets
     #[allow(dead_code)]
     pub fn set_approval_for_all(
         env: Env,
@@ -108,6 +109,8 @@ impl Collections {
         env.storage()
             .persistent()
             .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+        set_operator(&env, &env.current_contract_address(), &operator);
 
         env.events()
             .publish(("Set approval for", "Sender: "), sender);
@@ -147,6 +150,8 @@ impl Collections {
         env.storage()
             .persistent()
             .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+
+        set_approved_for_transfer_addr(&env, &env.current_contract_address(), &mp_address)?;
 
         env.events()
             .publish(("Set approval for transfer", "Sender: "), admin);
@@ -193,8 +198,20 @@ impl Collections {
         id: u64,
         transfer_amount: u64,
     ) -> Result<(), ContractError> {
-        let operator =  
-        // TODO: check if `to` is not zero address
+        let admin = get_admin(&env)?;
+
+        let operator = get_operator(&env, &env.current_contract_address());
+        let approved_for_transfer =
+            get_approved_for_transfer_addr(&env, &env.current_contract_address());
+
+        if sender == admin
+            || operator.as_ref().map_or(false, |op| sender == op.clone())
+            || approved_for_transfer
+                .as_ref()
+                .map_or(false, |approved| sender == approved.clone())
+        {
+            sender.require_auth();
+        }
 
         let sender_balance = get_balance_of(&env, &from, id)?;
         let rcpt_balance = get_balance_of(&env, &to, id)?;

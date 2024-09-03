@@ -17,4 +17,6 @@ pub enum ContractError {
     NftIdNotFound = 10,
     AlreadyInitialized = 11,
     EntryDoesNotExist = 12,
+    OperatorNotFound = 13,
+    CollectionHasNoApprovedMarketplace = 14,
 }

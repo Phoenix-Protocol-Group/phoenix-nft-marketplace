@@ -57,10 +57,7 @@ pub mod utils {
 
     use soroban_sdk::{log, Address, Env, Map};
 
-    use crate::{
-        error::ContractError,
-        ttl::{BALANCE_BUMP_AMOUNT, BUMP_AMOUNT, LIFETIME_THRESHOLD},
-    };
+    use crate::error::ContractError;
 
     use super::{Balance, Config, DataKey, TokenId, ADMIN};
 

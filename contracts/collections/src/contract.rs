@@ -183,6 +183,29 @@ impl Collections {
         Ok(result)
     }
 
+    // Returns true if `operator` is approved to manage `owner`'s tokens
+    #[allow(dead_code)]
+    pub fn is_approved_for_transfer(
+        env: Env,
+        owner: Address,
+        market_place: Address,
+    ) -> Result<bool, ContractError> {
+        let data_key = DataKey::TransferApproval(TransferApprovalKey {
+            owner,
+            market_place,
+        });
+
+        let result = env.storage().persistent().get(&data_key).unwrap_or(false);
+
+        env.storage().persistent().has(&data_key).then(|| {
+            env.storage()
+                .persistent()
+                .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT)
+        });
+
+        Ok(result)
+    }
+
     // Transfers `amount` tokens of token type `id` from `from` to `to`
     #[allow(dead_code)]
     pub fn safe_transfer_from(
@@ -195,14 +218,14 @@ impl Collections {
     ) -> Result<(), ContractError> {
         let admin = get_admin(&env)?;
 
-        //if sender == admin
-        //    || operator.as_ref().map_or(false, |op| sender == op.clone())
-        //    || approved_for_transfer
-        //        .as_ref()
-        //        .map_or(false, |approved| sender == approved.clone())
-        //{
-        //    sender.require_auth();
-        //}
+        let is_sender_operator =
+            Self::is_approved_for_all(env.clone(), admin.clone(), sender.clone())?;
+        let is_sender_market_place =
+            Self::is_approved_for_transfer(env.clone(), admin.clone(), sender.clone())?;
+
+        if sender == admin || is_sender_operator || is_sender_market_place {
+            sender.require_auth();
+        }
 
         let sender_balance = get_balance_of(&env, &from, id)?;
         let rcpt_balance = get_balance_of(&env, &to, id)?;

@@ -2,7 +2,8 @@ extern crate std;
 use soroban_sdk::{testutils::Address as _, token, Address, Env};
 
 use crate::{
-    collection::{self},
+    collection,
+    contract::{MarketplaceContract, MarketplaceContractClient},
     error::ContractError,
     storage::{Auction, AuctionStatus, ItemInfo},
     test::setup::{create_multiple_auctions, generate_marketplace_and_collection_client, WEEKLY},
@@ -18,11 +19,12 @@ fn initialize_and_update_admin_should_work() {
 
     let admin = Address::generate(&env);
     let new_admin = Address::generate(&env);
-    let seller = Address::generate(&env);
 
-    let (mp_client, _) = generate_marketplace_and_collection_client(&env, &seller, None, None);
+    let token_client = deploy_token_contract(&env, &admin);
+    let mp_client =
+        MarketplaceContractClient::new(&env, &env.register_contract(None, MarketplaceContract {}));
 
-    mp_client.initialize(&admin);
+    mp_client.initialize(&admin, &token_client.address);
     mp_client.update_admin(&new_admin);
 }
 
@@ -33,9 +35,14 @@ fn mp_should_create_auction() {
     env.budget().reset_unlimited();
     let seller = Address::generate(&env);
 
-    let (mp_client, nft_collection_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
     let token_client = token::Client::new(&env, &Address::generate(&env));
+    let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     let item_info = ItemInfo {
         collection_addr: nft_collection_client.address.clone(),
@@ -46,7 +53,7 @@ fn mp_should_create_auction() {
 
     // check if we have minted two
     assert_eq!(nft_collection_client.balance_of(&seller, &1), 2);
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     assert_eq!(
         mp_client.get_auction(&1),
@@ -72,11 +79,17 @@ fn initialize_twice_should_fail() {
     let admin = Address::generate(&env);
     let seller = Address::generate(&env);
 
-    let (mp_client, _) = generate_marketplace_and_collection_client(&env, &seller, None, None);
+    let token_client = deploy_token_contract(&env, &admin);
+    let (mp_client, _) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
-    mp_client.initialize(&admin);
     assert_eq!(
-        mp_client.try_initialize(&admin),
+        mp_client.try_initialize(&admin, &token_client.address),
         Err(Ok(ContractError::AlreadyInitialized))
     );
 }
@@ -88,10 +101,16 @@ fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
     env.budget().reset_unlimited();
     let seller = Address::generate(&env);
 
+    let token_client = token::Client::new(&env, &Address::generate(&env));
     // we don't want to use the collection from the setup method, as this will automatically
     // mint an item for the auction.
-    let (mp_client, _) = generate_marketplace_and_collection_client(&env, &seller, None, None);
-    let token_client = token::Client::new(&env, &Address::generate(&env));
+    let (mp_client, _) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     let collection_addr = env.register_contract_wasm(None, collection::WASM);
 
@@ -110,7 +129,7 @@ fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
     };
 
     assert_eq!(
-        mp_client.try_create_auction(&item_info, &seller, &WEEKLY, &token_client.address),
+        mp_client.try_create_auction(&item_info, &seller, &WEEKLY),
         Err(Ok(ContractError::NotEnoughBalance))
     );
 }
@@ -124,16 +143,15 @@ fn mp_should_be_able_create_multiple_auctions_and_query_them_with_pagination() {
     let seller = Address::generate(&env);
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
 
-    let (mp_client, collection_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
-
-    create_multiple_auctions(
-        &mp_client,
+    let (mp_client, collection_client) = generate_marketplace_and_collection_client(
+        &env,
         &seller,
         &token_client.address,
-        &collection_client,
-        25,
+        None,
+        None,
     );
+
+    create_multiple_auctions(&mp_client, &seller, &collection_client, 25);
 
     //we have created 25 auctions and if we don't specify anything the default search would be
     //from 1..=10
@@ -185,7 +203,14 @@ fn get_auction_by_id_should_return_an_err_when_id_not_found() {
     env.budget().reset_unlimited();
     let seller = Address::generate(&env);
 
-    let (mp_client, _) = generate_marketplace_and_collection_client(&env, &seller, None, None);
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    let (mp_client, _) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     assert_eq!(
         mp_client.try_get_auction(&5),
@@ -200,7 +225,14 @@ fn get_auction_by_seller_should_return_an_err_when_id_not_found() {
     env.budget().reset_unlimited();
     let seller = Address::generate(&env);
 
-    let (mp_client, _) = generate_marketplace_and_collection_client(&env, &seller, None, None);
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    let (mp_client, _) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     assert_eq!(
         mp_client.try_get_auctions_by_seller(&Address::generate(&env)),

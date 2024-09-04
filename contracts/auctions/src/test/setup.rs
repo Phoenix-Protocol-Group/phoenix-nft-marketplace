@@ -23,12 +23,15 @@ pub mod auctions_wasm {
 
 pub fn generate_marketplace_and_collection_client<'a>(
     env: &Env,
-    seller: &Address,
+    admin: &Address,
+    currency: &Address,
     name: Option<String>,
     symbol: Option<String>,
 ) -> (MarketplaceContractClient<'a>, collection::Client<'a>) {
     let mp_client =
         MarketplaceContractClient::new(env, &env.register_contract(None, MarketplaceContract {}));
+
+    mp_client.initialize(admin, currency);
 
     let alt_name = String::from_str(env, "Stellar kitties");
     let alt_symbol = String::from_str(env, "STK");
@@ -38,8 +41,8 @@ pub fn generate_marketplace_and_collection_client<'a>(
     let collection_addr = env.register_contract_wasm(None, collection::WASM);
 
     let collection_client = collection::Client::new(env, &collection_addr);
-    collection_client.initialize(seller, &name, &symbol);
-    collection_client.mint(seller, seller, &1, &2);
+    collection_client.initialize(admin, &name, &symbol);
+    collection_client.mint(admin, admin, &1, &2);
 
     (mp_client, collection_client)
 }
@@ -47,7 +50,6 @@ pub fn generate_marketplace_and_collection_client<'a>(
 pub fn create_multiple_auctions(
     mp_client: &crate::contract::MarketplaceContractClient,
     seller: &Address,
-    currency: &Address,
     collection_client: &Client,
     number_of_auctions_to_make: usize,
 ) {
@@ -60,7 +62,7 @@ pub fn create_multiple_auctions(
             minimum_price: None,
             buy_now_price: None,
         };
-        mp_client.create_auction(&item_info, seller, &WEEKLY, currency);
+        mp_client.create_auction(&item_info, seller, &WEEKLY);
     }
 }
 

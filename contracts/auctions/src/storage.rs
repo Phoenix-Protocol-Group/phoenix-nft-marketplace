@@ -20,6 +20,7 @@ pub enum DataKey {
     AuctionId,
     AllAuctions,
     HighestBid(u64),
+    Currency,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -267,6 +268,32 @@ pub fn set_highest_bid(
     );
 
     Ok(())
+}
+
+pub fn save_currency(env: &Env, currency: Address) {
+    env.storage()
+        .persistent()
+        .set(&DataKey::Currency, &currency);
+
+    env.storage()
+        .persistent()
+        .extend_ttl(&DataKey::Currency, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+}
+
+pub fn get_currency(env: &Env) -> Result<Address, ContractError> {
+    let currency = env
+        .storage()
+        .persistent()
+        .get(&DataKey::Currency)
+        .ok_or(ContractError::CurrencyNotFound)?;
+
+    env.storage().persistent().has(&DataKey::Currency).then(|| {
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Currency, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+    });
+
+    Ok(currency)
 }
 
 #[cfg(test)]

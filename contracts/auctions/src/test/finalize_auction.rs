@@ -31,8 +31,13 @@ fn finalize_auction() {
     token_client.mint(&bidder_b, &100);
     token_client.mint(&bidder_c, &100);
 
-    let (mp_client, collections_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
+    let (mp_client, collections_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     collections_client.mint(&seller, &seller, &1, &1);
 
@@ -43,7 +48,7 @@ fn finalize_auction() {
         buy_now_price: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     // 4 hours after the start of the auctions `bidder_a` places a bid
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS);
@@ -113,9 +118,14 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
     let seller = Address::generate(&env);
     let bidder = Address::generate(&env);
 
-    let (mp_client, nft_collection_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     token_client.mint(&bidder, &50);
 
@@ -126,7 +136,7 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
         buy_now_price: Some(50),
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     mp_client.place_bid(&1, &bidder, &50);
 
@@ -152,9 +162,14 @@ fn finalyze_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
     let seller = Address::generate(&env);
     let bidder_a = Address::generate(&env);
 
-    let (mp_client, nft_collection_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
     token_client.mint(&bidder_a, &5);
 
     let item_info = ItemInfo {
@@ -164,7 +179,7 @@ fn finalyze_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
         buy_now_price: Some(50),
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     // we got the highest bid on day #1
     env.ledger().with_mut(|li| li.timestamp = DAY);
@@ -202,9 +217,14 @@ fn fail_to_finalyze_auction_when_not_correct_state() {
     env.budget().reset_unlimited();
     let seller = Address::generate(&env);
 
-    let (mp_client, nft_collection_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
     let token_client = token::Client::new(&env, &Address::generate(&env));
+    let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     let item_info = ItemInfo {
         collection_addr: nft_collection_client.address.clone(),
@@ -213,7 +233,7 @@ fn fail_to_finalyze_auction_when_not_correct_state() {
         buy_now_price: Some(50),
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     env.ledger().with_mut(|li| li.timestamp = DAY);
 

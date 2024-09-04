@@ -25,9 +25,14 @@ fn should_place_a_bid() {
     let bidder_b = Address::generate(&env);
     let bidder_c = Address::generate(&env);
 
-    let (mp_client, nft_collection_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
     token_client.mint(&bidder_a, &10i128);
     token_client.mint(&bidder_b, &20i128);
     token_client.mint(&bidder_c, &40i128);
@@ -39,7 +44,7 @@ fn should_place_a_bid() {
         buy_now_price: Some(50),
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     mp_client.place_bid(&1, &bidder_a, &10);
     assert_eq!(
@@ -91,9 +96,14 @@ fn fail_to_place_bid_when_auction_inactive() {
     let seller = Address::generate(&env);
     let bidder_a = Address::generate(&env);
 
-    let (mp_client, nft_collection_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
     let token_client = token::Client::new(&env, &Address::generate(&env));
+    let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     let item_info = ItemInfo {
         collection_addr: nft_collection_client.address.clone(),
@@ -102,7 +112,7 @@ fn fail_to_place_bid_when_auction_inactive() {
         buy_now_price: Some(50),
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     env.ledger().with_mut(|li| li.timestamp = WEEKLY + DAY);
 
@@ -127,8 +137,13 @@ fn seller_tries_to_place_a_bid_should_fail() {
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
     token_client.mint(&seller, &1);
-    let (mp_client, collection_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
+    let (mp_client, collection_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     collection_client.mint(&seller, &seller, &1, &1);
 
@@ -139,7 +154,7 @@ fn seller_tries_to_place_a_bid_should_fail() {
         buy_now_price: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     env.ledger().with_mut(|li| li.timestamp = DAY);
 
@@ -163,8 +178,13 @@ fn buy_now_should_fail_when_auction_not_active() {
 
     token_client.mint(&fomo_buyer, &50);
 
-    let (mp_client, collections_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
+    let (mp_client, collections_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     collections_client.mint(&seller, &seller, &1, &1);
 
@@ -175,7 +195,7 @@ fn buy_now_should_fail_when_auction_not_active() {
         buy_now_price: Some(50),
     };
 
-    mp_client.create_auction(&item_info, &seller, &DAY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &DAY);
 
     env.ledger().with_mut(|li| li.timestamp = WEEKLY);
 
@@ -199,8 +219,13 @@ fn buy_now_should_fail_when_no_buy_now_price_has_been_set() {
 
     token_client.mint(&fomo_buyer, &50);
 
-    let (mp_client, collections_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
+    let (mp_client, collections_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     collections_client.mint(&seller, &seller, &1, &1);
 
@@ -211,7 +236,7 @@ fn buy_now_should_fail_when_no_buy_now_price_has_been_set() {
         buy_now_price: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &DAY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &DAY);
 
     assert_eq!(
         mp_client.try_buy_now(&1, &fomo_buyer),
@@ -237,8 +262,13 @@ fn buy_now() {
     token_client.mint(&bidder_a, &100);
     token_client.mint(&bidder_b, &100);
 
-    let (mp_client, collections_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
+    let (mp_client, collections_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     collections_client.mint(&seller, &seller, &1, &1);
 
@@ -249,7 +279,7 @@ fn buy_now() {
         buy_now_price: Some(50),
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     // 4 hours in and we have a first highest bid
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS);
@@ -325,8 +355,13 @@ fn pause_changes_status_and_second_attempt_fails_to_pause() {
 
     let token_client = deploy_token_contract(&env, &admin);
 
-    let (mp_client, collections_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
+    let (mp_client, collections_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     collections_client.mint(&seller, &seller, &1, &1);
 
@@ -337,7 +372,7 @@ fn pause_changes_status_and_second_attempt_fails_to_pause() {
         buy_now_price: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     env.ledger().with_mut(|li| li.timestamp = DAY);
 
@@ -371,8 +406,13 @@ fn pause_after_enddate_should_fail() {
 
     let token_client = deploy_token_contract(&env, &admin);
 
-    let (mp_client, collections_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
+    let (mp_client, collections_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     collections_client.mint(&seller, &seller, &1, &1);
 
@@ -383,7 +423,7 @@ fn pause_after_enddate_should_fail() {
         buy_now_price: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     env.ledger().with_mut(|li| li.timestamp = WEEKLY + DAY);
 
@@ -404,8 +444,13 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
 
     let token_client = deploy_token_contract(&env, &admin);
 
-    let (mp_client, collections_client) =
-        generate_marketplace_and_collection_client(&env, &seller, None, None);
+    let (mp_client, collections_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
 
     collections_client.mint(&seller, &seller, &1, &1);
 
@@ -416,7 +461,7 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
         buy_now_price: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY, &token_client.address);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     env.ledger().with_mut(|li| li.timestamp = DAY);
 
@@ -467,7 +512,7 @@ fn multiple_auction_by_multiple_sellers() {
     let mp_client =
         MarketplaceContractClient::new(&env, &env.register_contract(None, MarketplaceContract {}));
 
-    mp_client.initialize(&admin);
+    mp_client.initialize(&admin, &token_client.address);
 
     // ============ Collections client setup ============
     let collection_a_client =
@@ -487,12 +532,7 @@ fn multiple_auction_by_multiple_sellers() {
 
     collection_a_client.mint(&seller_a, &seller_a, &2, &1);
 
-    mp_client.create_auction(
-        &first_item_info_seller_a,
-        &seller_a,
-        &WEEKLY,
-        &token_client.address,
-    );
+    mp_client.create_auction(&first_item_info_seller_a, &seller_a, &WEEKLY);
 
     let second_item_info_seller_a = ItemInfo {
         collection_addr: collection_a_client.address.clone(),
@@ -501,12 +541,7 @@ fn multiple_auction_by_multiple_sellers() {
         buy_now_price: Some(900),
     };
 
-    mp_client.create_auction(
-        &second_item_info_seller_a,
-        &seller_a,
-        &WEEKLY,
-        &token_client.address,
-    );
+    mp_client.create_auction(&second_item_info_seller_a, &seller_a, &WEEKLY);
 
     let item_info_seller_b = ItemInfo {
         collection_addr: collection_b_client.address.clone(),
@@ -515,12 +550,7 @@ fn multiple_auction_by_multiple_sellers() {
         buy_now_price: None,
     };
 
-    mp_client.create_auction(
-        &item_info_seller_b,
-        &seller_b,
-        &WEEKLY,
-        &token_client.address,
-    );
+    mp_client.create_auction(&item_info_seller_b, &seller_b, &WEEKLY);
 
     let item_info_seller_c = ItemInfo {
         collection_addr: collection_c_client.address.clone(),
@@ -529,7 +559,7 @@ fn multiple_auction_by_multiple_sellers() {
         buy_now_price: None,
     };
 
-    mp_client.create_auction(&item_info_seller_c, &seller_c, &DAY, &token_client.address);
+    mp_client.create_auction(&item_info_seller_c, &seller_c, &DAY);
 
     // ============ Assert everything is before bidding ============
 

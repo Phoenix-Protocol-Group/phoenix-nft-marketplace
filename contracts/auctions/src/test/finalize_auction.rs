@@ -200,7 +200,6 @@ fn finalyze_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
             item_info,
             seller,
             highest_bid: Some(5),
-            highest_bidder: bidder_a.clone(),
             end_time: WEEKLY,
             status: AuctionStatus::Ended,
             currency: token_client.address.clone()

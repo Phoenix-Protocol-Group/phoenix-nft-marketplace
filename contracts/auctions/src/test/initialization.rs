@@ -62,7 +62,6 @@ fn mp_should_create_auction() {
             item_info,
             seller: seller.clone(),
             highest_bid: None,
-            highest_bidder: seller,
             end_time: WEEKLY,
             status: AuctionStatus::Active,
             currency: token_client.address

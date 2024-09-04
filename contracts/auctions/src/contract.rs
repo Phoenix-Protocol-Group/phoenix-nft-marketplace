@@ -7,7 +7,7 @@ use crate::{
         generate_auction_id, get_admin, get_auction_by_id, get_auctions, get_auctions_by_seller_id,
         get_currency, get_highest_bid, is_initialized, save_admin, save_auction_by_id,
         save_auction_by_seller, save_currency, set_highest_bid, set_initialized, update_admin,
-        update_auction, validate_input_params, Auction, AuctionStatus, ItemInfo,
+        update_auction, validate_input_params, Auction, AuctionStatus, HighestBid, ItemInfo,
     },
     token,
 };
@@ -408,10 +408,10 @@ impl MarketplaceContract {
     }
 
     #[allow(dead_code)]
-    pub fn get_highest_bid(env: Env, auction_id: u64) -> Result<Option<u64>, ContractError> {
-        let auction = get_auction_by_id(&env, auction_id)?;
+    pub fn get_highest_bid(env: Env, auction_id: u64) -> Result<HighestBid, ContractError> {
+        let highest_bid_info = get_highest_bid(&env, auction_id)?;
 
-        Ok(auction.highest_bid)
+        Ok(highest_bid_info)
     }
 
     #[allow(dead_code)]

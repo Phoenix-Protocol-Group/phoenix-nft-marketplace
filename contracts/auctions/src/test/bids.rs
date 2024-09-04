@@ -6,7 +6,7 @@ use soroban_sdk::{
 use crate::{
     contract::{MarketplaceContract, MarketplaceContractClient},
     error::ContractError,
-    storage::{Auction, AuctionStatus, ItemInfo},
+    storage::{Auction, AuctionStatus, HighestBid, ItemInfo},
     test::setup::{
         deploy_token_contract, generate_marketplace_and_collection_client, DAY, FOUR_HOURS, WEEKLY,
     },
@@ -49,7 +49,10 @@ fn should_place_a_bid() {
     mp_client.place_bid(&1, &bidder_a, &10);
     assert_eq!(
         mp_client.get_highest_bid(&1),
-        (Some(10u64), bidder_a.clone())
+        HighestBid {
+            bid: 10u64,
+            bidder: bidder_a.clone()
+        }
     );
     assert_eq!(token_client.balance(&mp_client.address), 10i128);
     assert_eq!(token_client.balance(&bidder_a), 0i128);
@@ -57,7 +60,10 @@ fn should_place_a_bid() {
     mp_client.place_bid(&1, &bidder_b, &20);
     assert_eq!(
         mp_client.get_highest_bid(&1),
-        (Some(20u64), bidder_b.clone())
+        HighestBid {
+            bid: 20u64,
+            bidder: bidder_b.clone()
+        }
     );
     assert_eq!(token_client.balance(&mp_client.address), 20i128);
     assert_eq!(token_client.balance(&bidder_a), 10i128);
@@ -74,13 +80,19 @@ fn should_place_a_bid() {
 
     assert_eq!(
         mp_client.get_highest_bid(&1),
-        (Some(20u64), bidder_b.clone())
+        HighestBid {
+            bid: 20u64,
+            bidder: bidder_b.clone()
+        }
     );
 
     mp_client.place_bid(&1, &bidder_c, &40);
     assert_eq!(
         mp_client.get_highest_bid(&1),
-        (Some(40u64), bidder_c.clone())
+        HighestBid {
+            bid: 40u64,
+            bidder: bidder_c.clone()
+        }
     );
     assert_eq!(token_client.balance(&mp_client.address), 40i128);
     assert_eq!(token_client.balance(&bidder_a), 10i128);
@@ -334,7 +346,6 @@ fn buy_now() {
             item_info,
             seller,
             highest_bid: Some(50),
-            highest_bidder: fomo_buyer.clone(),
             end_time: WEEKLY,
             status: AuctionStatus::Ended,
             currency: token_client.address
@@ -572,7 +583,6 @@ fn multiple_auction_by_multiple_sellers() {
                 item_info: first_item_info_seller_a.clone(),
                 seller: seller_a.clone(),
                 highest_bid: None,
-                highest_bidder: seller_a.clone(),
                 end_time: WEEKLY,
                 status: AuctionStatus::Active,
                 currency: token_client.address.clone()
@@ -582,7 +592,6 @@ fn multiple_auction_by_multiple_sellers() {
                 item_info: second_item_info_seller_a.clone(),
                 seller: seller_a.clone(),
                 highest_bid: None,
-                highest_bidder: seller_a.clone(),
                 end_time: WEEKLY,
                 status: AuctionStatus::Active,
                 currency: token_client.address.clone()
@@ -599,7 +608,6 @@ fn multiple_auction_by_multiple_sellers() {
                 item_info: item_info_seller_b.clone(),
                 seller: seller_b.clone(),
                 highest_bid: None,
-                highest_bidder: seller_b.clone(),
                 end_time: WEEKLY,
                 status: AuctionStatus::Active,
                 currency: token_client.address.clone()
@@ -616,7 +624,6 @@ fn multiple_auction_by_multiple_sellers() {
                 item_info: item_info_seller_c.clone(),
                 seller: seller_c.clone(),
                 highest_bid: None,
-                highest_bidder: seller_c.clone(),
                 end_time: DAY,
                 status: AuctionStatus::Active,
                 currency: token_client.address.clone()
@@ -732,7 +739,6 @@ fn multiple_auction_by_multiple_sellers() {
                 item_info: first_item_info_seller_a.clone(),
                 seller: seller_a.clone(),
                 highest_bid: Some(500),
-                highest_bidder: bidder_b.clone(),
                 end_time: WEEKLY,
                 status: AuctionStatus::Ended,
                 currency: token_client.address.clone()
@@ -742,7 +748,6 @@ fn multiple_auction_by_multiple_sellers() {
                 item_info: second_item_info_seller_a,
                 seller: seller_a.clone(),
                 highest_bid: Some(150),
-                highest_bidder: bidder_b.clone(),
                 end_time: WEEKLY,
                 status: AuctionStatus::Ended,
                 currency: token_client.address.clone()
@@ -759,7 +764,6 @@ fn multiple_auction_by_multiple_sellers() {
                 item_info: item_info_seller_b,
                 seller: seller_b.clone(),
                 highest_bid: Some(150),
-                highest_bidder: bidder_a.clone(),
                 end_time: WEEKLY,
                 status: AuctionStatus::Ended,
                 currency: token_client.address.clone()
@@ -776,7 +780,6 @@ fn multiple_auction_by_multiple_sellers() {
                 item_info: item_info_seller_c,
                 seller: seller_c.clone(),
                 highest_bid: Some(100),
-                highest_bidder: bidder_b.clone(),
                 end_time: DAY,
                 status: AuctionStatus::Ended,
                 currency: token_client.address.clone()

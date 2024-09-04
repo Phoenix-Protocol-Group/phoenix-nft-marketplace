@@ -119,7 +119,7 @@ impl MarketplaceContract {
         let token_client = token::Client::new(&env, &auction.currency);
 
         match auction.highest_bid {
-            Some(old_highest_bid) if bid_amount > old_highest_bid => {
+            Some(current_highest_bid) if bid_amount > current_highest_bid => {
                 // refund the previous highest bidder
                 let old_bid_info = get_highest_bid(&env, auction_id)?;
 

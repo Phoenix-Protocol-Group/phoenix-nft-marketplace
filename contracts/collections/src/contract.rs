@@ -153,7 +153,7 @@ impl Collections {
         env.events().publish(
             (
                 "Set approval for transfer",
-                "Set approval for market place addr: ",
+                "Set approval for operator addr: ",
             ),
             operator,
         );

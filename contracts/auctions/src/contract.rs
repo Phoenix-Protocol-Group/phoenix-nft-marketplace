@@ -176,9 +176,6 @@ impl MarketplaceContract {
     #[allow(dead_code)]
     pub fn finalize_auction(env: Env, auction_id: u64) -> Result<(), ContractError> {
         let mut auction = get_auction_by_id(&env, auction_id)?;
-        auction.seller.require_auth();
-
-        let token_client = token::Client::new(&env, &auction.currency);
 
         if auction.status != AuctionStatus::Active {
             log!(
@@ -195,6 +192,8 @@ impl MarketplaceContract {
             );
             return Err(ContractError::AuctionNotFinished);
         }
+
+        let token_client = token::Client::new(&env, &auction.currency);
 
         if auction
             .item_info

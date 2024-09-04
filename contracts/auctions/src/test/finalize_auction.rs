@@ -15,7 +15,7 @@ use crate::{
 #[test]
 fn finalize_auction() {
     let env = Env::default();
-    env.mock_all_auths();
+    env.mock_all_auths_allowing_non_root_auth();
     env.budget().reset_unlimited();
 
     let admin = Address::generate(&env);
@@ -154,7 +154,7 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
     assert_eq!(token_client.balance(&bidder), 0i128);
 }
 #[test]
-fn finalyze_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
+fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
     let env = Env::default();
     env.mock_all_auths();
     env.budget().reset_unlimited();

@@ -39,7 +39,6 @@ pub struct Auction {
     pub item_info: ItemInfo,
     pub seller: Address,
     pub highest_bid: Option<u64>,
-    pub highest_bidder: Address,
     pub end_time: u64,
     pub status: AuctionStatus,
     pub currency: Address,

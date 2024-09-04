@@ -75,7 +75,6 @@ impl MarketplaceContract {
             seller: seller.clone(),
             highest_bid: None,
             // we use the seller's address as we cannot add `Option<Address>` in the struct
-            highest_bidder: seller.clone(),
             end_time,
             status: AuctionStatus::Active,
             currency,
@@ -142,7 +141,6 @@ impl MarketplaceContract {
                 //TODO: in case we have separate storage isn't the two below
                 //redundant?
                 auction.highest_bid = Some(bid_amount);
-                auction.highest_bidder = bidder;
                 update_auction(&env, auction_id, auction.clone())?;
                 save_auction_by_id(&env, auction_id, &auction)?;
                 save_auction_by_seller(&env, &auction.seller, &auction)?;
@@ -166,7 +164,6 @@ impl MarketplaceContract {
 
                 // Update auction state
                 auction.highest_bid = Some(bid_amount);
-                auction.highest_bidder = bidder;
                 update_auction(&env, auction_id, auction.clone())?;
                 save_auction_by_id(&env, auction_id, &auction)?;
                 save_auction_by_seller(&env, &auction.seller, &auction)?;
@@ -252,7 +249,7 @@ impl MarketplaceContract {
         let nft_client = collection::Client::new(&env, &auction.item_info.collection_addr);
         nft_client.safe_transfer_from(
             &auction.seller,
-            &auction.highest_bidder,
+            &oldest_bid.bidder,
             &auction.item_info.item_id,
             &1,
         );
@@ -316,7 +313,6 @@ impl MarketplaceContract {
         );
 
         auction.status = AuctionStatus::Ended;
-        auction.highest_bidder = buyer;
         auction.highest_bid = Some(
             auction
                 .item_info
@@ -412,13 +408,10 @@ impl MarketplaceContract {
     }
 
     #[allow(dead_code)]
-    pub fn get_highest_bid(
-        env: Env,
-        auction_id: u64,
-    ) -> Result<(Option<u64>, Address), ContractError> {
+    pub fn get_highest_bid(env: Env, auction_id: u64) -> Result<Option<u64>, ContractError> {
         let auction = get_auction_by_id(&env, auction_id)?;
 
-        Ok((auction.highest_bid, auction.highest_bidder))
+        Ok(auction.highest_bid)
     }
 
     #[allow(dead_code)]

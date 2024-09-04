@@ -523,3 +523,27 @@ fn uri_should_fail_when_none_set() {
 
     assert_eq!(client.try_uri(&1), Err(Ok(ContractError::NoUriSet)))
 }
+
+#[test]
+fn should_transfer_when_sender_is_operator() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let user_a = Address::generate(&env);
+    let user_b = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    client.mint(&admin, &user_a, &1, &1);
+    client.set_approval_for_all(&admin, &operator, &true);
+
+    assert_eq!(client.balance_of(&user_a, &1), 1u64);
+    assert_eq!(client.balance_of(&user_b, &1), 0u64);
+
+    client.safe_transfer_from(&operator, &user_a, &user_b, &1, &1);
+
+    assert_eq!(client.balance_of(&user_a, &1), 0u64);
+    assert_eq!(client.balance_of(&user_b, &1), 1u64);
+}

@@ -186,7 +186,7 @@ fn burning() {
     collectoins_client.mint(&admin, &user, &1, &2);
     assert_eq!(collectoins_client.balance_of(&user, &1), 2);
 
-    collectoins_client.burn(&user, &1, &1);
+    collectoins_client.burn(&admin, &user, &1, &1);
     assert_eq!(collectoins_client.balance_of(&user, &1), 1);
 }
 
@@ -223,6 +223,7 @@ fn batch_burning() {
     );
 
     collections_client.burn_batch(
+        &admin,
         &user,
         &vec![&env, 1, 2, 3, 4, 5],
         &vec![&env, 5, 10, 15, 20, 25],
@@ -282,7 +283,7 @@ fn set_collection_uri_should_work() {
         Err(Ok(ContractError::NoUriSet))
     );
     let uri = Bytes::from_slice(&env, &[42]);
-    client.set_collection_uri(&uri);
+    client.set_collection_uri(&user, &uri);
 
     assert_eq!(client.collection_uri(), URIValue { uri });
 }
@@ -464,7 +465,7 @@ fn burn_should_fail_when_not_enough_balance() {
     let client = initialize_collection_contract(&env, Some(&user), None, None);
 
     assert_eq!(
-        client.try_burn(&user, &1, &1),
+        client.try_burn(&user, &user, &1, &1),
         Err(Ok(ContractError::InsufficientBalance))
     );
 }
@@ -478,7 +479,7 @@ fn burn_batch_should_fail_when_vec_length_missmatch() {
     let client = initialize_collection_contract(&env, Some(&user), None, None);
 
     assert_eq!(
-        client.try_burn_batch(&user, &vec![&env, 1, 2], &vec![&env, 1]),
+        client.try_burn_batch(&user, &user, &vec![&env, 1, 2], &vec![&env, 1]),
         Err(Ok(ContractError::IdsAmountsLengthMismatch))
     );
 }
@@ -492,7 +493,7 @@ fn burn_batch_should_fail_when_not_enough_balance() {
     let client = initialize_collection_contract(&env, Some(&user), None, None);
 
     assert_eq!(
-        client.try_burn_batch(&user, &vec![&env, 1], &vec![&env, 1]),
+        client.try_burn_batch(&user, &user, &vec![&env, 1], &vec![&env, 1]),
         Err(Ok(ContractError::InsufficientBalance))
     );
 }

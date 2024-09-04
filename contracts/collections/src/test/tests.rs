@@ -136,7 +136,7 @@ fn safe_transfer_from() {
     assert_eq!(client.balance_of(&user_a, &1), 1u64);
     assert_eq!(client.balance_of(&user_b, &1), 0u64);
 
-    client.safe_transfer_from(&user_a, &user_a, &user_b, &1, &1);
+    client.safe_transfer_from(&admin, &user_a, &user_b, &1, &1);
 
     assert_eq!(client.balance_of(&user_a, &1), 0u64);
     assert_eq!(client.balance_of(&user_b, &1), 1u64);
@@ -166,7 +166,7 @@ fn safe_batch_transfer() {
         vec![&env, 5, 0, 0, 0, 0]
     );
 
-    client.safe_batch_transfer_from(&user_a, &user_b, &ids, &amounts);
+    client.safe_batch_transfer_from(&admin, &user_a, &user_b, &ids, &amounts);
     assert_eq!(
         client.balance_of_batch(&accounts, &ids),
         vec![&env, 0, 5, 0, 0, 0]
@@ -339,7 +339,7 @@ fn should_fail_when_sender_balance_not_enough() {
 
     // try to send 10
     assert_eq!(
-        client.try_safe_transfer_from(&user_a, &user_a, &user_b, &1, &10),
+        client.try_safe_transfer_from(&admin, &user_a, &user_b, &1, &10),
         Err(Ok(ContractError::InsufficientBalance))
     )
 }
@@ -360,6 +360,7 @@ fn safe_batch_transfer_should_fail_when_id_mismatch() {
 
     assert_eq!(
         client.try_safe_batch_transfer_from(
+            &admin,
             &user_a,
             &Address::generate(&env),
             &ids,
@@ -394,6 +395,7 @@ fn safe_batch_transfer_should_fail_when_insufficient_balance(
 
     assert_eq!(
         client.try_safe_batch_transfer_from(
+            &admin,
             &user_a,
             &Address::generate(&env),
             &ids,

@@ -213,16 +213,7 @@ impl Collections {
         id: u64,
         transfer_amount: u64,
     ) -> Result<(), ContractError> {
-        let admin = get_admin(&env)?;
-
-        let is_sender_approved_for_all =
-            Self::is_approved_for_all(env.clone(), admin.clone(), sender.clone())?;
-        let is_sender_approved_for_transfer =
-            Self::is_approved_for_transfer(env.clone(), admin.clone(), sender.clone())?;
-
-        if sender == admin || is_sender_approved_for_all || is_sender_approved_for_transfer {
-            sender.require_auth();
-        }
+        Self::is_authorized(&env, sender)?;
 
         let sender_balance = get_balance_of(&env, &from, id)?;
         let rcpt_balance = get_balance_of(&env, &to, id)?;
@@ -252,13 +243,13 @@ impl Collections {
     #[allow(dead_code)]
     pub fn safe_batch_transfer_from(
         env: Env,
+        sender: Address,
         from: Address,
         to: Address,
         ids: Vec<u64>,
         amounts: Vec<u64>,
     ) -> Result<(), ContractError> {
-        from.require_auth();
-        // TODO: check if `to` is not zero address
+        Self::is_authorized(&env, sender)?;
 
         if ids.len() != amounts.len() {
             log!(
@@ -522,5 +513,24 @@ impl Collections {
     pub fn show_config(env: &Env) -> Result<Config, ContractError> {
         let mabye_config = crate::storage::utils::get_config(env)?;
         Ok(mabye_config)
+    }
+
+    fn is_authorized(env: &Env, sender: Address) -> Result<(), ContractError> {
+        let admin = get_admin(env)?;
+
+        if sender == admin
+            || Self::is_approved_for_all(env.clone(), admin.clone(), sender.clone())?
+            || Self::is_approved_for_transfer(env.clone(), admin.clone(), sender.clone())?
+        {
+            sender.require_auth();
+        } else {
+            log!(
+                &env,
+                "Collections: Safe Transfer From: Unauthorized to transfer."
+            );
+            return Err(ContractError::Unauthorized);
+        }
+
+        Ok(())
     }
 }

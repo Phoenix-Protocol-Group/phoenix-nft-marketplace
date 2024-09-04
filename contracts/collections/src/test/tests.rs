@@ -113,9 +113,9 @@ fn approval_tests() {
     let user = Address::generate(&env);
     let operator = Address::generate(&env);
 
-    let collectoins_client = initialize_collection_contract(&env, None, None, None);
+    let collectoins_client = initialize_collection_contract(&env, Some(&user), None, None);
 
-    collectoins_client.set_approval_for_all(&user, &operator, &true);
+    collectoins_client.set_approval_for_all(&operator, &true);
 
     assert!(collectoins_client.is_approved_for_all(&user, &operator));
 }
@@ -315,7 +315,7 @@ fn should_fail_when_set_approval_for_all_tries_to_approve_self() {
     let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     assert_eq!(
-        collections_client.try_set_approval_for_all(&admin, &admin, &true),
+        collections_client.try_set_approval_for_all(&admin, &true),
         Err(Ok(ContractError::CannotApproveSelf))
     )
 }
@@ -537,7 +537,7 @@ fn should_transfer_when_sender_is_operator() {
     let client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     client.mint(&admin, &user_a, &1, &1);
-    client.set_approval_for_all(&admin, &operator, &true);
+    client.set_approval_for_all(&operator, &true);
 
     assert_eq!(client.balance_of(&user_a, &1), 1u64);
     assert_eq!(client.balance_of(&user_b, &1), 0u64);

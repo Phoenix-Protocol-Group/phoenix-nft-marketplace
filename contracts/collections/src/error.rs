@@ -14,9 +14,5 @@ pub enum ContractError {
     Unauthorized = 7,
     InvalidAccountIndex = 8,
     InvalidIdIndex = 9,
-    NftIdNotFound = 10,
-    AlreadyInitialized = 11,
-    EntryDoesNotExist = 12,
-    OperatorNotFound = 13,
-    CollectionHasNoApprovedMarketplace = 14,
+    AlreadyInitialized = 10,
 }

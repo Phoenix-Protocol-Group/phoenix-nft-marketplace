@@ -124,13 +124,13 @@ impl Collections {
     #[allow(dead_code)]
     pub fn set_approval_for_transfer(
         env: Env,
-        market_place: Address,
+        operator: Address,
         approved: bool,
     ) -> Result<(), ContractError> {
         let admin = get_admin(&env)?;
         admin.require_auth();
 
-        if admin == market_place {
+        if admin == operator {
             log!(
                 &env,
                 "Collection: Set approval for transfer: Trying to authorize self"
@@ -140,7 +140,7 @@ impl Collections {
 
         let data_key = DataKey::TransferApproval(TransferApprovalKey {
             owner: admin.clone(),
-            market_place: market_place.clone(),
+            operator: operator.clone(),
         });
 
         env.storage().persistent().set(&data_key, &approved);
@@ -155,7 +155,7 @@ impl Collections {
                 "Set approval for transfer",
                 "Set approval for market place addr: ",
             ),
-            market_place,
+            operator,
         );
         env.events()
             .publish(("Set approval for", "New approval: "), approved);

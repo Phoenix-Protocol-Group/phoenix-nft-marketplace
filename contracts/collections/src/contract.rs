@@ -85,13 +85,13 @@ impl Collections {
     #[allow(dead_code)]
     pub fn set_approval_for_all(
         env: Env,
-        sender: Address,
         operator: Address,
         approved: bool,
     ) -> Result<(), ContractError> {
-        sender.require_auth();
+        let admin = get_admin(&env)?;
+        admin.require_auth();
 
-        if sender == operator {
+        if admin == operator {
             log!(
                 &env,
                 "Collection: Set approval for all: Cannot set approval for self"
@@ -100,7 +100,7 @@ impl Collections {
         }
 
         let data_key = DataKey::OperatorApproval(OperatorApprovalKey {
-            owner: sender.clone(),
+            owner: admin.clone(),
             operator: operator.clone(),
         });
 
@@ -110,7 +110,7 @@ impl Collections {
             .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
 
         env.events()
-            .publish(("Set approval for", "Sender: "), sender);
+            .publish(("Set approval for", "Sender: "), admin);
         env.events().publish(
             ("Set approval for", "Set approval for operator: "),
             operator,
@@ -188,12 +188,9 @@ impl Collections {
     pub fn is_approved_for_transfer(
         env: Env,
         owner: Address,
-        market_place: Address,
+        operator: Address,
     ) -> Result<bool, ContractError> {
-        let data_key = DataKey::TransferApproval(TransferApprovalKey {
-            owner,
-            market_place,
-        });
+        let data_key = DataKey::TransferApproval(TransferApprovalKey { owner, operator });
 
         let result = env.storage().persistent().get(&data_key).unwrap_or(false);
 
@@ -218,12 +215,12 @@ impl Collections {
     ) -> Result<(), ContractError> {
         let admin = get_admin(&env)?;
 
-        let is_sender_operator =
+        let is_sender_approved_for_all =
             Self::is_approved_for_all(env.clone(), admin.clone(), sender.clone())?;
-        let is_sender_market_place =
+        let is_sender_approved_for_transfer =
             Self::is_approved_for_transfer(env.clone(), admin.clone(), sender.clone())?;
 
-        if sender == admin || is_sender_operator || is_sender_market_place {
+        if sender == admin || is_sender_approved_for_all || is_sender_approved_for_transfer {
             sender.require_auth();
         }
 

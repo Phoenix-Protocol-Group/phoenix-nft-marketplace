@@ -21,7 +21,7 @@ pub struct OperatorApprovalKey {
 #[contracttype]
 pub struct TransferApprovalKey {
     pub owner: Address,
-    pub market_place: Address,
+    pub operator: Address,
 }
 
 // Enum to represent different data keys in storage

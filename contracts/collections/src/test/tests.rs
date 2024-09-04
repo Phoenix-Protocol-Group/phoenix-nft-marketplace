@@ -547,3 +547,27 @@ fn should_transfer_when_sender_is_operator() {
     assert_eq!(client.balance_of(&user_a, &1), 0u64);
     assert_eq!(client.balance_of(&user_b, &1), 1u64);
 }
+
+#[test]
+fn should_transfer_when_sender_is_market_place() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let market_place = Address::generate(&env);
+    let user_a = Address::generate(&env);
+    let user_b = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    client.mint(&admin, &user_a, &1, &1);
+    client.set_approval_for_transfer(&market_place, &true);
+
+    assert_eq!(client.balance_of(&user_a, &1), 1u64);
+    assert_eq!(client.balance_of(&user_b, &1), 0u64);
+
+    client.safe_transfer_from(&market_place, &user_a, &user_b, &1, &1);
+
+    assert_eq!(client.balance_of(&user_a, &1), 0u64);
+    assert_eq!(client.balance_of(&user_b, &1), 1u64);
+}

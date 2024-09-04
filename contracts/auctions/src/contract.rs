@@ -11,7 +11,6 @@ use crate::{
     },
     token,
 };
-const ONE: u64 = 1u64;
 
 #[contract]
 pub struct MarketplaceContract;
@@ -311,7 +310,7 @@ impl MarketplaceContract {
             &auction.seller,
             &buyer,
             &auction.item_info.item_id,
-            &ONE,
+            &1,
         );
 
         auction.status = AuctionStatus::Ended;

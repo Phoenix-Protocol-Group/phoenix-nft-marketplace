@@ -629,3 +629,128 @@ fn safe_transfer_from_should_fail_when_user_is_not_authorized() {
         Err(Ok(ContractError::Unauthorized))
     );
 }
+
+#[test]
+fn grant_all_permissions_to_user_then_withdraw_them() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user_a = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let rcpt = Address::generate(&env);
+    let other_rcpt = Address::generate(&env);
+
+    let collections_client = initialize_collection_contract(&env, Some(&user_a), None, None);
+
+    collections_client.set_approval_for_all(&operator, &true);
+
+    collections_client.mint(&operator, &rcpt, &1, &2);
+    collections_client.mint(&operator, &other_rcpt, &1, &1);
+
+    collections_client.mint_batch(
+        &operator,
+        &rcpt,
+        &vec![&env, 1u64, 2u64, 3u64, 4u64, 5u64],
+        &vec![&env, 1u64, 1u64, 1u64, 1u64, 1u64],
+    );
+
+    assert_eq!(collections_client.balance_of(&rcpt, &1), 3);
+    assert_eq!(
+        collections_client.balance_of_batch(
+            &vec![
+                &env,
+                rcpt.clone(),
+                other_rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+            ],
+            &vec![&env, 1u64, 1u64, 2u64, 3u64, 4u64, 5u64],
+        ),
+        vec![&env, 3u64, 1u64, 1u64, 1u64, 1u64, 1u64],
+    );
+    assert_eq!(collections_client.balance_of(&other_rcpt, &1), 1);
+
+    collections_client.burn(&operator, &rcpt, &1, &1);
+
+    assert_eq!(collections_client.balance_of(&rcpt, &1), 2);
+    assert_eq!(collections_client.balance_of(&other_rcpt, &1), 1);
+
+    collections_client.burn_batch(
+        &operator,
+        &rcpt,
+        &vec![&env, 1u64, 2u64, 3u64, 4u64, 5u64],
+        &vec![&env, 1u64, 1u64, 1u64, 1u64, 1u64],
+    );
+
+    assert_eq!(
+        collections_client.balance_of_batch(
+            &vec![
+                &env,
+                rcpt.clone(),
+                other_rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+            ],
+            &vec![&env, 1u64, 1u64, 2u64, 3u64, 4u64, 5u64],
+        ),
+        vec![&env, 1u64, 1u64, 0u64, 0u64, 0u64, 0u64],
+    );
+
+    let uri = Bytes::from_slice(&env, &[44, 55, 66]);
+    collections_client.set_uri(&operator, &1, &uri);
+    assert_eq!(collections_client.uri(&1), URIValue { uri });
+
+    let better_uri = Bytes::from_slice(&env, &[42, 7, 13]);
+    collections_client.set_collection_uri(&operator, &better_uri);
+    assert_eq!(
+        collections_client.collection_uri(),
+        URIValue { uri: better_uri }
+    );
+
+    // now we withdraw our permissions from the operator and we check again
+    collections_client.set_approval_for_all(&operator, &false);
+
+    assert_eq!(
+        collections_client.try_mint(&operator, &rcpt, &10, &1),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    assert_eq!(
+        collections_client.try_mint_batch(
+            &operator,
+            &rcpt,
+            &vec![&env, 10, 20, 30],
+            &vec![&env, 1, 1, 1]
+        ),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    assert_eq!(
+        collections_client.try_burn(&operator, &rcpt, &10, &1),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    assert_eq!(
+        collections_client.try_burn_batch(
+            &operator,
+            &rcpt,
+            &vec![&env, 10, 20, 30],
+            &vec![&env, 1, 1, 1]
+        ),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    let new_uri = Bytes::from_slice(&env, &[1, 1, 2, 3]);
+    assert_eq!(
+        collections_client.try_set_uri(&operator, &5, &new_uri),
+        Err(Ok(ContractError::Unauthorized))
+    );
+    assert_eq!(
+        collections_client.try_set_collection_uri(&operator, &new_uri),
+        Err(Ok(ContractError::Unauthorized))
+    )
+}

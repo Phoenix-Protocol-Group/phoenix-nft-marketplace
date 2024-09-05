@@ -305,7 +305,8 @@ impl Collections {
     ) -> Result<(), ContractError> {
         Self::is_authorized_for_all(&env, &sender)?;
 
-        update_balance_of(&env, &to, id, amount)?;
+        let current_balance = get_balance_of(&env, &to, id)?;
+        update_balance_of(&env, &to, id, current_balance + amount)?;
 
         env.events().publish(("mint", "sender: "), sender);
         env.events().publish(("mint", "to: "), to);
@@ -332,11 +333,11 @@ impl Collections {
         }
 
         for idx in 0..ids.len() {
-            let id = ids.get(idx).unwrap();
-            let amount = amounts.get(idx).unwrap();
+            let id = ids.get(idx).ok_or(ContractError::InvalidIdIndex)?;
+            let amount = amounts.get(idx).ok_or(ContractError::InvalidAmountIndex)?;
 
-            //TODO: check for overflow?
-            update_balance_of(&env, &to, id, amount)?;
+            let current_balance = get_balance_of(&env, &to, id)?;
+            update_balance_of(&env, &to, id, current_balance + amount)?;
         }
 
         env.events().publish(("mint batch", "sender: "), sender);

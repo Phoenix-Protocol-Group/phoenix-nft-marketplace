@@ -15,4 +15,6 @@ pub enum ContractError {
     InvalidAccountIndex = 8,
     InvalidIdIndex = 9,
     AlreadyInitialized = 10,
+    InvalidAmountIndex = 11,
+    InvalidId = 12,
 }

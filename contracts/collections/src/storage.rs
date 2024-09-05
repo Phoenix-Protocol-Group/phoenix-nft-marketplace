@@ -16,7 +16,8 @@ pub struct OperatorApprovalKey {
 /// Description.
 ///
 /// * `owner` - The `Address` of the owner of the collection.
-/// * `mp_address` - The `Address` of the market place that we will authorize to do the transfer
+/// * `operator` - The `Address` of the operator that we will authorize to do transfer/batch
+/// transfer
 #[derive(Clone)]
 #[contracttype]
 pub struct TransferApprovalKey {

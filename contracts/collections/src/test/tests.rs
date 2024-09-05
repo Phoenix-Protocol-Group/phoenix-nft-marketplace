@@ -589,3 +589,26 @@ fn should_fail_when_admin_tries_to_set_himself_as_operator_for_approval_for_tran
         Err(Ok(ContractError::CannotApproveSelf))
     );
 }
+
+#[test]
+fn is_authorized_for_transfer_should_fail_when_user_not_authorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+
+    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    // as this is the first check in the flow of transfer, we don't have to mint or do anything
+    // special prior to trying to fail this test
+    assert_eq!(
+        collections_client.try_safe_transfer_from(
+            &Address::generate(&env),
+            &admin,
+            &Address::generate(&env),
+            &1,
+            &1
+        ),
+        Err(Ok(ContractError::Unauthorized))
+    );
+}

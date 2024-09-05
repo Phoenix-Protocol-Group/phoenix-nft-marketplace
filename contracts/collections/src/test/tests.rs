@@ -574,3 +574,18 @@ fn should_transfer_when_sender_is_market_place() {
     assert_eq!(client.balance_of(&user_a, &1), 0u64);
     assert_eq!(client.balance_of(&user_b, &1), 1u64);
 }
+
+#[test]
+fn should_fail_when_admin_tries_to_set_himself_as_operator_for_approval_for_transfer() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+
+    let collectoins_client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    assert_eq!(
+        collectoins_client.try_set_approval_for_transfer(&admin, &true),
+        Err(Ok(ContractError::CannotApproveSelf))
+    );
+}

@@ -626,7 +626,7 @@ fn safe_transfer_from_should_fail_when_user_is_not_authorized() {
     let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     // admin mints himself a new NFT
-    collections_client.mint(&admin, &admin, &1, &1);
+    collections_client.mint(&admin, &admin, &1, &2);
     // admin sets operator to be able to do as they like with the NFT
     collections_client.set_approval_for_transfer(&operator, &true);
 
@@ -645,4 +645,12 @@ fn safe_transfer_from_should_fail_when_user_is_not_authorized() {
     // but they can transfer
     collections_client.safe_transfer_from(&operator, &admin, &rcpt, &1, &1);
     assert_eq!(collections_client.balance_of(&rcpt, &1), 1);
+
+    // admin revokes rights
+    collections_client.set_approval_for_transfer(&operator, &false);
+
+    assert_eq!(
+        collections_client.try_safe_transfer_from(&operator, &admin, &rcpt, &1, &1),
+        Err(Ok(ContractError::Unauthorized))
+    );
 }

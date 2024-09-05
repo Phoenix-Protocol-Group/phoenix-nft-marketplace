@@ -9,15 +9,32 @@ jobs:
       CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Rust
         run: rustup update stable
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable  # Specify the Rust toolchain version
+          target: wasm32-unknown-unknown
+          override: true
+
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
+
+      # Explicitly build the collections contract first
+      - name: Build Collections Contract
+        run: make build
+
       - name: Generate code coverage
         run: cargo llvm-cov --all-features --workspace --codecov --output-path codecov.json
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
-          files: lcov.info
+          files: codecov.json  # Changed from lcov.info to codecov.json based on the Generate code coverage step
           fail_ci_if_error: true
+

@@ -612,3 +612,37 @@ fn is_authorized_for_transfer_should_fail_when_user_not_authorized() {
         Err(Ok(ContractError::Unauthorized))
     );
 }
+
+#[test]
+fn safe_transfer_from_should_fail_when_user_is_not_authorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let rogue = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let rcpt = Address::generate(&env);
+
+    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    // admin mints himself a new NFT
+    collections_client.mint(&admin, &admin, &1, &1);
+    // admin sets operator to be able to do as they like with the NFT
+    collections_client.set_approval_for_transfer(&operator, &true);
+
+    // rogue user tries to steal, but fails
+    assert_eq!(
+        collections_client.try_safe_transfer_from(&rogue, &admin, &rcpt, &1, &1),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    // operator is approved for transfers only, he cannot mint
+    assert_eq!(
+        collections_client.try_mint(&operator, &rcpt, &2, &1),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    // but they can transfer
+    collections_client.safe_transfer_from(&operator, &admin, &rcpt, &1, &1);
+    assert_eq!(collections_client.balance_of(&rcpt, &1), 1);
+}

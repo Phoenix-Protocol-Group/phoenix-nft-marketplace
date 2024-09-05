@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, symbol_short, Address, Bytes, String, Symbol};
+use soroban_sdk::{contracttype, Address, Bytes, String};
 
 type NftId = u64;
 type TokenId = u64;
@@ -12,12 +12,27 @@ pub struct OperatorApprovalKey {
     pub operator: Address,
 }
 
+/// Struct that represents the Transfer approval status
+/// Description.
+///
+/// * `owner` - The `Address` of the owner of the collection.
+/// * `operator` - The `Address` of the operator that we will authorize to do transfer/batch
+/// transfer
+#[derive(Clone)]
+#[contracttype]
+pub struct TransferApprovalKey {
+    pub owner: Address,
+    pub operator: Address,
+}
+
 // Enum to represent different data keys in storage
 #[derive(Clone)]
 #[contracttype]
 pub enum DataKey {
+    Admin,
     Balance(Address),
     OperatorApproval(OperatorApprovalKey),
+    TransferApproval(TransferApprovalKey),
     Uri(NftId),
     CollectionUri,
     Config,
@@ -38,14 +53,13 @@ pub struct Config {
     pub symbol: String,
 }
 
-pub const ADMIN: Symbol = symbol_short!("admin");
-
 pub mod utils {
-    use soroban_sdk::{log, Address, Env, Map};
+
+    use soroban_sdk::{Address, Env, Map};
 
     use crate::error::ContractError;
 
-    use super::{Balance, Config, DataKey, TokenId, ADMIN};
+    use super::{Balance, Config, DataKey, TokenId};
 
     pub fn get_balance_of(env: &Env, owner: &Address, id: u64) -> Result<u64, ContractError> {
         let balance_map: Map<TokenId, Balance> = env
@@ -91,28 +105,30 @@ pub mod utils {
     #[allow(dead_code)]
     #[cfg(not(tarpaulin_include))]
     pub fn get_config(env: &Env) -> Result<Config, ContractError> {
-        if let Some(config) = env.storage().persistent().get(&DataKey::Config) {
-            Ok(config)
-        } else {
-            log!(&env, "Collections: Get config: Config not set");
-            Err(ContractError::ConfigNotFound)
-        }
+        let config = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Config)
+            .ok_or(ContractError::ConfigNotFound)?;
+
+        Ok(config)
     }
 
     pub fn save_admin(env: &Env, admin: &Address) -> Result<(), ContractError> {
-        env.storage().persistent().set(&ADMIN, &admin);
+        env.storage().persistent().set(&DataKey::Admin, &admin);
 
         Ok(())
     }
 
     #[cfg(not(tarpaulin_include))]
     pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
-        if let Some(admin) = env.storage().persistent().get(&ADMIN) {
-            Ok(admin)
-        } else {
-            log!(&env, "Collections: Get admin: Admin not set");
-            Err(ContractError::AdminNotSet)
-        }
+        let admin = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Admin)
+            .ok_or(ContractError::AdminNotSet)?;
+
+        Ok(admin)
     }
     pub fn is_initialized(env: &Env) -> bool {
         env.storage()

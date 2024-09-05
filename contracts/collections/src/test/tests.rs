@@ -113,9 +113,9 @@ fn approval_tests() {
     let user = Address::generate(&env);
     let operator = Address::generate(&env);
 
-    let collectoins_client = initialize_collection_contract(&env, None, None, None);
+    let collectoins_client = initialize_collection_contract(&env, Some(&user), None, None);
 
-    collectoins_client.set_approval_for_all(&user, &operator, &true);
+    collectoins_client.set_approval_for_all(&operator, &true);
 
     assert!(collectoins_client.is_approved_for_all(&user, &operator));
 }
@@ -136,7 +136,7 @@ fn safe_transfer_from() {
     assert_eq!(client.balance_of(&user_a, &1), 1u64);
     assert_eq!(client.balance_of(&user_b, &1), 0u64);
 
-    client.safe_transfer_from(&user_a, &user_b, &1, &1);
+    client.safe_transfer_from(&admin, &user_a, &user_b, &1, &1);
 
     assert_eq!(client.balance_of(&user_a, &1), 0u64);
     assert_eq!(client.balance_of(&user_b, &1), 1u64);
@@ -166,7 +166,7 @@ fn safe_batch_transfer() {
         vec![&env, 5, 0, 0, 0, 0]
     );
 
-    client.safe_batch_transfer_from(&user_a, &user_b, &ids, &amounts);
+    client.safe_batch_transfer_from(&admin, &user_a, &user_b, &ids, &amounts);
     assert_eq!(
         client.balance_of_batch(&accounts, &ids),
         vec![&env, 0, 5, 0, 0, 0]
@@ -186,7 +186,7 @@ fn burning() {
     collectoins_client.mint(&admin, &user, &1, &2);
     assert_eq!(collectoins_client.balance_of(&user, &1), 2);
 
-    collectoins_client.burn(&user, &1, &1);
+    collectoins_client.burn(&admin, &user, &1, &1);
     assert_eq!(collectoins_client.balance_of(&user, &1), 1);
 }
 
@@ -223,6 +223,7 @@ fn batch_burning() {
     );
 
     collections_client.burn_batch(
+        &admin,
         &user,
         &vec![&env, 1, 2, 3, 4, 5],
         &vec![&env, 5, 10, 15, 20, 25],
@@ -282,7 +283,7 @@ fn set_collection_uri_should_work() {
         Err(Ok(ContractError::NoUriSet))
     );
     let uri = Bytes::from_slice(&env, &[42]);
-    client.set_collection_uri(&uri);
+    client.set_collection_uri(&user, &uri);
 
     assert_eq!(client.collection_uri(), URIValue { uri });
 }
@@ -315,7 +316,7 @@ fn should_fail_when_set_approval_for_all_tries_to_approve_self() {
     let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     assert_eq!(
-        collections_client.try_set_approval_for_all(&admin, &admin, &true),
+        collections_client.try_set_approval_for_all(&admin, &true),
         Err(Ok(ContractError::CannotApproveSelf))
     )
 }
@@ -339,7 +340,7 @@ fn should_fail_when_sender_balance_not_enough() {
 
     // try to send 10
     assert_eq!(
-        client.try_safe_transfer_from(&user_a, &user_b, &1, &10),
+        client.try_safe_transfer_from(&admin, &user_a, &user_b, &1, &10),
         Err(Ok(ContractError::InsufficientBalance))
     )
 }
@@ -360,6 +361,7 @@ fn safe_batch_transfer_should_fail_when_id_mismatch() {
 
     assert_eq!(
         client.try_safe_batch_transfer_from(
+            &admin,
             &user_a,
             &Address::generate(&env),
             &ids,
@@ -394,6 +396,7 @@ fn safe_batch_transfer_should_fail_when_insufficient_balance(
 
     assert_eq!(
         client.try_safe_batch_transfer_from(
+            &admin,
             &user_a,
             &Address::generate(&env),
             &ids,
@@ -462,7 +465,7 @@ fn burn_should_fail_when_not_enough_balance() {
     let client = initialize_collection_contract(&env, Some(&user), None, None);
 
     assert_eq!(
-        client.try_burn(&user, &1, &1),
+        client.try_burn(&user, &user, &1, &1),
         Err(Ok(ContractError::InsufficientBalance))
     );
 }
@@ -476,7 +479,7 @@ fn burn_batch_should_fail_when_vec_length_missmatch() {
     let client = initialize_collection_contract(&env, Some(&user), None, None);
 
     assert_eq!(
-        client.try_burn_batch(&user, &vec![&env, 1, 2], &vec![&env, 1]),
+        client.try_burn_batch(&user, &user, &vec![&env, 1, 2], &vec![&env, 1]),
         Err(Ok(ContractError::IdsAmountsLengthMismatch))
     );
 }
@@ -490,7 +493,7 @@ fn burn_batch_should_fail_when_not_enough_balance() {
     let client = initialize_collection_contract(&env, Some(&user), None, None);
 
     assert_eq!(
-        client.try_burn_batch(&user, &vec![&env, 1], &vec![&env, 1]),
+        client.try_burn_batch(&user, &user, &vec![&env, 1], &vec![&env, 1]),
         Err(Ok(ContractError::InsufficientBalance))
     );
 }
@@ -522,4 +525,232 @@ fn uri_should_fail_when_none_set() {
     let client = initialize_collection_contract(&env, Some(&user), None, None);
 
     assert_eq!(client.try_uri(&1), Err(Ok(ContractError::NoUriSet)))
+}
+
+#[test]
+fn should_transfer_when_sender_is_operator() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let operator = Address::generate(&env);
+    let user_a = Address::generate(&env);
+    let user_b = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&user_a), None, None);
+
+    client.mint(&user_a, &user_a, &1, &1);
+    client.set_approval_for_all(&operator, &true);
+
+    assert_eq!(client.balance_of(&user_a, &1), 1u64);
+    assert_eq!(client.balance_of(&user_b, &1), 0u64);
+
+    client.safe_transfer_from(&operator, &user_a, &user_b, &1, &1);
+
+    assert_eq!(client.balance_of(&user_a, &1), 0u64);
+    assert_eq!(client.balance_of(&user_b, &1), 1u64);
+}
+
+#[test]
+fn should_fail_when_admin_tries_to_set_himself_as_operator_for_approval_for_transfer() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+
+    let collectoins_client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    assert_eq!(
+        collectoins_client.try_set_approval_for_transfer(&admin, &true),
+        Err(Ok(ContractError::CannotApproveSelf))
+    );
+}
+
+#[test]
+fn is_authorized_for_transfer_should_fail_when_user_not_authorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+
+    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    // as this is the first check in the flow of transfer, we don't have to mint or do anything
+    // special prior to trying to fail this test
+    assert_eq!(
+        collections_client.try_safe_transfer_from(
+            &Address::generate(&env),
+            &admin,
+            &Address::generate(&env),
+            &1,
+            &1
+        ),
+        Err(Ok(ContractError::Unauthorized))
+    );
+}
+
+#[test]
+fn safe_transfer_from_should_fail_when_user_is_not_authorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let rogue = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let rcpt = Address::generate(&env);
+
+    let collections_client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    // admin mints himself a new NFT
+    collections_client.mint(&admin, &admin, &1, &2);
+    // admin sets operator to be able to do as they like with the NFT
+    collections_client.set_approval_for_transfer(&operator, &true);
+
+    // rogue user tries to steal, but fails
+    assert_eq!(
+        collections_client.try_safe_transfer_from(&rogue, &admin, &rcpt, &1, &1),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    // operator is approved for transfers only, he cannot mint
+    assert_eq!(
+        collections_client.try_mint(&operator, &rcpt, &2, &1),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    // but they can transfer
+    collections_client.safe_transfer_from(&operator, &admin, &rcpt, &1, &1);
+    assert_eq!(collections_client.balance_of(&rcpt, &1), 1);
+
+    // admin revokes rights
+    collections_client.set_approval_for_transfer(&operator, &false);
+
+    assert_eq!(
+        collections_client.try_safe_transfer_from(&operator, &admin, &rcpt, &1, &1),
+        Err(Ok(ContractError::Unauthorized))
+    );
+}
+
+#[test]
+fn grant_all_permissions_to_user_then_withdraw_them() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user_a = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let rcpt = Address::generate(&env);
+    let other_rcpt = Address::generate(&env);
+
+    let collections_client = initialize_collection_contract(&env, Some(&user_a), None, None);
+
+    collections_client.set_approval_for_all(&operator, &true);
+
+    collections_client.mint(&operator, &rcpt, &1, &2);
+    collections_client.mint(&operator, &other_rcpt, &1, &1);
+
+    collections_client.mint_batch(
+        &operator,
+        &rcpt,
+        &vec![&env, 1u64, 2u64, 3u64, 4u64, 5u64],
+        &vec![&env, 1u64, 1u64, 1u64, 1u64, 1u64],
+    );
+
+    assert_eq!(collections_client.balance_of(&rcpt, &1), 3);
+    assert_eq!(
+        collections_client.balance_of_batch(
+            &vec![
+                &env,
+                rcpt.clone(),
+                other_rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+            ],
+            &vec![&env, 1u64, 1u64, 2u64, 3u64, 4u64, 5u64],
+        ),
+        vec![&env, 3u64, 1u64, 1u64, 1u64, 1u64, 1u64],
+    );
+    assert_eq!(collections_client.balance_of(&other_rcpt, &1), 1);
+
+    collections_client.burn(&operator, &rcpt, &1, &1);
+
+    assert_eq!(collections_client.balance_of(&rcpt, &1), 2);
+    assert_eq!(collections_client.balance_of(&other_rcpt, &1), 1);
+
+    collections_client.burn_batch(
+        &operator,
+        &rcpt,
+        &vec![&env, 1u64, 2u64, 3u64, 4u64, 5u64],
+        &vec![&env, 1u64, 1u64, 1u64, 1u64, 1u64],
+    );
+
+    assert_eq!(
+        collections_client.balance_of_batch(
+            &vec![
+                &env,
+                rcpt.clone(),
+                other_rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+            ],
+            &vec![&env, 1u64, 1u64, 2u64, 3u64, 4u64, 5u64],
+        ),
+        vec![&env, 1u64, 1u64, 0u64, 0u64, 0u64, 0u64],
+    );
+
+    let uri = Bytes::from_slice(&env, &[44, 55, 66]);
+    collections_client.set_uri(&operator, &1, &uri);
+    assert_eq!(collections_client.uri(&1), URIValue { uri });
+
+    let better_uri = Bytes::from_slice(&env, &[42, 7, 13]);
+    collections_client.set_collection_uri(&operator, &better_uri);
+    assert_eq!(
+        collections_client.collection_uri(),
+        URIValue { uri: better_uri }
+    );
+
+    // now we withdraw our permissions from the operator and we check again
+    collections_client.set_approval_for_all(&operator, &false);
+
+    assert_eq!(
+        collections_client.try_mint(&operator, &rcpt, &10, &1),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    assert_eq!(
+        collections_client.try_mint_batch(
+            &operator,
+            &rcpt,
+            &vec![&env, 10, 20, 30],
+            &vec![&env, 1, 1, 1]
+        ),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    assert_eq!(
+        collections_client.try_burn(&operator, &rcpt, &10, &1),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    assert_eq!(
+        collections_client.try_burn_batch(
+            &operator,
+            &rcpt,
+            &vec![&env, 10, 20, 30],
+            &vec![&env, 1, 1, 1]
+        ),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    let new_uri = Bytes::from_slice(&env, &[1, 1, 2, 3]);
+    assert_eq!(
+        collections_client.try_set_uri(&operator, &5, &new_uri),
+        Err(Ok(ContractError::Unauthorized))
+    );
+    assert_eq!(
+        collections_client.try_set_collection_uri(&operator, &new_uri),
+        Err(Ok(ContractError::Unauthorized))
+    )
 }

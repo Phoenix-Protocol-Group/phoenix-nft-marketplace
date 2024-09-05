@@ -213,10 +213,7 @@ impl Collections {
         id: u64,
         transfer_amount: u64,
     ) -> Result<(), ContractError> {
-        let can_do_all = Self::is_authorized_for_all(&env, &sender);
-        if can_do_all.is_err() {
-            Self::is_authorized_for_transfer(&env, &sender)?;
-        }
+        Self::is_authorized_for_transfer(&env, &sender)?;
 
         let sender_balance = get_balance_of(&env, &from, id)?;
         let rcpt_balance = get_balance_of(&env, &to, id)?;
@@ -252,10 +249,7 @@ impl Collections {
         ids: Vec<u64>,
         amounts: Vec<u64>,
     ) -> Result<(), ContractError> {
-        let can_do_all = Self::is_authorized_for_all(&env, &sender);
-        if can_do_all.is_err() {
-            Self::is_authorized_for_transfer(&env, &sender)?;
-        }
+        Self::is_authorized_for_transfer(&env, &sender)?;
 
         if ids.len() != amounts.len() {
             log!(

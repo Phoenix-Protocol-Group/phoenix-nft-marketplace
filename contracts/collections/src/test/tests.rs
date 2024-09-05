@@ -532,14 +532,13 @@ fn should_transfer_when_sender_is_operator() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let admin = Address::generate(&env);
     let operator = Address::generate(&env);
     let user_a = Address::generate(&env);
     let user_b = Address::generate(&env);
 
-    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+    let client = initialize_collection_contract(&env, Some(&user_a), None, None);
 
-    client.mint(&admin, &user_a, &1, &1);
+    client.mint(&user_a, &user_a, &1, &1);
     client.set_approval_for_all(&operator, &true);
 
     assert_eq!(client.balance_of(&user_a, &1), 1u64);

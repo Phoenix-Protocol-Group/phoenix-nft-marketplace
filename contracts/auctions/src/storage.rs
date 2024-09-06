@@ -305,7 +305,7 @@ mod test {
     use super::validate_input_params;
 
     #[test]
-    #[should_panic(expected = "Auction: Validate input: Invalid inputs used")]
+    #[should_panic(expected = "Auction: Validate input: parameters cannot be less than 1")]
     fn validate_input_params_should_fail_with_invalid_input() {
         let env = Env::default();
         let _ = validate_input_params(&env, &[&1, &2, &3, &0]);

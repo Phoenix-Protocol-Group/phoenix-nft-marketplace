@@ -88,7 +88,7 @@ pub fn get_auctions(
     for id in start_index..=limit {
         match get_auction_by_id(env, id as u64) {
             Ok(auction) => auctions.push_back(auction),
-            Err(ContractError::AuctionNotFound) => break,
+            Err(ContractError::AuctionNotFound) => continue,
             Err(e) => return Err(e),
         }
     }

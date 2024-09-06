@@ -26,7 +26,7 @@ impl MarketplaceContract {
         admin.require_auth();
 
         if is_initialized(&env) {
-            log!(&env, "Marketplace: Initialize: Already initialized");
+            log!(&env, "Auction: Initialize: Already initialized");
             return Err(ContractError::AlreadyInitialized);
         }
 
@@ -102,7 +102,7 @@ impl MarketplaceContract {
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
         if env.ledger().timestamp() > auction.end_time {
-            log!(env, "Auction: Buy now: Auction not active");
+            log!(env, "Auction: Place Bid: Auction not active");
             return Err(ContractError::AuctionNotActive);
         }
 
@@ -152,7 +152,7 @@ impl MarketplaceContract {
                 Ok(())
             }
             Some(_) => {
-                log!(&env, "Auction: Place bid: Bid not enough");
+                log!(&env, "Auction: Place Bid: Bid not enough");
                 Err(ContractError::BidNotEnough)
             }
             None => {
@@ -217,14 +217,14 @@ impl MarketplaceContract {
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
         if env.ledger().timestamp() > auction.end_time || auction.status != AuctionStatus::Active {
-            log!(env, "Auction: Buy now: Auction not active");
+            log!(env, "Auction: Buy Now: Auction not active");
             return Err(ContractError::AuctionNotActive);
         }
 
         if auction.item_info.buy_now_price.is_none() {
             log!(
                 env,
-                "Auction: Buy now: trying to buy an item that does not allow `buy now`"
+                "Auction: Buy Now: trying to buy an item that does not allow `buy now`"
             );
             return Err(ContractError::NoBuyNowOption);
         }
@@ -247,7 +247,7 @@ impl MarketplaceContract {
             &(auction
                 .item_info
                 .buy_now_price
-                .expect("Buy now price has not been set") as i128),
+                .expect("Auction: Buy Now: Buy now price has not been set") as i128),
         );
 
         let collection_client = collection::Client::new(&env, &auction.item_info.collection_addr);
@@ -265,7 +265,7 @@ impl MarketplaceContract {
             auction
                 .item_info
                 .buy_now_price
-                .expect("Buy now price has not been set"),
+                .expect("Auction: Buy Now: Buy now price has not been set"),
         );
 
         update_auction(&env, auction_id, auction.clone())?;
@@ -286,7 +286,7 @@ impl MarketplaceContract {
         }
 
         if env.ledger().timestamp() > auction.end_time {
-            log!(env, "Auction: Buy now: Auction expired");
+            log!(env, "Auction: Pause: Auction expired");
             return Err(ContractError::AuctionNotActive);
         }
 
@@ -303,12 +303,12 @@ impl MarketplaceContract {
         auction.seller.require_auth();
 
         if auction.status != AuctionStatus::Paused {
-            log!(env, "Auction: Pause: Cannot activate unpaused auction.");
+            log!(env, "Auction: Unpause: Cannot activate unpaused auction.");
             return Err(ContractError::AuctionNotPaused);
         }
 
         if env.ledger().timestamp() > auction.end_time {
-            log!(env, "Auction: Buy now: Auction expired");
+            log!(env, "Auction: Unpause: Auction expired");
             return Err(ContractError::AuctionNotActive);
         }
 

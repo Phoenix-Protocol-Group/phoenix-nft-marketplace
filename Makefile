@@ -1,4 +1,4 @@
-SUBDIRS := contracts/collections contracts/deployer
+SUBDIRS := contracts/deployer contracts/collections
 BUILD_FLAGS ?=
 
 default: build

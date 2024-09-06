@@ -215,19 +215,18 @@ impl Collections {
     ) -> Result<(), ContractError> {
         Self::is_authorized_for_transfer(&env, &sender)?;
 
-        let sender_balance = get_balance_of(&env, &from, id)?;
+        let from_balance = get_balance_of(&env, &from, id)?;
         let rcpt_balance = get_balance_of(&env, &to, id)?;
 
-        if sender_balance < transfer_amount {
+        if from_balance < transfer_amount {
             log!(&env, "Collection: Safe transfer from: Insuficient Balance");
             return Err(ContractError::InsufficientBalance);
         }
 
-        //NOTE: checks if we go over the limit of u64::MAX?
-        // first we reduce the sender's `from` balance
-        update_balance_of(&env, &from, id, sender_balance - transfer_amount)?;
+        // first we reduce `from` balance
+        update_balance_of(&env, &from, id, from_balance - transfer_amount)?;
 
-        // next we incrase the recipient's `to` balance
+        // next we incrase `to` balance
         update_balance_of(&env, &to, id, rcpt_balance + transfer_amount)?;
 
         env.events().publish(("safe transfer from", "from: "), from);

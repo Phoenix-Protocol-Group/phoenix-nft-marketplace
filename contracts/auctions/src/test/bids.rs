@@ -284,6 +284,8 @@ fn buy_now() {
 
     collections_client.mint(&seller, &seller, &1, &1);
 
+    collections_client.set_approval_for_transfer(&mp_client.address, &true);
+
     let item_info = ItemInfo {
         collection_addr: collections_client.address.clone(),
         item_id: 1,
@@ -532,6 +534,10 @@ fn multiple_auction_by_multiple_sellers() {
         create_and_initialize_collection(&env, &seller_b, "Seller B Collection", "SBC");
     let collection_c_client =
         create_and_initialize_collection(&env, &seller_c, "Seller C Collection", "SCC");
+
+    collection_a_client.set_approval_for_transfer(&mp_client.address, &true);
+    collection_b_client.set_approval_for_transfer(&mp_client.address, &true);
+    collection_c_client.set_approval_for_transfer(&mp_client.address, &true);
 
     // ============ Auction item setup ============
     let first_item_info_seller_a = ItemInfo {

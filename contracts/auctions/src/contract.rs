@@ -247,6 +247,7 @@ impl MarketplaceContract {
 
         let nft_client = collection::Client::new(&env, &auction.item_info.collection_addr);
         nft_client.safe_transfer_from(
+            &env.current_contract_address(),
             &auction.seller,
             &oldest_bid.bidder,
             &auction.item_info.item_id,
@@ -305,6 +306,7 @@ impl MarketplaceContract {
         let collection_client = collection::Client::new(&env, &auction.item_info.collection_addr);
 
         collection_client.safe_transfer_from(
+            &env.current_contract_address(),
             &auction.seller,
             &buyer,
             &auction.item_info.item_id,

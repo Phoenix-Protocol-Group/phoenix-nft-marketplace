@@ -39,7 +39,7 @@ fn finalize_auction() {
         None,
     );
 
-    collections_client.mint(&seller, &seller, &1, &1);
+    collections_client.set_approval_for_transfer(&mp_client.address, &true);
 
     let item_info = ItemInfo {
         collection_addr: collections_client.address.clone(),
@@ -107,7 +107,9 @@ fn finalize_auction() {
 
     // check if `bidder_a` has 1 NFT of the item
     assert_eq!(collections_client.balance_of(&bidder_a, &1), 1);
-    assert_eq!(collections_client.balance_of(&seller, &1), 0);
+    // when we initialized the collection client we automatically minted 2 items for the same id
+    // now the seller should have 1
+    assert_eq!(collections_client.balance_of(&seller, &1), 1);
 }
 
 #[test]

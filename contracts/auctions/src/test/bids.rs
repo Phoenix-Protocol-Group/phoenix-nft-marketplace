@@ -116,6 +116,7 @@ fn fail_to_place_bid_when_auction_inactive() {
         None,
         None,
     );
+    nft_collection_client.set_approval_for_all(&mp_client.address, &true);
 
     let item_info = ItemInfo {
         collection_addr: nft_collection_client.address.clone(),
@@ -124,16 +125,20 @@ fn fail_to_place_bid_when_auction_inactive() {
         buy_now_price: Some(50),
     };
 
+    soroban_sdk::testutils::arbitrary::std::dbg!("before");
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     env.ledger().with_mut(|li| li.timestamp = WEEKLY + DAY);
 
+    soroban_sdk::testutils::arbitrary::std::dbg!("before");
     mp_client.finalize_auction(&1);
 
+    soroban_sdk::testutils::arbitrary::std::dbg!("before");
     assert_eq!(
         mp_client.try_place_bid(&1, &bidder_a, &10),
         Err(Ok(ContractError::AuctionNotActive))
     );
+    soroban_sdk::testutils::arbitrary::std::dbg!("after");
 
     // uncomment when pagination is done
     //assert_eq!(mp_client.get_active_auctions(), vec![&env]);

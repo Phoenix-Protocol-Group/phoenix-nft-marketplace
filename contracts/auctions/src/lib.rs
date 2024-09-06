@@ -3,6 +3,7 @@
 mod contract;
 mod error;
 mod storage;
+mod utils;
 
 #[cfg(test)]
 mod test;

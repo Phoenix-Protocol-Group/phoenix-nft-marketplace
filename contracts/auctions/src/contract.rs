@@ -10,6 +10,10 @@ use crate::{
         update_auction, validate_input_params, Auction, AuctionStatus, HighestBid, ItemInfo,
     },
     token,
+    utils::{
+        check_auction_can_be_finalized, end_auction_without_bids, finalize_successful_auction,
+        handle_minimum_price_not_reached, minimum_price_reached,
+    },
 };
 
 #[contract]
@@ -177,88 +181,31 @@ impl MarketplaceContract {
     pub fn finalize_auction(env: Env, auction_id: u64) -> Result<(), ContractError> {
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
-        if auction.status != AuctionStatus::Active {
-            log!(
-                &env,
-                "Auction: Finalize auction: Cannot finalize an inactive/ended auction."
-            );
-            return Err(ContractError::AuctionNotActive);
-        }
-
-        if env.ledger().timestamp() < auction.end_time {
-            log!(
-                env,
-                "Auction: Finalize auction: Auction cannot be ended early"
-            );
-            return Err(ContractError::AuctionNotFinished);
-        }
+        // Check if the auction can be finalized
+        check_auction_can_be_finalized(&env, &auction)?;
 
         let token_client = token::Client::new(&env, &auction.currency);
+        let highest_bid = get_highest_bid(&env, auction_id)?;
 
-        if auction
-            .item_info
-            .minimum_price
-            .and_then(|min_price| {
-                auction
-                    .highest_bid
-                    .map(|highest_bid| min_price > highest_bid)
-            })
-            .unwrap_or(false)
-        {
-            // check if there is a previous bid and if so refund it
-            let oldest_highest_bid = get_highest_bid(&env, auction_id)?;
-            token_client.transfer(
-                &env.current_contract_address(),
-                &oldest_highest_bid.bidder,
-                &(oldest_highest_bid.bid as i128),
-            );
-
-            auction.status = AuctionStatus::Ended;
-
-            save_auction_by_id(&env, auction_id, &auction)?;
-            save_auction_by_seller(&env, &auction.seller, &auction)?;
-            update_auction(&env, auction_id, auction.clone())?;
-
-            log!(
+        if !minimum_price_reached(&auction) {
+            handle_minimum_price_not_reached(
                 &env,
-                "Auction: Finalize auction: Miniminal price not reached"
-            );
-
-            return Ok(());
+                &token_client,
+                &mut auction,
+                auction_id,
+                &highest_bid,
+            )?;
+        } else if auction.highest_bid.is_none() {
+            end_auction_without_bids(&env, &mut auction, auction_id)?;
+        } else {
+            finalize_successful_auction(
+                &env,
+                &token_client,
+                &mut auction,
+                auction_id,
+                &highest_bid,
+            )?;
         }
-
-        // if the auction is over, but there are no bids placed, we just end it
-        if auction.highest_bid.is_none() {
-            auction.status = AuctionStatus::Ended;
-
-            save_auction_by_id(&env, auction_id, &auction)?;
-            save_auction_by_seller(&env, &auction.seller, &auction)?;
-            update_auction(&env, auction_id, auction)?;
-
-            return Ok(());
-        }
-
-        let oldest_bid = get_highest_bid(&env, auction_id)?;
-        token_client.transfer(
-            &env.current_contract_address(),
-            &auction.seller,
-            &(oldest_bid.bid as i128),
-        );
-
-        let nft_client = collection::Client::new(&env, &auction.item_info.collection_addr);
-        nft_client.safe_transfer_from(
-            &env.current_contract_address(),
-            &auction.seller,
-            &oldest_bid.bidder,
-            &auction.item_info.item_id,
-            &1,
-        );
-
-        auction.status = AuctionStatus::Ended;
-
-        update_auction(&env, auction_id, auction.clone())?;
-        save_auction_by_seller(&env, &auction.seller, &auction)?;
-        save_auction_by_id(&env, auction_id, &auction)?;
 
         Ok(())
     }

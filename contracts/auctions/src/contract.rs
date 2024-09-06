@@ -155,12 +155,10 @@ impl MarketplaceContract {
                 update_auction(&env, auction_id, auction.clone())?;
                 save_auction_by_id(&env, auction_id, &auction)?;
                 save_auction_by_seller(&env, &auction.seller, &auction)?;
-
-                Ok(())
             }
             Some(_) => {
                 log!(&env, "Auction: Place Bid: Bid not enough");
-                Err(ContractError::BidNotEnough)
+                return Err(ContractError::BidNotEnough);
             }
             None => {
                 // this is in case there are no previous bids
@@ -178,10 +176,15 @@ impl MarketplaceContract {
                 update_auction(&env, auction_id, auction.clone())?;
                 save_auction_by_id(&env, auction_id, &auction)?;
                 save_auction_by_seller(&env, &auction.seller, &auction)?;
-
-                Ok(())
             }
         }
+
+        env.events()
+            .publish(("place bid", "auction id"), auction_id);
+        env.events().publish(("place bid", "bidder"), bidder);
+        env.events().publish(("place bid", "bid"), bid_amount);
+
+        Ok(())
     }
 
     #[allow(dead_code)]

@@ -178,7 +178,10 @@ pub fn update_auction(env: &Env, id: u64, auction: Auction) -> Result<(), Contra
 pub fn validate_input_params(env: &Env, values_to_check: &[&u64]) -> Result<(), ContractError> {
     values_to_check.iter().for_each(|i| {
         if i < &&1 {
-            log!(&env, "Auction: Validate input: Invalid inputs used");
+            log!(
+                &env,
+                "Auction: Validate input: parameters cannot be less than 1"
+            );
             panic_with_error!(&env, ContractError::InvalidInputs);
         }
     });

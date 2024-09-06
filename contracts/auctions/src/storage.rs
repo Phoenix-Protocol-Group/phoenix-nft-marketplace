@@ -232,7 +232,7 @@ pub fn update_admin(env: &Env, new_admin: &Address) -> Result<Address, ContractE
 pub fn get_highest_bid(env: &Env, auction_id: u64) -> Result<HighestBid, ContractError> {
     let highest_bid = env
         .storage()
-        .persistent()
+        .instance()
         .get(&DataKey::HighestBid(auction_id))
         .unwrap_or(HighestBid {
             bid: 0,
@@ -241,14 +241,12 @@ pub fn get_highest_bid(env: &Env, auction_id: u64) -> Result<HighestBid, Contrac
         });
 
     env.storage()
-        .persistent()
+        .instance()
         .has(&DataKey::HighestBid(auction_id))
         .then(|| {
-            env.storage().persistent().extend_ttl(
-                &DataKey::HighestBid(auction_id),
-                LIFETIME_THRESHOLD,
-                BUMP_AMOUNT,
-            )
+            env.storage()
+                .instance()
+                .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT)
         });
 
     Ok(highest_bid)
@@ -260,15 +258,13 @@ pub fn set_highest_bid(
     bid: u64,
     bidder: Address,
 ) -> Result<(), ContractError> {
-    env.storage().persistent().set(
+    env.storage().instance().set(
         &DataKey::HighestBid(auction_id),
         &HighestBid { bid, bidder },
     );
-    env.storage().persistent().extend_ttl(
-        &DataKey::HighestBid(auction_id),
-        LIFETIME_THRESHOLD,
-        BUMP_AMOUNT,
-    );
+    env.storage()
+        .instance()
+        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
 
     Ok(())
 }

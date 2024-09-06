@@ -30,10 +30,12 @@ impl MarketplaceContract {
             return Err(ContractError::AlreadyInitialized);
         }
 
-        save_admin(&env, admin);
+        save_admin(&env, &admin);
         save_currency(&env, currency);
 
         set_initialized(&env);
+
+        env.events().publish(("initialize", "admin: "), admin);
 
         Ok(())
     }
@@ -86,6 +88,11 @@ impl MarketplaceContract {
 
         save_auction_by_id(&env, id, &auction)?;
         save_auction_by_seller(&env, &seller, &auction)?;
+
+        env.events()
+            .publish(("create auction", "auction id: "), auction.id);
+        env.events().publish(("create auction", "seller: "), seller);
+        env.events().publish(("initialize", "duration: "), duration);
 
         Ok(auction)
     }
@@ -195,8 +202,18 @@ impl MarketplaceContract {
                 auction_id,
                 &highest_bid,
             )?;
+            env.events()
+                .publish(("finalize auction", "minimum price not reached"), ());
+            env.events()
+                .publish(("finalize auction", "highest bid: "), auction.highest_bid);
+            env.events().publish(
+                ("finalize auction", "minimum price: "),
+                auction.item_info.minimum_price,
+            );
         } else if auction.highest_bid.is_none() {
             end_auction_without_bids(&env, &mut auction, auction_id)?;
+
+            env.events().publish(("finalize auction", "no bids"), ());
         } else {
             finalize_successful_auction(
                 &env,
@@ -205,7 +222,14 @@ impl MarketplaceContract {
                 auction_id,
                 &highest_bid,
             )?;
-        }
+            env.events()
+                .publish(("finalize auction", "highest bidder: "), highest_bid.bidder);
+            env.events()
+                .publish(("finalize auction", "highest bid: "), highest_bid.bid);
+        };
+
+        env.events()
+            .publish(("finalize auction", "auction id: "), auction_id);
 
         Ok(())
     }
@@ -272,6 +296,10 @@ impl MarketplaceContract {
         save_auction_by_id(&env, auction_id, &auction)?;
         save_auction_by_seller(&env, &auction.seller, &auction)?;
 
+        env.events()
+            .publish(("buy now", "auction id: "), auction_id);
+        env.events().publish(("buy now", "buyer: "), buyer);
+
         Ok(())
     }
 
@@ -294,6 +322,8 @@ impl MarketplaceContract {
 
         update_auction(&env, auction_id, auction)?;
 
+        env.events().publish(("pause", "auction id: "), auction_id);
+
         Ok(())
     }
 
@@ -315,6 +345,9 @@ impl MarketplaceContract {
         auction.status = AuctionStatus::Active;
 
         update_auction(env, auction_id, auction)?;
+
+        env.events()
+            .publish(("unpause", "auction id: "), auction_id);
 
         Ok(())
     }
@@ -367,6 +400,11 @@ impl MarketplaceContract {
         let old_admin = get_admin(&env)?;
         old_admin.require_auth();
 
+        env.events()
+            .publish(("update admin", "old admin: "), old_admin);
+        env.events()
+            .publish(("update admin", "new admin: "), &new_admin);
+
         Ok(update_admin(&env, &new_admin))?
     }
 
@@ -376,6 +414,8 @@ impl MarketplaceContract {
         admin.require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
+
+        env.events().publish(("upgrade", "admin: "), admin);
 
         Ok(())
     }

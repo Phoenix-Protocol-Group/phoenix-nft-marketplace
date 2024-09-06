@@ -198,7 +198,7 @@ pub fn set_initialized(env: &Env) {
         .set(&DataKey::IsInitialized, &true);
 }
 
-pub fn save_admin(env: &Env, admin: Address) {
+pub fn save_admin(env: &Env, admin: &Address) {
     env.storage().persistent().set(&DataKey::Admin, &admin);
     env.storage()
         .persistent()

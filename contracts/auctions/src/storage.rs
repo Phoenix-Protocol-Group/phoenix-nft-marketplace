@@ -234,7 +234,11 @@ pub fn get_highest_bid(env: &Env, auction_id: u64) -> Result<HighestBid, Contrac
         .storage()
         .persistent()
         .get(&DataKey::HighestBid(auction_id))
-        .ok_or(ContractError::NoBidFound)?;
+        .unwrap_or(HighestBid {
+            bid: 0,
+            // I know
+            bidder: get_admin(env)?,
+        });
 
     env.storage()
         .persistent()

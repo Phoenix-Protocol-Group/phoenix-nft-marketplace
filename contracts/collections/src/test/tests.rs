@@ -560,7 +560,7 @@ fn should_fail_when_admin_tries_to_set_himself_as_operator_for_approval_for_tran
     let collectoins_client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     assert_eq!(
-        collectoins_client.try_set_approval_for_transfer(&admin, &true),
+        collectoins_client.try_set_approval_for_transfer(&admin, &1, &true),
         Err(Ok(ContractError::CannotApproveSelf))
     );
 }
@@ -603,7 +603,7 @@ fn safe_transfer_from_should_fail_when_user_is_not_authorized() {
     // admin mints himself a new NFT
     collections_client.mint(&admin, &admin, &1, &2);
     // admin sets operator to be able to do as they like with the NFT
-    collections_client.set_approval_for_transfer(&operator, &true);
+    collections_client.set_approval_for_transfer(&operator, &1, &true);
 
     // rogue user tries to steal, but fails
     assert_eq!(
@@ -622,7 +622,7 @@ fn safe_transfer_from_should_fail_when_user_is_not_authorized() {
     assert_eq!(collections_client.balance_of(&rcpt, &1), 1);
 
     // admin revokes rights
-    collections_client.set_approval_for_transfer(&operator, &false);
+    collections_client.set_approval_for_transfer(&operator, &1, &false);
 
     assert_eq!(
         collections_client.try_safe_transfer_from(&operator, &admin, &rcpt, &1, &1),

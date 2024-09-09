@@ -125,6 +125,7 @@ impl Collections {
     pub fn set_approval_for_transfer(
         env: Env,
         operator: Address,
+        nft_id: u64,
         approved: bool,
     ) -> Result<(), ContractError> {
         let admin = get_admin(&env)?;
@@ -141,6 +142,7 @@ impl Collections {
         let data_key = DataKey::TransferApproval(TransferApprovalKey {
             owner: admin.clone(),
             operator: operator.clone(),
+            nft_id,
         });
 
         env.storage().persistent().set(&data_key, &approved);
@@ -189,8 +191,13 @@ impl Collections {
         env: Env,
         owner: Address,
         operator: Address,
+        nft_id: u64,
     ) -> Result<bool, ContractError> {
-        let data_key = DataKey::TransferApproval(TransferApprovalKey { owner, operator });
+        let data_key = DataKey::TransferApproval(TransferApprovalKey {
+            owner,
+            nft_id,
+            operator,
+        });
 
         let result = env.storage().persistent().get(&data_key).unwrap_or(false);
 
@@ -213,7 +220,7 @@ impl Collections {
         id: u64,
         transfer_amount: u64,
     ) -> Result<(), ContractError> {
-        Self::is_authorized_for_transfer(&env, &sender)?;
+        Self::is_authorized_for_transfer(&env, &sender, id)?;
 
         let from_balance = get_balance_of(&env, &from, id)?;
         let rcpt_balance = get_balance_of(&env, &to, id)?;
@@ -248,8 +255,6 @@ impl Collections {
         ids: Vec<u64>,
         amounts: Vec<u64>,
     ) -> Result<(), ContractError> {
-        Self::is_authorized_for_transfer(&env, &sender)?;
-
         if ids.len() != amounts.len() {
             log!(
                 &env,
@@ -259,8 +264,10 @@ impl Collections {
         }
 
         for idx in 0..ids.len() {
-            let id = ids.get(idx).unwrap();
-            let amount = amounts.get(idx).unwrap();
+            let id = ids.get(idx).ok_or(ContractError::InvalidIdIndex)?;
+            let amount = amounts.get(idx).ok_or(ContractError::InvalidAmountIndex)?;
+
+            Self::is_authorized_for_transfer(&env, &sender, id)?;
 
             let sender_balance = get_balance_of(&env, &from, id)?;
             let rcpt_balance = get_balance_of(&env, &to, id)?;
@@ -503,12 +510,16 @@ impl Collections {
         Ok(mabye_config)
     }
 
-    fn is_authorized_for_transfer(env: &Env, sender: &Address) -> Result<(), ContractError> {
+    fn is_authorized_for_transfer(
+        env: &Env,
+        sender: &Address,
+        nft_id: u64,
+    ) -> Result<(), ContractError> {
         let admin = get_admin(env)?;
 
         if admin == sender.clone()
             || Self::is_approved_for_all(env.clone(), admin.clone(), sender.clone())?
-            || Self::is_approved_for_transfer(env.clone(), admin.clone(), sender.clone())?
+            || Self::is_approved_for_transfer(env.clone(), admin.clone(), sender.clone(), nft_id)?
         {
             sender.require_auth();
         } else {

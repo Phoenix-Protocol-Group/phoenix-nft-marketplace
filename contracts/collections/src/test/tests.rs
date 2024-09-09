@@ -754,3 +754,42 @@ fn grant_all_permissions_to_user_then_withdraw_them() {
         Err(Ok(ContractError::Unauthorized))
     )
 }
+
+#[test]
+fn safe_batch_transfer_should_fail_when_unauthorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user_a = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    let ids = vec![&env, 1, 2, 3, 4, 5];
+    let amounts = vec![&env, 5, 5, 5, 5, 5];
+    client.mint_batch(&admin, &user_a, &ids, &amounts);
+
+    let accounts = vec![
+        &env,
+        user_a.clone(),
+        Address::generate(&env),
+        Address::generate(&env),
+        Address::generate(&env),
+        Address::generate(&env),
+    ];
+    assert_eq!(
+        client.balance_of_batch(&accounts, &ids),
+        vec![&env, 5, 0, 0, 0, 0]
+    );
+
+    assert_eq!(
+        client.try_safe_batch_transfer_from(
+            &user_a,
+            &user_a,
+            &Address::generate(&env),
+            &ids,
+            &amounts
+        ),
+        Err(Ok(ContractError::Unauthorized))
+    );
+}

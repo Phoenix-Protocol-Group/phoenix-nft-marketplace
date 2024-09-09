@@ -285,7 +285,7 @@ fn buy_now() {
 
     collections_client.mint(&seller, &seller, &1, &1);
 
-    collections_client.set_approval_for_transfer(&mp_client.address, &true);
+    collections_client.set_approval_for_transfer(&mp_client.address, &1u64, &true);
 
     let item_info = ItemInfo {
         collection_addr: collections_client.address.clone(),
@@ -536,10 +536,6 @@ fn multiple_auction_by_multiple_sellers() {
     let collection_c_client =
         create_and_initialize_collection(&env, &seller_c, "Seller C Collection", "SCC");
 
-    collection_a_client.set_approval_for_transfer(&mp_client.address, &true);
-    collection_b_client.set_approval_for_transfer(&mp_client.address, &true);
-    collection_c_client.set_approval_for_transfer(&mp_client.address, &true);
-
     // ============ Auction item setup ============
     let first_item_info_seller_a = ItemInfo {
         collection_addr: collection_a_client.address.clone(),
@@ -578,6 +574,11 @@ fn multiple_auction_by_multiple_sellers() {
     };
 
     mp_client.create_auction(&item_info_seller_c, &seller_c, &DAY);
+    // ============ Authorized transfer ============================
+    collection_a_client.set_approval_for_transfer(&mp_client.address, &1, &true);
+    collection_a_client.set_approval_for_transfer(&mp_client.address, &2, &true);
+    collection_b_client.set_approval_for_transfer(&mp_client.address, &1, &true);
+    collection_c_client.set_approval_for_transfer(&mp_client.address, &1, &true);
 
     // ============ Assert everything is before bidding ============
 

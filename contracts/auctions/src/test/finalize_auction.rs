@@ -39,8 +39,6 @@ fn finalize_auction() {
         None,
     );
 
-    collections_client.set_approval_for_transfer(&mp_client.address, &true);
-
     let item_info = ItemInfo {
         collection_addr: collections_client.address.clone(),
         item_id: 1,
@@ -48,6 +46,7 @@ fn finalize_auction() {
         buy_now_price: None,
     };
 
+    collections_client.set_approval_for_transfer(&mp_client.address, &1, &true);
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     // 4 hours after the start of the auctions `bidder_a` places a bid

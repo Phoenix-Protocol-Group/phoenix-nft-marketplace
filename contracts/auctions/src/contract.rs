@@ -63,6 +63,12 @@ impl MarketplaceContract {
         let nft_client = collection::Client::new(&env, &item_info.collection_addr);
         let item_balance = nft_client.balance_of(&seller, &item_info.item_id);
 
+        nft_client.set_approval_for_transfer(
+            &env.current_contract_address(),
+            &item_info.item_id,
+            &true,
+        );
+
         // we need at least one item to start an auction
         if item_balance < 1 {
             log!(

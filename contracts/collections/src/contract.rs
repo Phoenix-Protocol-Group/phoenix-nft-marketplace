@@ -156,8 +156,9 @@ impl Collections {
             (
                 "Set approval for transfer",
                 "Set approval for operator addr: ",
+                "Set approval for nft id: ",
             ),
-            operator,
+            (operator, nft_id),
         );
         env.events()
             .publish(("Set approval for", "New approval: "), approved);
@@ -167,11 +168,7 @@ impl Collections {
 
     // Returns true if `operator` is approved to manage `owner`'s tokens
     #[allow(dead_code)]
-    pub fn is_approved_for_all(
-        env: Env,
-        owner: Address,
-        operator: Address,
-    ) -> Result<bool, ContractError> {
+    pub fn is_approved_for_all(env: Env, owner: Address, operator: Address) -> bool {
         let data_key = DataKey::OperatorApproval(OperatorApprovalKey { owner, operator });
 
         let result = env.storage().persistent().get(&data_key).unwrap_or(false);
@@ -182,7 +179,7 @@ impl Collections {
                 .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT)
         });
 
-        Ok(result)
+        result
     }
 
     // Returns true if `operator` is approved to manage `owner`'s tokens
@@ -192,7 +189,7 @@ impl Collections {
         owner: Address,
         operator: Address,
         nft_id: u64,
-    ) -> Result<bool, ContractError> {
+    ) -> bool {
         let data_key = DataKey::TransferApproval(TransferApprovalKey {
             owner,
             nft_id,
@@ -207,7 +204,7 @@ impl Collections {
                 .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT)
         });
 
-        Ok(result)
+        result
     }
 
     // Transfers `amount` tokens of token type `id` from `from` to `to`
@@ -220,7 +217,12 @@ impl Collections {
         id: u64,
         transfer_amount: u64,
     ) -> Result<(), ContractError> {
-        Self::is_authorized_for_transfer(&env, &sender, id)?;
+        if !Self::is_authorized_for_transfer(&env, &sender, id) {
+            log!(env, "Collection: Safe Transfer From: Unauthorized.");
+            return Err(ContractError::Unauthorized);
+        }
+
+        sender.require_auth();
 
         let from_balance = get_balance_of(&env, &from, id)?;
         let rcpt_balance = get_balance_of(&env, &to, id)?;
@@ -263,11 +265,18 @@ impl Collections {
             return Err(ContractError::IdsAmountsLengthMismatch);
         }
 
+        for id in 0..ids.len() {
+            if !Self::is_authorized_for_transfer(&env, &sender, id.into()) {
+                log!(env, "Collection: Safe Transfer From: Unauthorized.");
+                return Err(ContractError::Unauthorized);
+            }
+        }
+
+        sender.require_auth();
+
         for idx in 0..ids.len() {
             let id = ids.get(idx).ok_or(ContractError::InvalidIdIndex)?;
             let amount = amounts.get(idx).ok_or(ContractError::InvalidAmountIndex)?;
-
-            Self::is_authorized_for_transfer(&env, &sender, id)?;
 
             let sender_balance = get_balance_of(&env, &from, id)?;
             let rcpt_balance = get_balance_of(&env, &to, id)?;
@@ -309,7 +318,12 @@ impl Collections {
         id: u64,
         amount: u64,
     ) -> Result<(), ContractError> {
-        Self::is_authorized_for_all(&env, &sender)?;
+        if !Self::is_authorized_for_all(&env, &sender) {
+            log!(env, "Collections: Mint: Unauthorized");
+            return Err(ContractError::Unauthorized);
+        }
+
+        sender.require_auth();
 
         let current_balance = get_balance_of(&env, &to, id)?;
         update_balance_of(&env, &to, id, current_balance + amount)?;
@@ -331,7 +345,11 @@ impl Collections {
         ids: Vec<u64>,
         amounts: Vec<u64>,
     ) -> Result<(), ContractError> {
-        Self::is_authorized_for_all(&env, &sender)?;
+        if !Self::is_authorized_for_all(&env, &sender) {
+            log!(env, "Collections: Mint: Unauthorized");
+            return Err(ContractError::Unauthorized);
+        }
+        sender.require_auth();
 
         if ids.len() != amounts.len() {
             log!(&env, "Collection: Mint batch: length mismatch");
@@ -363,7 +381,12 @@ impl Collections {
         id: u64,
         amount: u64,
     ) -> Result<(), ContractError> {
-        Self::is_authorized_for_all(&env, &sender)?;
+        if !Self::is_authorized_for_all(&env, &sender) {
+            log!(env, "Collections: Mint: Unauthorized");
+            return Err(ContractError::Unauthorized);
+        }
+
+        sender.require_auth();
 
         let current_balance = get_balance_of(&env, &from, id)?;
 
@@ -390,7 +413,11 @@ impl Collections {
         ids: Vec<u64>,
         amounts: Vec<u64>,
     ) -> Result<(), ContractError> {
-        Self::is_authorized_for_all(&env, &sender)?;
+        if !Self::is_authorized_for_all(&env, &sender) {
+            log!(env, "Collections: Mint: Unauthorized");
+            return Err(ContractError::Unauthorized);
+        }
+        sender.require_auth();
 
         if ids.len() != amounts.len() {
             log!(&env, "Collection: Burn batch: length mismatch");
@@ -419,7 +446,11 @@ impl Collections {
     // Sets a new URI for a token type `id`
     #[allow(dead_code)]
     pub fn set_uri(env: Env, sender: Address, id: u64, uri: Bytes) -> Result<(), ContractError> {
-        Self::is_authorized_for_all(&env, &sender)?;
+        if !Self::is_authorized_for_all(&env, &sender) {
+            log!(env, "Collections: Mint: Unauthorized");
+            return Err(ContractError::Unauthorized);
+        }
+        sender.require_auth();
 
         env.storage()
             .persistent()
@@ -438,7 +469,11 @@ impl Collections {
     // Sets the main image(logo) for the collection
     #[allow(dead_code)]
     pub fn set_collection_uri(env: Env, sender: Address, uri: Bytes) -> Result<(), ContractError> {
-        Self::is_authorized_for_all(&env, &sender)?;
+        if !Self::is_authorized_for_all(&env, &sender) {
+            log!(env, "Collections: Mint: Unauthorized");
+            return Err(ContractError::Unauthorized);
+        }
+        sender.require_auth();
 
         env.storage()
             .persistent()
@@ -510,40 +545,17 @@ impl Collections {
         Ok(mabye_config)
     }
 
-    fn is_authorized_for_transfer(
-        env: &Env,
-        sender: &Address,
-        nft_id: u64,
-    ) -> Result<(), ContractError> {
-        let admin = get_admin(env)?;
+    fn is_authorized_for_transfer(env: &Env, sender: &Address, nft_id: u64) -> bool {
+        let admin = get_admin(env).expect("no admin found");
 
-        if admin == sender.clone()
-            || Self::is_approved_for_all(env.clone(), admin.clone(), sender.clone())?
-            || Self::is_approved_for_transfer(env.clone(), admin.clone(), sender.clone(), nft_id)?
-        {
-            sender.require_auth();
-        } else {
-            log!(
-                &env,
-                "Collections: Safe Transfer From: Unauthorized to transfer."
-            );
-            return Err(ContractError::Unauthorized);
-        }
-
-        Ok(())
+        admin == sender.clone()
+            || Self::is_approved_for_all(env.clone(), admin.clone(), sender.clone())
+            || Self::is_approved_for_transfer(env.clone(), admin.clone(), sender.clone(), nft_id)
     }
 
-    fn is_authorized_for_all(env: &Env, sender: &Address) -> Result<(), ContractError> {
-        let admin = get_admin(env)?;
+    fn is_authorized_for_all(env: &Env, sender: &Address) -> bool {
+        let admin = get_admin(env).expect("no admin found");
 
-        if admin == sender.clone() || Self::is_approved_for_all(env.clone(), admin, sender.clone())?
-        {
-            sender.require_auth();
-        } else {
-            log!(&env, "Collections: Mint batch: Unauthorized");
-            return Err(ContractError::Unauthorized);
-        }
-
-        Ok(())
+        admin == sender.clone() || Self::is_approved_for_all(env.clone(), admin, sender.clone())
     }
 }

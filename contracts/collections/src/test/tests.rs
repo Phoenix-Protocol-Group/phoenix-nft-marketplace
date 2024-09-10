@@ -816,3 +816,42 @@ fn safe_batch_transfer_should_succeed_when_sender_from_the_same() {
         vec![&env, 0, 0, 0, 0, 0]
     )
 }
+
+#[test]
+fn safe_batch_transfer_should_fail_when_sender_is_not_authorized_to_transfer_from_from() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user_a = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    let ids = vec![&env, 1, 2, 3, 4, 5];
+    let amounts = vec![&env, 5, 4, 3, 2, 1];
+    client.mint_batch(&admin, &user_a, &ids, &amounts);
+
+    let accounts = vec![
+        &env,
+        user_a.clone(),
+        user_a.clone(),
+        user_a.clone(),
+        user_a.clone(),
+        user_a.clone(),
+    ];
+    assert_eq!(
+        client.balance_of_batch(&accounts, &ids),
+        vec![&env, 5, 4, 3, 2, 1]
+    );
+
+    assert_eq!(
+        client.try_safe_batch_transfer_from(
+            &Address::generate(&env),
+            &user_a,
+            &Address::generate(&env),
+            &ids,
+            &amounts,
+        ),
+        Err(Ok(ContractError::Unauthorized))
+    );
+}

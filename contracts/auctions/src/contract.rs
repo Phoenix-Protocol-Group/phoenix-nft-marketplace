@@ -10,10 +10,7 @@ use crate::{
         update_auction, validate_input_params, Auction, AuctionStatus, HighestBid, ItemInfo,
     },
     token,
-    utils::{
-        check_auction_can_be_finalized, end_auction_without_bids, finalize_successful_auction,
-        handle_minimum_price_not_reached, minimum_price_reached,
-    },
+    utils::{check_auction_can_be_finalized, minimum_price_reached},
 };
 
 #[contract]
@@ -187,31 +184,47 @@ impl MarketplaceContract {
         let highest_bid = get_highest_bid(&env, auction_id)?;
 
         if minimum_price_reached(&auction) {
-            finalize_successful_auction(
-                &env,
-                &token_client,
-                &mut auction,
-                auction_id,
-                &highest_bid,
-            )?;
+            token_client.transfer(
+                &env.current_contract_address(),
+                &auction.seller,
+                &(highest_bid.bid as i128),
+            );
+
+            let nft_client = collection::Client::new(&env, &auction.item_info.collection_addr);
+            nft_client.safe_transfer_from(
+                &env.current_contract_address(),
+                &auction.seller,
+                &highest_bid.bidder,
+                &auction.item_info.item_id,
+                &1,
+            );
+
+            auction.status = AuctionStatus::Ended;
+            save_auction(&env, auction_id, &auction)?;
             env.events()
                 .publish(("finalize auction", "highest bidder: "), highest_bid.bidder);
             env.events()
                 .publish(("finalize auction", "highest bid: "), highest_bid.bid);
         } else if auction.highest_bid.is_none() {
-            end_auction_without_bids(&env, &mut auction, auction_id)?;
+            auction.status = AuctionStatus::Ended;
+            save_auction(&env, auction_id, &auction)?;
 
             env.events().publish(("finalize auction", "no bids"), ());
         } else {
-            handle_minimum_price_not_reached(
-                &env,
-                &token_client,
-                &mut auction,
-                auction_id,
-                &highest_bid,
-            )?;
+            token_client.transfer(
+                &env.current_contract_address(),
+                &highest_bid.bidder,
+                &(highest_bid.bid as i128),
+            );
+            auction.status = AuctionStatus::Ended;
+            save_auction(&env, auction_id, &auction)?;
+            log!(
+                env,
+                "Auction: Finalize auction: Miniminal price not reached"
+            );
+
             env.events()
-                .publish(("finalize auction", "minimum price not reached"), ());
+                .publish(("finalize auction", "auction id: "), auction_id);
             env.events()
                 .publish(("finalize auction", "highest bid: "), auction.highest_bid);
             env.events().publish(
@@ -219,9 +232,6 @@ impl MarketplaceContract {
                 auction.item_info.minimum_price,
             );
         };
-
-        env.events()
-            .publish(("finalize auction", "auction id: "), auction_id);
 
         Ok(())
     }
@@ -419,4 +429,11 @@ impl MarketplaceContract {
 
         Ok(())
     }
+}
+
+fn save_auction(env: &Env, auction_id: u64, auction: &Auction) -> Result<(), ContractError> {
+    save_auction_by_id(env, auction_id, auction)?;
+    save_auction_by_seller(env, &auction.seller, auction)?;
+    update_auction(env, auction_id, auction.clone())?;
+    Ok(())
 }

@@ -86,7 +86,6 @@ impl MarketplaceContract {
             item_info,
             seller: seller.clone(),
             highest_bid: None,
-            // we use the seller's address as we cannot add `Option<Address>` in the struct
             end_time,
             status: AuctionStatus::Active,
             currency,
@@ -138,29 +137,11 @@ impl MarketplaceContract {
             Some(current_highest_bid) if bid_amount > current_highest_bid => {
                 // refund the previous highest bidder
                 let old_bid_info = get_highest_bid(&env, auction_id)?;
-
                 token_client.transfer(
                     &env.current_contract_address(),
                     &old_bid_info.bidder,
                     &(old_bid_info.bid as i128),
                 );
-
-                // transfer the new bid amount
-                token_client.transfer(
-                    &bidder,
-                    &env.current_contract_address(),
-                    &(bid_amount as i128),
-                );
-
-                set_highest_bid(&env, auction_id, bid_amount, bidder.clone())?;
-
-                // Update auction state
-                //TODO: in case we have separate storage isn't the two below
-                //redundant?
-                auction.highest_bid = Some(bid_amount);
-                update_auction(&env, auction_id, auction.clone())?;
-                save_auction_by_id(&env, auction_id, &auction)?;
-                save_auction_by_seller(&env, &auction.seller, &auction)?;
             }
             Some(_) => {
                 log!(
@@ -170,24 +151,22 @@ impl MarketplaceContract {
                 );
                 return Err(ContractError::BidNotEnough);
             }
-            None => {
-                // this is in case there are no previous bids
-                // transfer the new bid amount
-                token_client.transfer(
-                    &bidder,
-                    &env.current_contract_address(),
-                    &(bid_amount as i128),
-                );
+            None => {}
+        };
 
-                set_highest_bid(&env, auction_id, bid_amount, bidder.clone())?;
+        token_client.transfer(
+            &bidder,
+            &env.current_contract_address(),
+            &(bid_amount as i128),
+        );
 
-                // Update auction state
-                auction.highest_bid = Some(bid_amount);
-                update_auction(&env, auction_id, auction.clone())?;
-                save_auction_by_id(&env, auction_id, &auction)?;
-                save_auction_by_seller(&env, &auction.seller, &auction)?;
-            }
-        }
+        set_highest_bid(&env, auction_id, bid_amount, bidder.clone())?;
+        // Update auction state
+
+        auction.highest_bid = Some(bid_amount);
+        update_auction(&env, auction_id, auction.clone())?;
+        save_auction_by_id(&env, auction_id, &auction)?;
+        save_auction_by_seller(&env, &auction.seller, &auction)?;
 
         env.events()
             .publish(("place bid", "auction id"), auction_id);

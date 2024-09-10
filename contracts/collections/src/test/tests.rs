@@ -756,40 +756,63 @@ fn grant_all_permissions_to_user_then_withdraw_them() {
 }
 
 #[test]
-fn safe_batch_transfer_should_fail_when_unauthorized() {
+fn safe_batch_transfer_should_succeed_when_sender_from_the_same() {
     let env = Env::default();
     env.mock_all_auths();
 
     let admin = Address::generate(&env);
     let user_a = Address::generate(&env);
+    let rcpt = Address::generate(&env);
 
     let client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     let ids = vec![&env, 1, 2, 3, 4, 5];
-    let amounts = vec![&env, 5, 5, 5, 5, 5];
+    let amounts = vec![&env, 5, 4, 3, 2, 1];
     client.mint_batch(&admin, &user_a, &ids, &amounts);
 
     let accounts = vec![
         &env,
         user_a.clone(),
-        Address::generate(&env),
-        Address::generate(&env),
-        Address::generate(&env),
-        Address::generate(&env),
+        user_a.clone(),
+        user_a.clone(),
+        user_a.clone(),
+        user_a.clone(),
     ];
     assert_eq!(
         client.balance_of_batch(&accounts, &ids),
-        vec![&env, 5, 0, 0, 0, 0]
+        vec![&env, 5, 4, 3, 2, 1]
     );
 
+    client.safe_batch_transfer_from(&user_a, &user_a, &rcpt, &ids, &amounts);
+    // rcpt now has all the tokens
     assert_eq!(
-        client.try_safe_batch_transfer_from(
-            &user_a,
-            &user_a,
-            &Address::generate(&env),
-            &ids,
-            &amounts
+        client.balance_of_batch(
+            &vec![
+                &env,
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone()
+            ],
+            &ids
         ),
-        Err(Ok(ContractError::Unauthorized))
+        vec![&env, 5, 4, 3, 2, 1]
     );
+
+    // original owner has 0 for all the ids
+    assert_eq!(
+        client.balance_of_batch(
+            &vec![
+                &env,
+                user_a.clone(),
+                user_a.clone(),
+                user_a.clone(),
+                user_a.clone(),
+                user_a.clone()
+            ],
+            &ids
+        ),
+        vec![&env, 0, 0, 0, 0, 0]
+    )
 }

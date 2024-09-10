@@ -217,7 +217,8 @@ impl Collections {
         id: u64,
         transfer_amount: u64,
     ) -> Result<(), ContractError> {
-        if !Self::is_authorized_for_transfer(&env, &sender, id) {
+        // if the sender is NOT transferring his own tokens and he's not authorized for transfer then we fail
+        if sender != from && !Self::is_authorized_for_transfer(&env, &sender, id) {
             log!(env, "Collection: Safe Transfer From: Unauthorized.");
             return Err(ContractError::Unauthorized);
         }
@@ -266,7 +267,7 @@ impl Collections {
         }
 
         for id in 0..ids.len() {
-            if !Self::is_authorized_for_transfer(&env, &sender, id.into()) {
+            if sender != from && !Self::is_authorized_for_transfer(&env, &sender, id.into()) {
                 log!(env, "Collection: Safe Transfer From: Unauthorized.");
                 return Err(ContractError::Unauthorized);
             }

@@ -162,19 +162,6 @@ pub fn get_auctions_by_seller_id(
     Ok(seller_auctions_list)
 }
 
-pub fn update_auction(env: &Env, id: u64, auction: Auction) -> Result<(), ContractError> {
-    if id != auction.id {
-        log!(&env, "Auction update auction: Id missmatch");
-        panic_with_error!(&env, ContractError::IDMissmatch);
-    }
-    env.storage().instance().set(&auction.id, &auction);
-    env.storage()
-        .instance()
-        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
-
-    Ok(())
-}
-
 pub fn validate_input_params(env: &Env, values_to_check: &[&u64]) -> Result<(), ContractError> {
     values_to_check.iter().for_each(|i| {
         if i < &&1 {

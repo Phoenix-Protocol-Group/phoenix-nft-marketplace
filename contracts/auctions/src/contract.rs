@@ -7,7 +7,7 @@ use crate::{
         generate_auction_id, get_admin, get_auction_by_id, get_auctions, get_auctions_by_seller_id,
         get_currency, get_highest_bid, is_initialized, save_admin, save_auction_by_id,
         save_auction_by_seller, save_currency, set_highest_bid, set_initialized, update_admin,
-        update_auction, validate_input_params, Auction, AuctionStatus, HighestBid, ItemInfo,
+        validate_input_params, Auction, AuctionStatus, HighestBid, ItemInfo,
     },
     token,
     utils::{check_auction_can_be_finalized, minimum_price_reached},
@@ -88,8 +88,7 @@ impl MarketplaceContract {
             currency,
         };
 
-        save_auction_by_id(&env, id, &auction)?;
-        save_auction_by_seller(&env, &seller, &auction)?;
+        save_auction(&env, &auction)?;
 
         env.events()
             .publish(("create auction", "auction id: "), auction.id);
@@ -161,9 +160,7 @@ impl MarketplaceContract {
         // Update auction state
 
         auction.highest_bid = Some(bid_amount);
-        update_auction(&env, auction_id, auction.clone())?;
-        save_auction_by_id(&env, auction_id, &auction)?;
-        save_auction_by_seller(&env, &auction.seller, &auction)?;
+        save_auction(&env, &auction)?;
 
         env.events()
             .publish(("place bid", "auction id"), auction_id);
@@ -200,14 +197,14 @@ impl MarketplaceContract {
             );
 
             auction.status = AuctionStatus::Ended;
-            save_auction(&env, auction_id, &auction)?;
+            save_auction(&env, &auction)?;
             env.events()
                 .publish(("finalize auction", "highest bidder: "), highest_bid.bidder);
             env.events()
                 .publish(("finalize auction", "highest bid: "), highest_bid.bid);
         } else if auction.highest_bid.is_none() {
             auction.status = AuctionStatus::Ended;
-            save_auction(&env, auction_id, &auction)?;
+            save_auction(&env, &auction)?;
 
             env.events().publish(("finalize auction", "no bids"), ());
         } else {
@@ -217,7 +214,7 @@ impl MarketplaceContract {
                 &(highest_bid.bid as i128),
             );
             auction.status = AuctionStatus::Ended;
-            save_auction(&env, auction_id, &auction)?;
+            save_auction(&env, &auction)?;
             log!(
                 env,
                 "Auction: Finalize auction: Miniminal price not reached"
@@ -294,9 +291,7 @@ impl MarketplaceContract {
                 .expect("Auction: Buy Now: Buy now price has not been set"),
         );
 
-        update_auction(&env, auction_id, auction.clone())?;
-        save_auction_by_id(&env, auction_id, &auction)?;
-        save_auction_by_seller(&env, &auction.seller, &auction)?;
+        save_auction(&env, &auction)?;
 
         env.events()
             .publish(("buy now", "auction id: "), auction_id);
@@ -326,7 +321,7 @@ impl MarketplaceContract {
 
         auction.status = AuctionStatus::Paused;
 
-        update_auction(&env, auction_id, auction)?;
+        save_auction_by_id(&env, auction_id, &auction)?;
 
         env.events().publish(("pause", "auction id: "), auction_id);
 
@@ -354,7 +349,7 @@ impl MarketplaceContract {
 
         auction.status = AuctionStatus::Active;
 
-        update_auction(env, auction_id, auction)?;
+        save_auction_by_id(env, auction_id, &auction)?;
 
         env.events()
             .publish(("unpause", "auction id: "), auction_id);
@@ -431,9 +426,8 @@ impl MarketplaceContract {
     }
 }
 
-fn save_auction(env: &Env, auction_id: u64, auction: &Auction) -> Result<(), ContractError> {
-    save_auction_by_id(env, auction_id, auction)?;
+fn save_auction(env: &Env, auction: &Auction) -> Result<(), ContractError> {
+    save_auction_by_id(env, auction.id, auction)?;
     save_auction_by_seller(env, &auction.seller, auction)?;
-    update_auction(env, auction_id, auction.clone())?;
     Ok(())
 }

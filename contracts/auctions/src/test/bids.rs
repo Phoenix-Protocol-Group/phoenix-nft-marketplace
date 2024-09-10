@@ -135,9 +135,6 @@ fn fail_to_place_bid_when_auction_inactive() {
         mp_client.try_place_bid(&1, &bidder_a, &10),
         Err(Ok(ContractError::AuctionNotActive))
     );
-
-    // uncomment when pagination is done
-    //assert_eq!(mp_client.get_active_auctions(), vec![&env]);
 }
 
 #[test]

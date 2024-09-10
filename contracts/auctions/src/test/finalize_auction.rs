@@ -192,7 +192,7 @@ fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
     // we try to finalize the auction 2 weeks later
     env.ledger().with_mut(|li| li.timestamp = WEEKLY * 2);
 
-    assert!(mp_client.try_finalize_auction(&1).is_ok());
+    mp_client.finalize_auction(&1);
 
     assert_eq!(
         mp_client.get_auction(&1),

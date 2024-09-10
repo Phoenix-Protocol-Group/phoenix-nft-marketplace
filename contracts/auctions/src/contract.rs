@@ -186,7 +186,23 @@ impl MarketplaceContract {
         let token_client = token::Client::new(&env, &auction.currency);
         let highest_bid = get_highest_bid(&env, auction_id)?;
 
-        if !minimum_price_reached(&auction) {
+        if minimum_price_reached(&auction) {
+            finalize_successful_auction(
+                &env,
+                &token_client,
+                &mut auction,
+                auction_id,
+                &highest_bid,
+            )?;
+            env.events()
+                .publish(("finalize auction", "highest bidder: "), highest_bid.bidder);
+            env.events()
+                .publish(("finalize auction", "highest bid: "), highest_bid.bid);
+        } else if auction.highest_bid.is_none() {
+            end_auction_without_bids(&env, &mut auction, auction_id)?;
+
+            env.events().publish(("finalize auction", "no bids"), ());
+        } else {
             handle_minimum_price_not_reached(
                 &env,
                 &token_client,
@@ -202,22 +218,6 @@ impl MarketplaceContract {
                 ("finalize auction", "minimum price: "),
                 auction.item_info.minimum_price,
             );
-        } else if auction.highest_bid.is_none() {
-            end_auction_without_bids(&env, &mut auction, auction_id)?;
-
-            env.events().publish(("finalize auction", "no bids"), ());
-        } else {
-            finalize_successful_auction(
-                &env,
-                &token_client,
-                &mut auction,
-                auction_id,
-                &highest_bid,
-            )?;
-            env.events()
-                .publish(("finalize auction", "highest bidder: "), highest_bid.bidder);
-            env.events()
-                .publish(("finalize auction", "highest bid: "), highest_bid.bid);
         };
 
         env.events()

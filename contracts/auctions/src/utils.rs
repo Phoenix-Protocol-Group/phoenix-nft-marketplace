@@ -32,15 +32,11 @@ pub(crate) fn check_auction_can_be_finalized(
 }
 
 pub(crate) fn minimum_price_reached(auction: &Auction) -> bool {
-    !auction
-        .item_info
-        .minimum_price
-        .and_then(|min_price| {
-            auction
-                .highest_bid
-                .map(|highest_bid| min_price > highest_bid)
-        })
-        .unwrap_or(false)
+    auction.item_info.minimum_price.map_or(true, |min_price| {
+        auction
+            .highest_bid
+            .map_or(false, |highest_bid| highest_bid >= min_price)
+    })
 }
 
 pub(crate) fn handle_minimum_price_not_reached(

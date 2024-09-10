@@ -425,7 +425,7 @@ impl Collections {
         id: u64,
         amount: u64,
     ) -> Result<(), ContractError> {
-        if !Self::is_authorized_for_all(&env, &sender) {
+        if sender != from && !Self::is_authorized_for_all(&env, &sender) {
             log!(&env, "Collections: Mint: Unauthorized. Sender: ", sender);
             return Err(ContractError::Unauthorized);
         }
@@ -464,10 +464,11 @@ impl Collections {
         ids: Vec<u64>,
         amounts: Vec<u64>,
     ) -> Result<(), ContractError> {
-        if !Self::is_authorized_for_all(&env, &sender) {
+        if sender != from && !Self::is_authorized_for_all(&env, &sender) {
             log!(&env, "Collections: Mint: Unauthorized. Sender: ", sender);
             return Err(ContractError::Unauthorized);
         }
+
         sender.require_auth();
 
         if ids.len() != amounts.len() {

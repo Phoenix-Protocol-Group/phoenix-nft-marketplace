@@ -62,7 +62,14 @@ impl Collections {
         ids: Vec<u64>,
     ) -> Result<Vec<u64>, ContractError> {
         if accounts.len() != ids.len() {
-            log!(&env, "Collections: Balance of batch: length missmatch");
+            log!(
+                &env,
+                "Collections: Balance of batch: length missmatch: ",
+                "accounts length: ",
+                accounts.len(),
+                "ids length: ",
+                ids.len()
+            );
             return Err(ContractError::AccountsIdsLengthMissmatch);
         }
         let mut batch_balances: Vec<u64> = vec![&env];
@@ -94,7 +101,8 @@ impl Collections {
         if admin == operator {
             log!(
                 &env,
-                "Collection: Set approval for all: Cannot set approval for self"
+                "Collection: Set approval for all: Cannot set approval for self. Operator: ",
+                operator
             );
             return Err(ContractError::CannotApproveSelf);
         }
@@ -134,7 +142,8 @@ impl Collections {
         if admin == operator {
             log!(
                 &env,
-                "Collection: Set approval for transfer: Trying to authorize self"
+                "Collection: Set approval for transfer: Trying to authorize admin. Operator: ",
+                operator
             );
             return Err(ContractError::CannotApproveSelf);
         }
@@ -219,7 +228,13 @@ impl Collections {
     ) -> Result<(), ContractError> {
         // if the sender is NOT transferring his own tokens and he's not authorized for transfer then we fail
         if sender != from && !Self::is_authorized_for_transfer(&env, &sender, id) {
-            log!(env, "Collection: Safe Transfer From: Unauthorized.");
+            log!(
+                &env,
+                "Collection: Safe Transfer From: Unauthorized.",
+                sender,
+                " trying to transfer from ",
+                from
+            );
             return Err(ContractError::Unauthorized);
         }
 
@@ -229,7 +244,14 @@ impl Collections {
         let rcpt_balance = get_balance_of(&env, &to, id)?;
 
         if from_balance < transfer_amount {
-            log!(&env, "Collection: Safe transfer from: Insuficient Balance");
+            log!(
+                &env,
+                "Collection: Safe batch transfer from: Insufficient Balance",
+                "Available balance: ",
+                from_balance,
+                "Amount to send: ",
+                transfer_amount
+            );
             return Err(ContractError::InsufficientBalance);
         }
 
@@ -261,14 +283,24 @@ impl Collections {
         if ids.len() != amounts.len() {
             log!(
                 &env,
-                "Collection: Safe batch transfer from: length mismatch"
+                "Collection: Safe batch transfer from: length mismatch",
+                "ids length: ",
+                ids.len(),
+                "amounts length: ",
+                amounts.len()
             );
             return Err(ContractError::IdsAmountsLengthMismatch);
         }
 
         for id in 0..ids.len() {
             if sender != from && !Self::is_authorized_for_transfer(&env, &sender, id.into()) {
-                log!(env, "Collection: Safe Transfer From: Unauthorized.");
+                log!(
+                    &env,
+                    "Collection: Safe Transfer From: Unauthorized.",
+                    sender,
+                    " trying to transfer from ",
+                    from
+                );
                 return Err(ContractError::Unauthorized);
             }
         }
@@ -285,7 +317,12 @@ impl Collections {
             if sender_balance < amount {
                 log!(
                     &env,
-                    "Collection: Safe batch transfer from: Insufficient Balance"
+                    "Collection: Safe batch transfer from: Insufficient balance for id ",
+                    id,
+                    " Available balance: ",
+                    sender_balance,
+                    " Amount to send: ",
+                    amount
                 );
                 return Err(ContractError::InsufficientBalance);
             }
@@ -310,7 +347,6 @@ impl Collections {
     }
 
     // Mints `amount` tokens of token type `id` to `to`
-    // FIXME: currently this doesn't check if we have minted the same ID twice.
     #[allow(dead_code)]
     pub fn mint(
         env: Env,
@@ -320,7 +356,7 @@ impl Collections {
         amount: u64,
     ) -> Result<(), ContractError> {
         if !Self::is_authorized_for_all(&env, &sender) {
-            log!(env, "Collections: Mint: Unauthorized");
+            log!(&env, "Collections: Mint: Unauthorized. Sender: ", sender);
             return Err(ContractError::Unauthorized);
         }
 
@@ -347,13 +383,20 @@ impl Collections {
         amounts: Vec<u64>,
     ) -> Result<(), ContractError> {
         if !Self::is_authorized_for_all(&env, &sender) {
-            log!(env, "Collections: Mint: Unauthorized");
+            log!(&env, "Collections: Mint: Unauthorized. Sender: ", sender);
             return Err(ContractError::Unauthorized);
         }
         sender.require_auth();
 
         if ids.len() != amounts.len() {
-            log!(&env, "Collection: Mint batch: length mismatch");
+            log!(
+                &env,
+                "Collections: Mint Batch: Length missmatch: ",
+                "amounts length: ",
+                amounts.len(),
+                "ids length: ",
+                ids.len()
+            );
             return Err(ContractError::IdsAmountsLengthMismatch);
         }
 
@@ -383,7 +426,7 @@ impl Collections {
         amount: u64,
     ) -> Result<(), ContractError> {
         if !Self::is_authorized_for_all(&env, &sender) {
-            log!(env, "Collections: Mint: Unauthorized");
+            log!(&env, "Collections: Mint: Unauthorized. Sender: ", sender);
             return Err(ContractError::Unauthorized);
         }
 
@@ -392,7 +435,14 @@ impl Collections {
         let current_balance = get_balance_of(&env, &from, id)?;
 
         if current_balance < amount {
-            log!(&env, "Collection: Burn: Insufficient Balance");
+            log!(
+                &env,
+                "Collection: Burn: Insufficient Balance",
+                "Available balance: ",
+                current_balance,
+                "Amount to transfer: ",
+                amount
+            );
             return Err(ContractError::InsufficientBalance);
         }
 
@@ -415,13 +465,20 @@ impl Collections {
         amounts: Vec<u64>,
     ) -> Result<(), ContractError> {
         if !Self::is_authorized_for_all(&env, &sender) {
-            log!(env, "Collections: Mint: Unauthorized");
+            log!(&env, "Collections: Mint: Unauthorized. Sender: ", sender);
             return Err(ContractError::Unauthorized);
         }
         sender.require_auth();
 
         if ids.len() != amounts.len() {
-            log!(&env, "Collection: Burn batch: length mismatch");
+            log!(
+                &env,
+                "Collection: Burn batch: length mismatch",
+                "ids length: ",
+                ids.len(),
+                "amounts length: ",
+                amounts.len()
+            );
             return Err(ContractError::IdsAmountsLengthMismatch);
         }
 
@@ -431,7 +488,15 @@ impl Collections {
 
             let current_balance = get_balance_of(&env, &from, id)?;
             if current_balance < amount {
-                log!(&env, "Collection: Burn batch: Insufficient Balance");
+                log!(
+                    &env,
+                    "Collection: Burn batch: Insufficient balance for id ",
+                    id,
+                    " Available balance: ",
+                    current_balance,
+                    " Amount to transfer: ",
+                    amount
+                );
                 return Err(ContractError::InsufficientBalance);
             }
             update_balance_of(&env, &from, id, current_balance - amount)?;
@@ -448,7 +513,7 @@ impl Collections {
     #[allow(dead_code)]
     pub fn set_uri(env: Env, sender: Address, id: u64, uri: Bytes) -> Result<(), ContractError> {
         if !Self::is_authorized_for_all(&env, &sender) {
-            log!(env, "Collections: Mint: Unauthorized");
+            log!(&env, "Collections: Mint: Unauthorized. Sender: ", sender);
             return Err(ContractError::Unauthorized);
         }
         sender.require_auth();
@@ -471,7 +536,7 @@ impl Collections {
     #[allow(dead_code)]
     pub fn set_collection_uri(env: Env, sender: Address, uri: Bytes) -> Result<(), ContractError> {
         if !Self::is_authorized_for_all(&env, &sender) {
-            log!(env, "Collections: Mint: Unauthorized");
+            log!(&env, "Collections: Mint: Unauthorized. Sender: ", sender);
             return Err(ContractError::Unauthorized);
         }
         sender.require_auth();

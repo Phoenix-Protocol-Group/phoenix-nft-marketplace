@@ -115,14 +115,14 @@ impl MarketplaceContract {
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
         if env.ledger().timestamp() > auction.end_time {
-            log!(env, "Auction: Place Bid: Auction not active");
+            log!(&env, "Auction: Place Bid: Auction not active: ", auction_id);
             return Err(ContractError::AuctionNotActive);
         }
 
         if auction.status != AuctionStatus::Active {
             log!(
                 &env,
-                "Auction: Place Bid: Trying to place a bid for inactive/cancelled auction."
+                "Auction: Place Bid: Trying to place a bid for inactive/cancelled auction with id: ", auction_id
             );
             return Err(ContractError::AuctionNotActive);
         }
@@ -163,7 +163,11 @@ impl MarketplaceContract {
                 save_auction_by_seller(&env, &auction.seller, &auction)?;
             }
             Some(_) => {
-                log!(&env, "Auction: Place Bid: Bid not enough");
+                log!(
+                    &env,
+                    "Auction: Place Bid: Bid not enough. Amount bid: ",
+                    bid_amount
+                );
                 return Err(ContractError::BidNotEnough);
             }
             None => {
@@ -250,7 +254,7 @@ impl MarketplaceContract {
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
         if env.ledger().timestamp() > auction.end_time || auction.status != AuctionStatus::Active {
-            log!(env, "Auction: Buy Now: Auction not active");
+            log!(&env, "Auction: Buy Now: Auction not active: ", auction_id);
             return Err(ContractError::AuctionNotActive);
         }
 
@@ -318,12 +322,16 @@ impl MarketplaceContract {
         auction.seller.require_auth();
 
         if auction.status != AuctionStatus::Active {
-            log!(env, "Auction: Pause: Cannot pause inactive/ended auction.");
+            log!(
+                &env,
+                "Auction: Pause: Cannot pause inactive/ended auction: ",
+                auction_id
+            );
             return Err(ContractError::AuctionNotActive);
         }
 
         if env.ledger().timestamp() > auction.end_time {
-            log!(env, "Auction: Pause: Auction expired");
+            log!(&env, "Auction: Pause: Auction expired: ", auction_id);
             return Err(ContractError::AuctionNotActive);
         }
 
@@ -342,12 +350,16 @@ impl MarketplaceContract {
         auction.seller.require_auth();
 
         if auction.status != AuctionStatus::Paused {
-            log!(env, "Auction: Unpause: Cannot activate unpaused auction.");
+            log!(
+                &env,
+                "Auction: Unpause: Cannot activate unpaused auction: ",
+                auction_id
+            );
             return Err(ContractError::AuctionNotPaused);
         }
 
         if env.ledger().timestamp() > auction.end_time {
-            log!(env, "Auction: Unpause: Auction expired");
+            log!(env, "Auction: Unpause: Auction expired: ", auction_id);
             return Err(ContractError::AuctionNotActive);
         }
 

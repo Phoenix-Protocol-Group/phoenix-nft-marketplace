@@ -10,7 +10,6 @@ use crate::{
         validate_input_params, Auction, AuctionStatus, HighestBid, ItemInfo,
     },
     token,
-    utils::{check_auction_can_be_finalized, minimum_price_reached},
 };
 
 #[contract]
@@ -178,12 +177,30 @@ impl MarketplaceContract {
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
         // Check if the auction can be finalized
-        check_auction_can_be_finalized(&env, &auction)?;
+        if auction.status != AuctionStatus::Active {
+            log!(
+                env,
+                "Auction: Finalize auction: Cannot finalize an inactive/ended auction."
+            );
+            return Err(ContractError::AuctionNotActive);
+        }
+        if env.ledger().timestamp() < auction.end_time {
+            log!(
+                env,
+                "Auction: Finalize auction: Auction cannot be ended early"
+            );
+            return Err(ContractError::AuctionNotFinished);
+        }
 
         let token_client = token::Client::new(&env, &auction.currency);
         let highest_bid = get_highest_bid(&env, auction_id)?;
 
-        if minimum_price_reached(&auction) {
+        // check if minimum price has been reached
+        if auction.item_info.minimum_price.map_or(true, |min_price| {
+            auction
+                .highest_bid
+                .map_or(false, |highest_bid| highest_bid >= min_price)
+        }) {
             token_client.transfer(
                 &env.current_contract_address(),
                 &auction.seller,

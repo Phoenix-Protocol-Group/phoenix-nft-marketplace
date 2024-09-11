@@ -494,6 +494,15 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
     mp_client.unpause(&1);
     assert_eq!(mp_client.get_auction(&1).status, AuctionStatus::Active);
 
+    mp_client.place_bid(&1, &bidder, &100);
+
+    assert_eq!(token_client.balance(&bidder), 0);
+    assert_eq!(token_client.balance(&mp_client.address), 100);
+    assert_eq!(
+        mp_client.get_highest_bid(&1),
+        HighestBid { bid: 100, bidder }
+    );
+
     mp_client.pause(&1);
     // 4 weeks after the creation, after the auction has already expired the seller tries to
     //   unpause it

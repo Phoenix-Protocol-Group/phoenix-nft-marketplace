@@ -838,3 +838,40 @@ fn multiple_auction_by_multiple_sellers() {
     // auction #4 sold item #1 from `collection_c` and the winnder is `bidder_b`
     assert_eq!(collection_c_client.balance_of(&bidder_b, &1), 1);
 }
+
+#[test]
+fn buy_now_should_fail_when_status_is_different_from_active() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let bidder = Address::generate(&env);
+
+    let token = deploy_token_contract(&env, &admin);
+    token.mint(&bidder, &10);
+
+    let (mp_client, collection) =
+        generate_marketplace_and_collection_client(&env, &seller, &token.address, None, None);
+
+    collection.mint(&seller, &seller, &1, &1);
+
+    let item_info = ItemInfo {
+        collection_addr: collection.address,
+        item_id: 1,
+        minimum_price: None,
+        buy_now_price: Some(10),
+    };
+
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+
+    env.ledger().with_mut(|li| li.timestamp = DAY);
+
+    mp_client.pause(&1);
+
+    assert_eq!(
+        mp_client.try_buy_now(&1, &bidder),
+        Err(Ok(ContractError::AuctionNotActive))
+    );
+    assert_eq!(token.balance(&bidder), 10);
+}

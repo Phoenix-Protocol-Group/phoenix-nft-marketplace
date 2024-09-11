@@ -85,13 +85,13 @@ pub fn get_auctions(
     // this is a safeguard only for the case when `DEFAULT_LIMIT` is higher than the actually
     // saved auctions and we use `None` and `None` for `start_index` and `limit`.
     // I.e. we have just 3 auctions and we want to query them
-    let maybe_highest_index: u64 = env
+    let current_highest_id: u64 = env
         .storage()
         .instance()
         .get(&DataKey::AuctionId)
         .expect("no previous value");
 
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(maybe_highest_index);
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(current_highest_id);
 
     let mut auctions = vec![&env];
 

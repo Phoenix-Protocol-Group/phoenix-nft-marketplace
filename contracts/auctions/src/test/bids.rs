@@ -471,7 +471,7 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
         collection_addr: collections_client.address.clone(),
         item_id: 1,
         minimum_price: None,
-        buy_now_price: None,
+        buy_now_price: Some(10),
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -488,6 +488,16 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
 
     assert_eq!(
         mp_client.try_place_bid(&1, &bidder, &100),
+        Err(Ok(ContractError::AuctionNotActive))
+    );
+
+    assert_eq!(
+        mp_client.try_buy_now(&1, &bidder),
+        Err(Ok(ContractError::AuctionNotActive))
+    );
+
+    assert_eq!(
+        mp_client.try_finalize_auction(&1),
         Err(Ok(ContractError::AuctionNotActive))
     );
 

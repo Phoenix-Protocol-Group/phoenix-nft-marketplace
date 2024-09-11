@@ -326,7 +326,7 @@ impl MarketplaceContract {
 
         auction.status = AuctionStatus::Paused;
 
-        save_auction_by_id(&env, auction_id, &auction)?;
+        save_auction(&env, &auction)?;
 
         env.events().publish(("pause", "auction id: "), auction_id);
 
@@ -354,7 +354,7 @@ impl MarketplaceContract {
 
         auction.status = AuctionStatus::Active;
 
-        save_auction_by_id(env, auction_id, &auction)?;
+        save_auction(env, &auction)?;
 
         env.events()
             .publish(("unpause", "auction id: "), auction_id);

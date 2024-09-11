@@ -452,8 +452,10 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
 
     let admin = Address::generate(&env);
     let seller = Address::generate(&env);
+    let bidder = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+    token_client.mint(&bidder, &100);
 
     let (mp_client, collections_client) = generate_marketplace_and_collection_client(
         &env,
@@ -483,6 +485,11 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
 
     mp_client.pause(&1);
     assert_eq!(mp_client.get_auction(&1).status, AuctionStatus::Paused);
+
+    assert_eq!(
+        mp_client.try_place_bid(&1, &bidder, &100),
+        Err(Ok(ContractError::AuctionNotActive))
+    );
 
     mp_client.unpause(&1);
     assert_eq!(mp_client.get_auction(&1).status, AuctionStatus::Active);

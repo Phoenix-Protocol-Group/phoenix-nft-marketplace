@@ -367,8 +367,8 @@ impl MarketplaceContract {
     #[allow(dead_code)]
     pub fn get_active_auctions(
         env: Env,
-        start_index: Option<u32>,
-        limit: Option<u32>,
+        start_index: Option<u64>,
+        limit: Option<u64>,
     ) -> Result<Vec<Auction>, ContractError> {
         let all_auctions = get_auctions(&env, start_index, limit)?;
 

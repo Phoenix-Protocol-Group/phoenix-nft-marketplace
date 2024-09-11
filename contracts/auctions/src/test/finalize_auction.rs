@@ -1,6 +1,6 @@
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
-    Address, Env,
+    vec, Address, Env,
 };
 
 use crate::{
@@ -243,4 +243,52 @@ fn fail_to_finalyze_auction_when_not_correct_state() {
         mp_client.try_finalize_auction(&1,),
         Err(Ok(ContractError::AuctionNotActive))
     );
+}
+
+#[test]
+fn get_active_auctions_should_list_correct_number_of_active_auctions() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let seller = Address::generate(&env);
+
+    let token_client = token::Client::new(&env, &Address::generate(&env));
+    let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
+
+    nft_collection_client.mint_batch(&seller, &seller, &vec![&env, 1, 2, 3], &vec![&env, 1, 1, 1]);
+
+    let first_item = ItemInfo {
+        collection_addr: nft_collection_client.address.clone(),
+        item_id: 1u64,
+        minimum_price: Some(10),
+        buy_now_price: Some(50),
+    };
+
+    let second_item = ItemInfo {
+        collection_addr: nft_collection_client.address.clone(),
+        item_id: 2u64,
+        minimum_price: Some(10),
+        buy_now_price: Some(50),
+    };
+
+    let third_item = ItemInfo {
+        collection_addr: nft_collection_client.address.clone(),
+        item_id: 3u64,
+        minimum_price: Some(10),
+        buy_now_price: Some(50),
+    };
+    mp_client.create_auction(&first_item, &seller, &WEEKLY);
+    mp_client.create_auction(&second_item, &seller, &WEEKLY);
+    mp_client.create_auction(&third_item, &seller, &WEEKLY);
+
+    assert_eq!(mp_client.get_active_auctions(&None, &None).len(), 3);
+
+    mp_client.pause(&1);
+    assert_eq!(mp_client.get_active_auctions(&None, &None).len(), 2);
 }

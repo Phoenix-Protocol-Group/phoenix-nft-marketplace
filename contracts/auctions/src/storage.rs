@@ -9,8 +9,8 @@ pub const LIFETIME_THRESHOLD: u32 = BUMP_AMOUNT - DAY_IN_LEDGERS;
 
 // consts for Pagination
 // since we start counting from 1, default would be 1 as well
-pub const DEFAULT_INDEX: u32 = 1;
-pub const DEFAULT_LIMIT: u32 = 10;
+pub const DEFAULT_INDEX: u64 = 1;
+pub const DEFAULT_LIMIT: u64 = 10;
 
 #[contracttype]
 #[derive(Clone)]
@@ -77,16 +77,26 @@ pub fn generate_auction_id(env: &Env) -> Result<u64, ContractError> {
 
 pub fn get_auctions(
     env: &Env,
-    start_index: Option<u32>,
-    limit: Option<u32>,
+    start_index: Option<u64>,
+    limit: Option<u64>,
 ) -> Result<Vec<Auction>, ContractError> {
     let start_index = start_index.unwrap_or(DEFAULT_INDEX);
-    let limit = limit.unwrap_or(DEFAULT_LIMIT);
+
+    // this is a safeguard only for the case when `DEFAULT_LIMIT` is higher than the actually
+    // saved auctions and we use `None` and `None` for `start_index` and `limit`.
+    // I.e. we have just 3 auctions and we want to query them
+    let maybe_highest_index: u64 = env
+        .storage()
+        .instance()
+        .get(&DataKey::AuctionId)
+        .expect("no previous value");
+
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(maybe_highest_index);
 
     let mut auctions = vec![&env];
 
     for id in start_index..=limit {
-        match get_auction_by_id(env, id as u64) {
+        match get_auction_by_id(env, id) {
             Ok(auction) => auctions.push_back(auction),
             Err(ContractError::AuctionNotFound) => continue,
             Err(e) => return Err(e),

@@ -875,3 +875,100 @@ fn buy_now_should_fail_when_status_is_different_from_active() {
     );
     assert_eq!(token.balance(&bidder), 10);
 }
+
+#[test]
+fn buy_now_should_work_when_no_previous_bid() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.budget().reset_unlimited();
+
+    let admin = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let fomo_buyer = Address::generate(&env);
+
+    let token_client = deploy_token_contract(&env, &admin);
+
+    token_client.mint(&fomo_buyer, &100);
+
+    let (mp_client, collections_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
+
+    collections_client.mint(&seller, &seller, &1, &1);
+
+    collections_client.set_approval_for_transfer(&mp_client.address, &1u64, &true);
+
+    let item_info = ItemInfo {
+        collection_addr: collections_client.address.clone(),
+        item_id: 1,
+        minimum_price: Some(10),
+        buy_now_price: Some(50),
+    };
+
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+
+    env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS);
+
+    mp_client.buy_now(&1, &fomo_buyer);
+
+    assert_eq!(token_client.balance(&fomo_buyer), 50);
+    assert_eq!(token_client.balance(&mp_client.address), 0);
+    assert_eq!(token_client.balance(&seller), 50);
+}
+
+#[test]
+fn buy_now_should_refund_previous_buyer() {
+    let env = Env::default();
+    env.mock_all_auths_allowing_non_root_auth();
+    env.budget().reset_unlimited();
+
+    let admin = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let bidder = Address::generate(&env);
+    let fomo_buyer = Address::generate(&env);
+
+    let token_client = deploy_token_contract(&env, &admin);
+
+    token_client.mint(&fomo_buyer, &100);
+    token_client.mint(&bidder, &100);
+
+    let (mp_client, collections_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
+
+    collections_client.mint(&seller, &seller, &1, &1);
+
+    collections_client.set_approval_for_transfer(&mp_client.address, &1u64, &true);
+
+    let item_info = ItemInfo {
+        collection_addr: collections_client.address.clone(),
+        item_id: 1,
+        minimum_price: Some(10),
+        buy_now_price: Some(50),
+    };
+
+    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+
+    env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS);
+
+    mp_client.place_bid(&1, &bidder, &40);
+    assert_eq!(token_client.balance(&bidder), 60);
+    assert_eq!(token_client.balance(&mp_client.address), 40);
+
+    env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 2);
+
+    mp_client.buy_now(&1, &fomo_buyer);
+
+    assert_eq!(token_client.balance(&fomo_buyer), 50);
+    assert_eq!(token_client.balance(&bidder), 100);
+    assert_eq!(token_client.balance(&mp_client.address), 0);
+    assert_eq!(token_client.balance(&seller), 50);
+}

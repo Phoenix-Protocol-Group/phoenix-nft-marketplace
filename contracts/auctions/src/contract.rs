@@ -161,7 +161,6 @@ impl MarketplaceContract {
         );
 
         set_highest_bid(&env, auction_id, bid_amount, bidder.clone())?;
-        // Update auction state
 
         auction.highest_bid = Some(bid_amount);
         save_auction(&env, &auction)?;
@@ -258,14 +257,16 @@ impl MarketplaceContract {
 
         let old_highest_bid = get_highest_bid(&env, auction_id)?;
 
-        // refund any previous highest bid
         let token = token::Client::new(&env, &auction.currency);
 
-        token.transfer(
-            &env.current_contract_address(),
-            &old_highest_bid.bidder,
-            &(old_highest_bid.bid as i128),
-        );
+        // refund only when there is some previous highest bid
+        if old_highest_bid.bid > 0 {
+            token.transfer(
+                &env.current_contract_address(),
+                &old_highest_bid.bidder,
+                &(old_highest_bid.bid as i128),
+            );
+        }
 
         // pay for the item
         token.transfer(

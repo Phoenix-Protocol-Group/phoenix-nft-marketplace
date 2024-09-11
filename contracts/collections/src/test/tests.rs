@@ -855,3 +855,28 @@ fn safe_batch_transfer_should_fail_when_sender_is_not_authorized_to_transfer_fro
         Err(Ok(ContractError::Unauthorized))
     );
 }
+
+#[test]
+fn safe_transfer_should_fail_when_sender_is_not_from_and_not_authorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user_a = Address::generate(&env);
+    let user_b = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    client.mint(&admin, &user_a, &1, &1);
+
+    assert_eq!(client.balance_of(&user_a, &1), 1u64);
+    assert_eq!(client.balance_of(&user_b, &1), 0u64);
+
+    assert_eq!(
+        client.try_safe_transfer_from(&user_a, &user_b, &user_a, &1, &1),
+        Err(Ok(ContractError::Unauthorized))
+    );
+
+    assert_eq!(client.balance_of(&user_a, &1), 1u64);
+    assert_eq!(client.balance_of(&user_b, &1), 0u64);
+}

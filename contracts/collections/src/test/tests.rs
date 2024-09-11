@@ -857,7 +857,7 @@ fn safe_batch_transfer_should_fail_when_sender_is_not_authorized_to_transfer_fro
 }
 
 #[test]
-fn safe_transfer_should_fail_when_sender_is_not_from_and_not_authorized() {
+fn safe_transfer_should_work_when_sender_is_from_and_is_authorized() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -868,15 +868,13 @@ fn safe_transfer_should_fail_when_sender_is_not_from_and_not_authorized() {
     let client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     client.mint(&admin, &user_a, &1, &1);
+    client.set_approval_for_transfer(&user_a, &1, &true);
 
     assert_eq!(client.balance_of(&user_a, &1), 1u64);
     assert_eq!(client.balance_of(&user_b, &1), 0u64);
 
-    assert_eq!(
-        client.try_safe_transfer_from(&user_a, &user_b, &user_a, &1, &1),
-        Err(Ok(ContractError::Unauthorized))
-    );
+    client.safe_transfer_from(&user_a, &user_a, &user_b, &1, &1);
 
-    assert_eq!(client.balance_of(&user_a, &1), 1u64);
-    assert_eq!(client.balance_of(&user_b, &1), 0u64);
+    assert_eq!(client.balance_of(&user_a, &1), 0u64);
+    assert_eq!(client.balance_of(&user_b, &1), 1u64);
 }

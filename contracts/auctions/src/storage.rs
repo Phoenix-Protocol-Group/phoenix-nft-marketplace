@@ -20,7 +20,7 @@ pub enum DataKey {
     AuctionId,
     AllAuctions,
     HighestBid(u64),
-    Currency,
+    AuctionToken,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -269,30 +269,35 @@ pub fn set_highest_bid(
     Ok(())
 }
 
-pub fn save_currency(env: &Env, currency: Address) {
+pub fn save_auction_token(env: &Env, auction_token: Address) {
     env.storage()
         .persistent()
-        .set(&DataKey::Currency, &currency);
+        .set(&DataKey::AuctionToken, &auction_token);
 
     env.storage()
         .persistent()
-        .extend_ttl(&DataKey::Currency, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+        .extend_ttl(&DataKey::AuctionToken, LIFETIME_THRESHOLD, BUMP_AMOUNT);
 }
 
-pub fn get_currency(env: &Env) -> Result<Address, ContractError> {
-    let currency = env
+pub fn get_auction_token(env: &Env) -> Result<Address, ContractError> {
+    let auction_token = env
         .storage()
         .persistent()
-        .get(&DataKey::Currency)
+        .get(&DataKey::AuctionToken)
         .ok_or(ContractError::CurrencyNotFound)?;
 
-    env.storage().persistent().has(&DataKey::Currency).then(|| {
-        env.storage()
-            .persistent()
-            .extend_ttl(&DataKey::Currency, LIFETIME_THRESHOLD, BUMP_AMOUNT);
-    });
+    env.storage()
+        .persistent()
+        .has(&DataKey::AuctionToken)
+        .then(|| {
+            env.storage().persistent().extend_ttl(
+                &DataKey::AuctionToken,
+                LIFETIME_THRESHOLD,
+                BUMP_AMOUNT,
+            );
+        });
 
-    Ok(currency)
+    Ok(auction_token)
 }
 
 #[cfg(test)]

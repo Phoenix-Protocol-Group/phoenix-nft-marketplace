@@ -55,7 +55,7 @@ fn should_place_a_bid() {
             bidder: bidder_a.clone()
         }
     );
-    assert_eq!(token_client.balance(&mp_client.address), 10i128);
+    assert_eq!(token_client.balance(&mp_client.address), 20i128);
     assert_eq!(token_client.balance(&bidder_a), 0i128);
 
     mp_client.place_bid(&1, &bidder_b, &20);
@@ -66,7 +66,7 @@ fn should_place_a_bid() {
             bidder: bidder_b.clone()
         }
     );
-    assert_eq!(token_client.balance(&mp_client.address), 20i128);
+    assert_eq!(token_client.balance(&mp_client.address), 30i128);
     assert_eq!(token_client.balance(&bidder_a), 10i128);
     assert_eq!(token_client.balance(&bidder_b), 0i128);
 
@@ -75,7 +75,7 @@ fn should_place_a_bid() {
         mp_client.try_place_bid(&1, &bidder_a, &15),
         Err(Ok(ContractError::BidNotEnough))
     );
-    assert_eq!(token_client.balance(&mp_client.address), 20i128);
+    assert_eq!(token_client.balance(&mp_client.address), 30i128);
     assert_eq!(token_client.balance(&bidder_a), 10i128);
     assert_eq!(token_client.balance(&bidder_b), 0i128);
 
@@ -95,7 +95,7 @@ fn should_place_a_bid() {
             bidder: bidder_c.clone()
         }
     );
-    assert_eq!(token_client.balance(&mp_client.address), 40i128);
+    assert_eq!(token_client.balance(&mp_client.address), 50i128);
     assert_eq!(token_client.balance(&bidder_a), 10i128);
     assert_eq!(token_client.balance(&bidder_b), 20i128);
     assert_eq!(token_client.balance(&bidder_c), 0i128);

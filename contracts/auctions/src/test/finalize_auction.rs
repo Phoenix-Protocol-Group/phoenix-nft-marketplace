@@ -9,7 +9,6 @@ use crate::{
     test::setup::{
         deploy_token_contract, generate_marketplace_and_collection_client, DAY, FOUR_HOURS, WEEKLY,
     },
-    token,
 };
 
 #[test]
@@ -26,6 +25,8 @@ fn finalize_auction() {
     let bidder_c = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+
+    token_client.mint(&seller, &10);
 
     token_client.mint(&bidder_a, &100);
     token_client.mint(&bidder_b, &100);
@@ -53,7 +54,7 @@ fn finalize_auction() {
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS);
     mp_client.place_bid(&1, &bidder_a, &5);
     assert_eq!(token_client.balance(&bidder_a), 95);
-    assert_eq!(token_client.balance(&mp_client.address), 5);
+    assert_eq!(token_client.balance(&mp_client.address), 15);
 
     // another 4 hours pass by and `bidder_b` places a higher bid
     env.ledger().with_mut(|li| {
@@ -62,7 +63,7 @@ fn finalize_auction() {
     mp_client.place_bid(&1, &bidder_b, &10);
     assert_eq!(token_client.balance(&bidder_a), 100);
     assert_eq!(token_client.balance(&bidder_b), 90);
-    assert_eq!(token_client.balance(&mp_client.address), 10);
+    assert_eq!(token_client.balance(&mp_client.address), 20);
 
     // 12 hours in total pass by and `bidder_c` places a higher bid
     env.ledger().with_mut(|li| {
@@ -72,7 +73,7 @@ fn finalize_auction() {
     assert_eq!(token_client.balance(&bidder_a), 100);
     assert_eq!(token_client.balance(&bidder_b), 100);
     assert_eq!(token_client.balance(&bidder_c), 50);
-    assert_eq!(token_client.balance(&mp_client.address), 50);
+    assert_eq!(token_client.balance(&mp_client.address), 60);
 
     // 13 hours in total pass by and `bidder_b` tries to place a bid, but that's not enough
     env.ledger().with_mut(|li| {
@@ -82,7 +83,7 @@ fn finalize_auction() {
     assert_eq!(token_client.balance(&bidder_a), 100);
     assert_eq!(token_client.balance(&bidder_b), 100);
     assert_eq!(token_client.balance(&bidder_c), 50);
-    assert_eq!(token_client.balance(&mp_client.address), 50);
+    assert_eq!(token_client.balance(&mp_client.address), 60);
 
     // 16 hours in total pass by and `bidder_a` places the highest bid
     env.ledger().with_mut(|li| {
@@ -92,7 +93,7 @@ fn finalize_auction() {
     assert_eq!(token_client.balance(&bidder_a), 25);
     assert_eq!(token_client.balance(&bidder_b), 100);
     assert_eq!(token_client.balance(&bidder_c), 100);
-    assert_eq!(token_client.balance(&mp_client.address), 75);
+    assert_eq!(token_client.balance(&mp_client.address), 85);
 
     // we wrap it up and the winner is `bidder_a` with a highest bid of 75
     env.ledger().with_mut(|li| li.timestamp = WEEKLY + DAY);
@@ -102,7 +103,8 @@ fn finalize_auction() {
     assert_eq!(token_client.balance(&bidder_a), 25);
     assert_eq!(token_client.balance(&bidder_b), 100);
     assert_eq!(token_client.balance(&bidder_c), 100);
-    assert_eq!(token_client.balance(&mp_client.address), 0);
+    // market place has the initial auction creation fee
+    assert_eq!(token_client.balance(&mp_client.address), 10);
 
     // check if `bidder_a` has 1 NFT of the item
     assert_eq!(collections_client.balance_of(&bidder_a, &1), 1);
@@ -120,6 +122,8 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
     let bidder = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &10);
+
     let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -141,7 +145,7 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
 
     mp_client.place_bid(&1, &bidder, &50);
 
-    assert_eq!(token_client.balance(&mp_client.address), 50i128);
+    assert_eq!(token_client.balance(&mp_client.address), 60i128);
     assert_eq!(token_client.balance(&bidder), 0i128);
     env.ledger().with_mut(|li| li.timestamp = DAY);
 
@@ -151,9 +155,10 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
     );
 
     // auction is not yet over, so the bid is still in place
-    assert_eq!(token_client.balance(&mp_client.address), 50i128);
+    assert_eq!(token_client.balance(&mp_client.address), 60i128);
     assert_eq!(token_client.balance(&bidder), 0i128);
 }
+
 #[test]
 fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
     let env = Env::default();
@@ -164,6 +169,8 @@ fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
     let bidder_a = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &10);
+
     let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -186,7 +193,7 @@ fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
     env.ledger().with_mut(|li| li.timestamp = DAY);
     mp_client.place_bid(&1, &bidder_a, &5);
 
-    assert_eq!(token_client.balance(&mp_client.address), 5i128);
+    assert_eq!(token_client.balance(&mp_client.address), 15i128);
     assert_eq!(token_client.balance(&bidder_a), 0i128);
 
     // we try to finalize the auction 2 weeks later
@@ -206,7 +213,7 @@ fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
             auction_token: token_client.address.clone()
         }
     );
-    assert_eq!(token_client.balance(&mp_client.address), 0i128);
+    assert_eq!(token_client.balance(&mp_client.address), 10i128);
     assert_eq!(token_client.balance(&bidder_a), 5i128);
 }
 
@@ -217,7 +224,9 @@ fn fail_to_finalyze_auction_when_not_correct_state() {
     env.budget().reset_unlimited();
     let seller = Address::generate(&env);
 
-    let token_client = token::Client::new(&env, &Address::generate(&env));
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &10);
+
     let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -252,7 +261,9 @@ fn get_active_auctions_should_list_correct_number_of_active_auctions() {
 
     let seller = Address::generate(&env);
 
-    let token_client = token::Client::new(&env, &Address::generate(&env));
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &30);
+
     let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,

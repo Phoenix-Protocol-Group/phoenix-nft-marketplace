@@ -243,3 +243,30 @@ fn get_auction_by_seller_should_return_an_err_when_id_not_found() {
         Err(Ok(ContractError::AuctionNotFound))
     )
 }
+
+#[test]
+fn should_fail_to_create_auction_when_seller_cannot_cover_the_fees() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let seller = Address::generate(&env);
+
+    let token = deploy_token_contract(&env, &Address::generate(&env));
+
+    let (mp_client, collection) =
+        generate_marketplace_and_collection_client(&env, &seller, &token.address, None, None);
+
+    collection.mint(&seller, &seller, &1, &1);
+
+    let item_info = ItemInfo {
+        collection_addr: collection.address,
+        item_id: 1,
+        minimum_price: None,
+        buy_now_price: None,
+    };
+
+    assert_eq!(
+        mp_client.try_create_auction(&item_info, &seller, &WEEKLY),
+        Err(Ok(ContractError::AuctionCreationFeeNotCovered))
+    );
+}

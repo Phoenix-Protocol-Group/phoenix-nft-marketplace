@@ -230,6 +230,7 @@ fn buy_now_should_fail_when_no_buy_now_price_has_been_set() {
 
     let token_client = deploy_token_contract(&env, &admin);
 
+    token_client.mint(&seller, &10);
     token_client.mint(&fomo_buyer, &50);
 
     let (mp_client, collections_client) = generate_marketplace_and_collection_client(

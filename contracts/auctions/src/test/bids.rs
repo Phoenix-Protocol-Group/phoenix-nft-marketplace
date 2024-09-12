@@ -148,7 +148,7 @@ fn seller_tries_to_place_a_bid_should_fail() {
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
-    token_client.mint(&seller, &1);
+    token_client.mint(&seller, &11);
     let (mp_client, collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,

@@ -1,13 +1,15 @@
 # Ensure the script exits on any errors
 set -e
 
-# Check if the argument is provided
-if [ -z "$1" ]; then
-    echo "Usage: $0 <identity_string>"
+# Check if the arguments are provided
+if [ $# -ne 3 ]; then
+    echo "Usage: $0 <identity_string> <admin_address> <auction token address>"
     exit 1
 fi
 
 IDENTITY_STRING=$1
+ADMIN_ADDR=$2
+AUCTION_TOKEN_ADDR=$3
 NETWORK="testnet"
 
 echo "Build and optimize the contracts...";
@@ -21,6 +23,7 @@ echo "Optimizing contracts..."
 
 soroban contract optimize --wasm phoenix_nft_collections.wasm
 soroban contract optimize --wasm phoenix_nft_deployer.wasm
+soroban contract optimize --wasm phoenix_nft_auctions.wasm
 
 echo "Contracts optimized."
 
@@ -40,7 +43,7 @@ soroban contract install \
     --network $NETWORK
 )
 
-echo "Deployer set."
+echo "Deployer contract deployed and installed."
 
 echo "Deploy and install the collections contract and capture its contract ID and hash..."
 
@@ -58,7 +61,25 @@ soroban contract install \
     --network $NETWORK
 )
 
-echo "Collections set."
+echo "Collections contract deployed and installed."
+
+echo "Deploy and install the collections contract and capture its contract ID and hash..."
+
+AUCTION_ADDR=$(
+stellar contract deploy \
+  --wasm phoenix_nft_auctions.optimized.wasm \
+  --source $IDENTITY_STRING \
+  --network $NETWORK
+)
+
+AUCTION_WASM_HASH=$(
+soroban contract install \
+    --wasm phoenix_nft_auctions.optimized.wasm \
+    --source $IDENTITY_STRING \
+    --network $NETWORK
+)
+
+echo "Auctions contract deployed and installed."
 
 echo "Initialize deployer with the collections hash..."
 
@@ -72,6 +93,19 @@ soroban contract invoke \
     --collections_wasm_hash $COLLECTIONS_WASM_HASH
 
 echo "Deployer initialized."
+
+echo "Initialize auctions with the auction token address"
+
+soroban contract invoke \
+    --id $AUCTION_ADDR \
+    --source $IDENTITY_STRING \
+    --network $NETWORK \
+    -- \
+    initialize \
+    --admin $ADMIN_ADDR
+    --auction_token $AUCTION_TOKEN_ADDR
+
+echo "Auction initialized"
 
 echo "#############################"
 

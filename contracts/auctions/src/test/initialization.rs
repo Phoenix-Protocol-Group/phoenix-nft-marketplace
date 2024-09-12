@@ -1,5 +1,5 @@
 extern crate std;
-use soroban_sdk::{testutils::Address as _, token, Address, Env};
+use soroban_sdk::{testutils::Address as _, Address, Env};
 
 use crate::{
     collection,
@@ -35,7 +35,8 @@ fn mp_should_create_auction() {
     env.budget().reset_unlimited();
     let seller = Address::generate(&env);
 
-    let token_client = token::Client::new(&env, &Address::generate(&env));
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &10);
     let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -79,6 +80,8 @@ fn initialize_twice_should_fail() {
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+    token_client.mint(&seller, &10);
+
     let (mp_client, _) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -100,7 +103,8 @@ fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
     env.budget().reset_unlimited();
     let seller = Address::generate(&env);
 
-    let token_client = token::Client::new(&env, &Address::generate(&env));
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &10);
     // we don't want to use the collection from the setup method, as this will automatically
     // mint an item for the auction.
     let (mp_client, _) = generate_marketplace_and_collection_client(
@@ -141,6 +145,7 @@ fn mp_should_be_able_create_multiple_auctions_and_query_them_with_pagination() {
 
     let seller = Address::generate(&env);
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &250);
 
     let (mp_client, collection_client) = generate_marketplace_and_collection_client(
         &env,

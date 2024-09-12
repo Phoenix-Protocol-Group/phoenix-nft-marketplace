@@ -873,6 +873,7 @@ fn buy_now_should_fail_when_status_is_different_from_active() {
     let bidder = Address::generate(&env);
 
     let token = deploy_token_contract(&env, &admin);
+    token.mint(&seller, &10);
     token.mint(&bidder, &10);
 
     let (mp_client, collection) =
@@ -912,6 +913,7 @@ fn buy_now_should_work_when_no_previous_bid() {
 
     let token_client = deploy_token_contract(&env, &admin);
 
+    token_client.mint(&seller, &10);
     token_client.mint(&fomo_buyer, &100);
 
     let (mp_client, collections_client) = generate_marketplace_and_collection_client(
@@ -940,7 +942,7 @@ fn buy_now_should_work_when_no_previous_bid() {
     mp_client.buy_now(&1, &fomo_buyer);
 
     assert_eq!(token_client.balance(&fomo_buyer), 50);
-    assert_eq!(token_client.balance(&mp_client.address), 0);
+    assert_eq!(token_client.balance(&mp_client.address), 10);
     assert_eq!(token_client.balance(&seller), 50);
 }
 
@@ -957,6 +959,7 @@ fn buy_now_should_refund_previous_buyer() {
 
     let token_client = deploy_token_contract(&env, &admin);
 
+    token_client.mint(&seller, &10);
     token_client.mint(&fomo_buyer, &100);
     token_client.mint(&bidder, &100);
 
@@ -985,7 +988,7 @@ fn buy_now_should_refund_previous_buyer() {
 
     mp_client.place_bid(&1, &bidder, &40);
     assert_eq!(token_client.balance(&bidder), 60);
-    assert_eq!(token_client.balance(&mp_client.address), 40);
+    assert_eq!(token_client.balance(&mp_client.address), 50);
 
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 2);
 
@@ -993,6 +996,6 @@ fn buy_now_should_refund_previous_buyer() {
 
     assert_eq!(token_client.balance(&fomo_buyer), 50);
     assert_eq!(token_client.balance(&bidder), 100);
-    assert_eq!(token_client.balance(&mp_client.address), 0);
+    assert_eq!(token_client.balance(&mp_client.address), 10);
     assert_eq!(token_client.balance(&seller), 50);
 }

@@ -64,7 +64,7 @@ fn mp_should_create_auction() {
             highest_bid: None,
             end_time: WEEKLY,
             status: AuctionStatus::Active,
-            currency: token_client.address
+            auction_token: token_client.address
         }
     );
 }

@@ -59,7 +59,7 @@ impl MarketplaceContract {
         ];
         validate_input_params(&env, &input_values[..])?;
 
-        let currency = get_auction_token(&env)?;
+        let auction_token = get_auction_token(&env)?;
         let nft_client = collection::Client::new(&env, &item_info.collection_addr);
         let item_balance = nft_client.balance_of(&seller, &item_info.item_id);
 
@@ -88,7 +88,7 @@ impl MarketplaceContract {
             highest_bid: None,
             end_time,
             status: AuctionStatus::Active,
-            currency,
+            auction_token,
         };
 
         save_auction(&env, &auction)?;
@@ -130,7 +130,7 @@ impl MarketplaceContract {
             return Err(ContractError::InvalidBidder);
         }
 
-        let token_client = token::Client::new(&env, &auction.currency);
+        let token_client = token::Client::new(&env, &auction.auction_token);
 
         match auction.highest_bid {
             Some(current_highest_bid) if bid_amount > current_highest_bid => {
@@ -192,7 +192,7 @@ impl MarketplaceContract {
             return Err(ContractError::AuctionNotFinished);
         }
 
-        let token_client = token::Client::new(&env, &auction.currency);
+        let token_client = token::Client::new(&env, &auction.auction_token);
         let highest_bid = get_highest_bid(&env, auction_id)?;
 
         // check if minimum price has been reached
@@ -274,7 +274,7 @@ impl MarketplaceContract {
 
         let old_highest_bid = get_highest_bid(&env, auction_id)?;
 
-        let token = token::Client::new(&env, &auction.currency);
+        let token = token::Client::new(&env, &auction.auction_token);
 
         // refund only when there is some previous highest bid
         if old_highest_bid.bid > 0 {

@@ -41,7 +41,7 @@ pub struct Auction {
     pub highest_bid: Option<u64>,
     pub end_time: u64,
     pub status: AuctionStatus,
-    pub currency: Address,
+    pub auction_token: Address,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -284,7 +284,7 @@ pub fn get_auction_token(env: &Env) -> Result<Address, ContractError> {
         .storage()
         .persistent()
         .get(&DataKey::AuctionToken)
-        .ok_or(ContractError::CurrencyNotFound)?;
+        .ok_or(ContractError::AuctionTokenNotFound)?;
 
     env.storage()
         .persistent()

@@ -203,7 +203,7 @@ fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
             highest_bid: Some(5),
             end_time: WEEKLY,
             status: AuctionStatus::Ended,
-            currency: token_client.address.clone()
+            auction_token: token_client.address.clone()
         }
     );
     assert_eq!(token_client.balance(&mp_client.address), 0i128);

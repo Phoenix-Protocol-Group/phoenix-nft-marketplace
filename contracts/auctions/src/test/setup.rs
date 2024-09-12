@@ -24,14 +24,14 @@ pub mod auctions_wasm {
 pub fn generate_marketplace_and_collection_client<'a>(
     env: &Env,
     admin: &Address,
-    currency: &Address,
+    auction_token: &Address,
     name: Option<String>,
     symbol: Option<String>,
 ) -> (MarketplaceContractClient<'a>, collection::Client<'a>) {
     let mp_client =
         MarketplaceContractClient::new(env, &env.register_contract(None, MarketplaceContract {}));
 
-    mp_client.initialize(admin, currency);
+    mp_client.initialize(admin, auction_token);
 
     let alt_name = String::from_str(env, "Stellar kitties");
     let alt_symbol = String::from_str(env, "STK");

@@ -348,7 +348,7 @@ fn buy_now() {
             highest_bid: Some(50),
             end_time: WEEKLY,
             status: AuctionStatus::Ended,
-            currency: token_client.address
+            auction_token: token_client.address
         }
     );
 
@@ -616,7 +616,7 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: None,
                 end_time: WEEKLY,
                 status: AuctionStatus::Active,
-                currency: token_client.address.clone()
+                auction_token: token_client.address.clone()
             },
             Auction {
                 id: 2,
@@ -625,7 +625,7 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: None,
                 end_time: WEEKLY,
                 status: AuctionStatus::Active,
-                currency: token_client.address.clone()
+                auction_token: token_client.address.clone()
             }
         ]
     );
@@ -641,7 +641,7 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: None,
                 end_time: WEEKLY,
                 status: AuctionStatus::Active,
-                currency: token_client.address.clone()
+                auction_token: token_client.address.clone()
             },
         ]
     );
@@ -657,7 +657,7 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: None,
                 end_time: DAY,
                 status: AuctionStatus::Active,
-                currency: token_client.address.clone()
+                auction_token: token_client.address.clone()
             },
         ]
     );
@@ -772,7 +772,7 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: Some(500),
                 end_time: WEEKLY,
                 status: AuctionStatus::Ended,
-                currency: token_client.address.clone()
+                auction_token: token_client.address.clone()
             },
             Auction {
                 id: 2,
@@ -781,7 +781,7 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: Some(150),
                 end_time: WEEKLY,
                 status: AuctionStatus::Ended,
-                currency: token_client.address.clone()
+                auction_token: token_client.address.clone()
             }
         ]
     );
@@ -797,7 +797,7 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: Some(150),
                 end_time: WEEKLY,
                 status: AuctionStatus::Ended,
-                currency: token_client.address.clone()
+                auction_token: token_client.address.clone()
             },
         ]
     );
@@ -813,7 +813,7 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: Some(100),
                 end_time: DAY,
                 status: AuctionStatus::Ended,
-                currency: token_client.address.clone()
+                auction_token: token_client.address.clone()
             },
         ]
     );

@@ -10,7 +10,6 @@ use crate::{
     test::setup::{
         deploy_token_contract, generate_marketplace_and_collection_client, DAY, FOUR_HOURS, WEEKLY,
     },
-    token,
 };
 
 use super::setup::create_and_initialize_collection;
@@ -109,7 +108,9 @@ fn fail_to_place_bid_when_auction_inactive() {
     let seller = Address::generate(&env);
     let bidder_a = Address::generate(&env);
 
-    let token_client = token::Client::new(&env, &Address::generate(&env));
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &10);
+
     let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,

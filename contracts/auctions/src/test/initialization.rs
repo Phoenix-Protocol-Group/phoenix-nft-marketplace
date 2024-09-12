@@ -24,7 +24,7 @@ fn initialize_and_update_admin_should_work() {
     let mp_client =
         MarketplaceContractClient::new(&env, &env.register_contract(None, MarketplaceContract {}));
 
-    mp_client.initialize(&admin, &token_client.address);
+    mp_client.initialize(&admin, &token_client.address, &10);
     mp_client.update_admin(&new_admin);
 }
 
@@ -88,7 +88,7 @@ fn initialize_twice_should_fail() {
     );
 
     assert_eq!(
-        mp_client.try_initialize(&admin, &token_client.address),
+        mp_client.try_initialize(&admin, &token_client.address, &10),
         Err(Ok(ContractError::AlreadyInitialized))
     );
 }

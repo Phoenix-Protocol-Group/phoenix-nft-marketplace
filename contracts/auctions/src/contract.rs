@@ -66,7 +66,28 @@ impl MarketplaceContract {
         ];
         validate_input_params(&env, &input_values[..])?;
 
-        let auction_token = get_config(&env)?.auction_token;
+        let config = get_config(&env)?;
+        let auction_token = config.auction_token;
+        let auction_creation_fee = config.auction_creation_fee as i128;
+
+        let token_client = token::Client::new(&env, &auction_token);
+
+        if token_client.balance(&seller) < auction_creation_fee {
+            log!(
+                &env,
+                "Auction: Create Auctoin: Not enough balance to cover the auction creation fee. ",
+                "Required: ",
+                auction_creation_fee
+            );
+            return Err(ContractError::AuctionCreationFeeNotCovered);
+        }
+
+        token_client.transfer(
+            &seller,
+            &env.current_contract_address(),
+            &auction_creation_fee,
+        );
+
         let nft_client = collection::Client::new(&env, &item_info.collection_addr);
         let item_balance = nft_client.balance_of(&seller, &item_info.item_id);
 

@@ -26,6 +26,7 @@ fn should_place_a_bid() {
     let bidder_c = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &10);
     let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -267,6 +268,7 @@ fn buy_now() {
     let fomo_buyer = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+    token_client.mint(&seller, &10);
 
     token_client.mint(&fomo_buyer, &100);
     token_client.mint(&bidder_a, &100);
@@ -297,14 +299,14 @@ fn buy_now() {
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS);
     mp_client.place_bid(&1, &bidder_a, &5);
     assert_eq!(token_client.balance(&bidder_a), 95);
-    assert_eq!(token_client.balance(&mp_client.address), 5);
+    assert_eq!(token_client.balance(&mp_client.address), 15);
 
     // 8 hours in and we have a second highest bid
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 2);
     mp_client.place_bid(&1, &bidder_b, &10);
     assert_eq!(token_client.balance(&bidder_a), 100);
     assert_eq!(token_client.balance(&bidder_b), 90);
-    assert_eq!(token_client.balance(&mp_client.address), 10);
+    assert_eq!(token_client.balance(&mp_client.address), 20);
 
     // 16 hours in and we have a third highest bid
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 4);
@@ -312,7 +314,7 @@ fn buy_now() {
     assert_eq!(token_client.balance(&bidder_a), 100);
     assert_eq!(token_client.balance(&bidder_b), 100);
     assert_eq!(token_client.balance(&fomo_buyer), 75);
-    assert_eq!(token_client.balance(&mp_client.address), 25);
+    assert_eq!(token_client.balance(&mp_client.address), 35);
 
     // 24 hours in and we have a 4th highest bid
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 6);
@@ -320,7 +322,7 @@ fn buy_now() {
     assert_eq!(token_client.balance(&bidder_a), 100);
     assert_eq!(token_client.balance(&bidder_b), 70);
     assert_eq!(token_client.balance(&fomo_buyer), 100);
-    assert_eq!(token_client.balance(&mp_client.address), 30);
+    assert_eq!(token_client.balance(&mp_client.address), 40);
 
     // 36 hours in and we have a 5th highest bid, which is over the buy now price
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 9);
@@ -328,7 +330,7 @@ fn buy_now() {
     assert_eq!(token_client.balance(&bidder_a), 40);
     assert_eq!(token_client.balance(&bidder_b), 100);
     assert_eq!(token_client.balance(&fomo_buyer), 100);
-    assert_eq!(token_client.balance(&mp_client.address), 60);
+    assert_eq!(token_client.balance(&mp_client.address), 70);
 
     // 40 hours in and the fomo buyer sees the previous user mistake and buys now
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 10);
@@ -336,7 +338,8 @@ fn buy_now() {
     assert_eq!(token_client.balance(&bidder_a), 100);
     assert_eq!(token_client.balance(&bidder_b), 100);
     assert_eq!(token_client.balance(&fomo_buyer), 50);
-    assert_eq!(token_client.balance(&mp_client.address), 0);
+    // mp_client has the fees from the auction creation
+    assert_eq!(token_client.balance(&mp_client.address), 10);
     assert_eq!(token_client.balance(&seller), 50);
 
     assert_eq!(
@@ -549,7 +552,7 @@ fn multiple_auction_by_multiple_sellers() {
     let mp_client =
         MarketplaceContractClient::new(&env, &env.register_contract(None, MarketplaceContract {}));
 
-    mp_client.initialize(&admin, &token_client.address);
+    mp_client.initialize(&admin, &token_client.address, &10);
 
     // ============ Collections client setup ============
     let collection_a_client =

@@ -1,6 +1,6 @@
 use soroban_sdk::{contracttype, log, panic_with_error, vec, Address, Env, Vec};
 
-use crate::{collection::DataKey, error::ContractError};
+use crate::error::ContractError;
 
 // Values used to extend the TTL of storage
 pub const DAY_IN_LEDGERS: u32 = 17280;

@@ -371,6 +371,7 @@ fn pause_changes_status_and_second_attempt_fails_to_pause() {
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+    token_client.mint(&seller, &10);
 
     let (mp_client, collections_client) = generate_marketplace_and_collection_client(
         &env,
@@ -422,6 +423,7 @@ fn pause_after_enddate_should_fail() {
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+    token_client.mint(&seller, &10);
 
     let (mp_client, collections_client) = generate_marketplace_and_collection_client(
         &env,
@@ -461,6 +463,7 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
     let bidder = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+    token_client.mint(&seller, &10);
     token_client.mint(&bidder, &100);
 
     let (mp_client, collections_client) = generate_marketplace_and_collection_client(
@@ -513,7 +516,7 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
     mp_client.place_bid(&1, &bidder, &100);
 
     assert_eq!(token_client.balance(&bidder), 0);
-    assert_eq!(token_client.balance(&mp_client.address), 100);
+    assert_eq!(token_client.balance(&mp_client.address), 110);
     assert_eq!(
         mp_client.get_highest_bid(&1),
         HighestBid { bid: 100, bidder }
@@ -547,6 +550,10 @@ fn multiple_auction_by_multiple_sellers() {
     let bidder_c = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+
+    token_client.mint(&seller_a, &20);
+    token_client.mint(&seller_b, &10);
+    token_client.mint(&seller_c, &10);
 
     token_client.mint(&bidder_a, &1_000);
     token_client.mint(&bidder_b, &1_000);
@@ -682,7 +689,7 @@ fn multiple_auction_by_multiple_sellers() {
     assert_eq!(token_client.balance(&bidder_a), 900);
     assert_eq!(token_client.balance(&bidder_b), 900);
     assert_eq!(token_client.balance(&bidder_c), 974);
-    assert_eq!(token_client.balance(&mp_client.address), 226);
+    assert_eq!(token_client.balance(&mp_client.address), 266);
 
     // within day #2
     // here auction #4 has ended
@@ -694,7 +701,7 @@ fn multiple_auction_by_multiple_sellers() {
     );
 
     mp_client.finalize_auction(&4);
-    assert_eq!(token_client.balance(&mp_client.address), 126);
+    assert_eq!(token_client.balance(&mp_client.address), 166);
     assert_eq!(token_client.balance(&bidder_a), 900);
     assert_eq!(token_client.balance(&bidder_b), 900);
     assert_eq!(token_client.balance(&bidder_c), 974);
@@ -718,7 +725,7 @@ fn multiple_auction_by_multiple_sellers() {
     // `bidder_c`places a bit for 75 he now has 925 in total
     assert_eq!(token_client.balance(&bidder_c), 925);
     // total of the assets locked in the contract
-    assert_eq!(token_client.balance(&mp_client.address), 225);
+    assert_eq!(token_client.balance(&mp_client.address), 265);
 
     // day #4
     env.ledger().with_mut(|li| li.timestamp = DAY * 4);
@@ -842,7 +849,8 @@ fn multiple_auction_by_multiple_sellers() {
     assert_eq!(token_client.balance(&bidder_c), 1_000);
 
     // make sure that we don't hold any tokens, as we are just intermediary
-    assert_eq!(token_client.balance(&mp_client.address), 0);
+    // market place has kept all the fees for creating the auctions
+    assert_eq!(token_client.balance(&mp_client.address), 40);
 
     // let's check the item info
     // auction #1 sold item #1 from `collection_a` and the winner is `bidder_a`

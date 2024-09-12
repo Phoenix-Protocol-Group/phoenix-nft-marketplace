@@ -1,6 +1,6 @@
 use soroban_sdk::{contracttype, log, panic_with_error, vec, Address, Env, Vec};
 
-use crate::error::ContractError;
+use crate::{collection::DataKey, error::ContractError};
 
 // Values used to extend the TTL of storage
 pub const DAY_IN_LEDGERS: u32 = 17280;
@@ -20,7 +20,7 @@ pub enum DataKey {
     AuctionId,
     AllAuctions,
     HighestBid(u64),
-    AuctionToken,
+    Config,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -58,6 +58,13 @@ pub enum AuctionStatus {
     Ended,
     Cancelled,
     Paused,
+}
+
+#[derive(Clone, Debug)]
+#[contracttype]
+pub struct Config {
+    pub auction_token: Address,
+    pub auction_creation_fee: u128,
 }
 
 pub fn generate_auction_id(env: &Env) -> Result<u64, ContractError> {
@@ -269,36 +276,59 @@ pub fn set_highest_bid(
     Ok(())
 }
 
-pub fn save_auction_token(env: &Env, auction_token: Address) {
+pub fn save_config(env: &Env, config: Config) {
+    env.storage().persistent().set(&DataKey::Config, &config);
     env.storage()
         .persistent()
-        .set(&DataKey::AuctionToken, &auction_token);
-
-    env.storage()
-        .persistent()
-        .extend_ttl(&DataKey::AuctionToken, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+        .extend_ttl(&DataKey::Config, LIFETIME_THRESHOLD, BUMP_AMOUNT);
 }
 
-pub fn get_auction_token(env: &Env) -> Result<Address, ContractError> {
-    let auction_token = env
+pub fn get_config(env: &Env) -> Result<Config, ContractError> {
+    let config = env
         .storage()
         .persistent()
-        .get(&DataKey::AuctionToken)
-        .ok_or(ContractError::AuctionTokenNotFound)?;
+        .get(&DataKey::Config)
+        .ok_or(ContractError::ConfigNotFound);
 
-    env.storage()
-        .persistent()
-        .has(&DataKey::AuctionToken)
-        .then(|| {
-            env.storage().persistent().extend_ttl(
-                &DataKey::AuctionToken,
-                LIFETIME_THRESHOLD,
-                BUMP_AMOUNT,
-            );
-        });
+    env.storage().persistent().has(&DataKey::Config).then(|| {
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Config, LIFETIME_THRESHOLD, BUMP_AMOUNT)
+    });
 
-    Ok(auction_token)
+    Ok(config)?
 }
+
+//pub fn save_auction_token(env: &Env, auction_token: Address) {
+//    env.storage()
+//        .persistent()
+//        .set(&DataKey::AuctionToken, &auction_token);
+//
+//    env.storage()
+//        .persistent()
+//        .extend_ttl(&DataKey::AuctionToken, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+//}
+//
+//pub fn get_auction_token(env: &Env) -> Result<Address, ContractError> {
+//    let auction_token = env
+//        .storage()
+//        .persistent()
+//        .get(&DataKey::AuctionToken)
+//        .ok_or(ContractError::CurrencyNotFound)?;
+//
+//    env.storage()
+//        .persistent()
+//        .has(&DataKey::AuctionToken)
+//        .then(|| {
+//            env.storage().persistent().extend_ttl(
+//                &DataKey::AuctionToken,
+//                LIFETIME_THRESHOLD,
+//                BUMP_AMOUNT,
+//            );
+//        });
+//
+//    Ok(auction_token)
+//}
 
 #[cfg(test)]
 mod test {

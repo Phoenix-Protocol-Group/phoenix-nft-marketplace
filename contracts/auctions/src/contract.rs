@@ -4,10 +4,10 @@ use crate::{
     collection,
     error::ContractError,
     storage::{
-        generate_auction_id, get_admin, get_auction_by_id, get_auction_token, get_auctions,
-        get_auctions_by_seller_id, get_highest_bid, is_initialized, save_admin, save_auction_by_id,
-        save_auction_by_seller, save_auction_token, set_highest_bid, set_initialized, update_admin,
-        validate_input_params, Auction, AuctionStatus, HighestBid, ItemInfo,
+        generate_auction_id, get_admin, get_auction_by_id, get_auctions, get_auctions_by_seller_id,
+        get_config, get_highest_bid, is_initialized, save_admin, save_auction_by_id,
+        save_auction_by_seller, save_config, set_highest_bid, set_initialized, update_admin,
+        validate_input_params, Auction, AuctionStatus, Config, HighestBid, ItemInfo,
     },
     token,
 };
@@ -22,6 +22,7 @@ impl MarketplaceContract {
         env: Env,
         admin: Address,
         auction_token: Address,
+        auction_creation_fee: u128,
     ) -> Result<(), ContractError> {
         admin.require_auth();
 
@@ -31,7 +32,13 @@ impl MarketplaceContract {
         }
 
         save_admin(&env, &admin);
-        save_auction_token(&env, auction_token);
+
+        let config = Config {
+            auction_token,
+            auction_creation_fee,
+        };
+
+        save_config(&env, config);
 
         set_initialized(&env);
 
@@ -59,7 +66,7 @@ impl MarketplaceContract {
         ];
         validate_input_params(&env, &input_values[..])?;
 
-        let auction_token = get_auction_token(&env)?;
+        let auction_token = get_config(&env)?.auction_token;
         let nft_client = collection::Client::new(&env, &item_info.collection_addr);
         let item_balance = nft_client.balance_of(&seller, &item_info.item_id);
 

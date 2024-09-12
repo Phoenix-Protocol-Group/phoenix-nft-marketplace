@@ -23,6 +23,7 @@ pub struct OperatorApprovalKey {
 pub struct TransferApprovalKey {
     pub owner: Address,
     pub operator: Address,
+    pub nft_id: u64,
 }
 
 // Enum to represent different data keys in storage

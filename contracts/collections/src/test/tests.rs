@@ -560,7 +560,7 @@ fn should_fail_when_admin_tries_to_set_himself_as_operator_for_approval_for_tran
     let collectoins_client = initialize_collection_contract(&env, Some(&admin), None, None);
 
     assert_eq!(
-        collectoins_client.try_set_approval_for_transfer(&admin, &true),
+        collectoins_client.try_set_approval_for_transfer(&admin, &1, &true),
         Err(Ok(ContractError::CannotApproveSelf))
     );
 }
@@ -603,7 +603,7 @@ fn safe_transfer_from_should_fail_when_user_is_not_authorized() {
     // admin mints himself a new NFT
     collections_client.mint(&admin, &admin, &1, &2);
     // admin sets operator to be able to do as they like with the NFT
-    collections_client.set_approval_for_transfer(&operator, &true);
+    collections_client.set_approval_for_transfer(&operator, &1, &true);
 
     // rogue user tries to steal, but fails
     assert_eq!(
@@ -622,7 +622,7 @@ fn safe_transfer_from_should_fail_when_user_is_not_authorized() {
     assert_eq!(collections_client.balance_of(&rcpt, &1), 1);
 
     // admin revokes rights
-    collections_client.set_approval_for_transfer(&operator, &false);
+    collections_client.set_approval_for_transfer(&operator, &1, &false);
 
     assert_eq!(
         collections_client.try_safe_transfer_from(&operator, &admin, &rcpt, &1, &1),
@@ -753,4 +753,128 @@ fn grant_all_permissions_to_user_then_withdraw_them() {
         collections_client.try_set_collection_uri(&operator, &new_uri),
         Err(Ok(ContractError::Unauthorized))
     )
+}
+
+#[test]
+fn safe_batch_transfer_should_succeed_when_sender_from_the_same() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user_a = Address::generate(&env);
+    let rcpt = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    let ids = vec![&env, 1, 2, 3, 4, 5];
+    let amounts = vec![&env, 5, 4, 3, 2, 1];
+    client.mint_batch(&admin, &user_a, &ids, &amounts);
+
+    let accounts = vec![
+        &env,
+        user_a.clone(),
+        user_a.clone(),
+        user_a.clone(),
+        user_a.clone(),
+        user_a.clone(),
+    ];
+    assert_eq!(
+        client.balance_of_batch(&accounts, &ids),
+        vec![&env, 5, 4, 3, 2, 1]
+    );
+
+    client.safe_batch_transfer_from(&user_a, &user_a, &rcpt, &ids, &amounts);
+    // rcpt now has all the tokens
+    assert_eq!(
+        client.balance_of_batch(
+            &vec![
+                &env,
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone(),
+                rcpt.clone()
+            ],
+            &ids
+        ),
+        vec![&env, 5, 4, 3, 2, 1]
+    );
+
+    // original owner has 0 for all the ids
+    assert_eq!(
+        client.balance_of_batch(
+            &vec![
+                &env,
+                user_a.clone(),
+                user_a.clone(),
+                user_a.clone(),
+                user_a.clone(),
+                user_a.clone()
+            ],
+            &ids
+        ),
+        vec![&env, 0, 0, 0, 0, 0]
+    )
+}
+
+#[test]
+fn safe_batch_transfer_should_fail_when_sender_is_not_authorized_to_transfer_from_from() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user_a = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    let ids = vec![&env, 1, 2, 3, 4, 5];
+    let amounts = vec![&env, 5, 4, 3, 2, 1];
+    client.mint_batch(&admin, &user_a, &ids, &amounts);
+
+    let accounts = vec![
+        &env,
+        user_a.clone(),
+        user_a.clone(),
+        user_a.clone(),
+        user_a.clone(),
+        user_a.clone(),
+    ];
+    assert_eq!(
+        client.balance_of_batch(&accounts, &ids),
+        vec![&env, 5, 4, 3, 2, 1]
+    );
+
+    assert_eq!(
+        client.try_safe_batch_transfer_from(
+            &Address::generate(&env),
+            &user_a,
+            &Address::generate(&env),
+            &ids,
+            &amounts,
+        ),
+        Err(Ok(ContractError::Unauthorized))
+    );
+}
+
+#[test]
+fn safe_transfer_should_work_when_sender_is_from_and_is_authorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let user_a = Address::generate(&env);
+    let user_b = Address::generate(&env);
+
+    let client = initialize_collection_contract(&env, Some(&admin), None, None);
+
+    client.mint(&admin, &user_a, &1, &1);
+    client.set_approval_for_transfer(&user_a, &1, &true);
+
+    assert_eq!(client.balance_of(&user_a, &1), 1u64);
+    assert_eq!(client.balance_of(&user_b, &1), 0u64);
+
+    client.safe_transfer_from(&user_a, &user_a, &user_b, &1, &1);
+
+    assert_eq!(client.balance_of(&user_a, &1), 0u64);
+    assert_eq!(client.balance_of(&user_b, &1), 1u64);
 }

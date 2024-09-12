@@ -56,7 +56,9 @@ impl MarketplaceContract {
             // placeholder
             &item_info.buy_now_price.unwrap_or(1),
             &item_info.minimum_price.unwrap_or(1),
+            &item_info.amount,
         ];
+
         validate_input_params(&env, &input_values[..])?;
 
         let auction_token = get_auction_token(&env)?;
@@ -213,7 +215,7 @@ impl MarketplaceContract {
                 &auction.seller,
                 &highest_bid.bidder,
                 &auction.item_info.item_id,
-                &1,
+                &auction.item_info.amount,
             );
 
             auction.status = AuctionStatus::Ended;

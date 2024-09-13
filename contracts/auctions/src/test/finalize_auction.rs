@@ -265,7 +265,12 @@ fn get_active_auctions_should_list_correct_number_of_active_auctions() {
         None,
     );
 
-    nft_collection_client.mint_batch(&seller, &seller, &vec![&env, 1, 2, 3], &vec![&env, 1, 1, 1]);
+    nft_collection_client.mint_batch(
+        &seller,
+        &seller,
+        &vec![&env, 1, 2, 3],
+        &vec![&env, 10, 20, 15],
+    );
 
     let first_item = ItemInfo {
         collection_addr: nft_collection_client.address.clone(),

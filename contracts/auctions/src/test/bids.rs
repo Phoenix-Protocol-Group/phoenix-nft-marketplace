@@ -285,7 +285,7 @@ fn buy_now() {
         None,
     );
 
-    collections_client.mint(&seller, &seller, &1, &1);
+    collections_client.mint(&seller, &seller, &1, &5);
 
     collections_client.set_approval_for_transfer(&mp_client.address, &1u64, &true);
 

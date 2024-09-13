@@ -72,7 +72,7 @@ impl MarketplaceContract {
         );
 
         // we need at least one item to start an auction
-        if item_balance < 1 {
+        if item_balance < item_info.amount {
             log!(
                 &env,
                 "Auction: Create Auction: Not enough balance of the item to sell"

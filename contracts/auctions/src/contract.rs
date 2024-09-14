@@ -7,7 +7,7 @@ use crate::{
         generate_auction_id, get_admin, get_auction_by_id, get_auction_token, get_auctions,
         get_auctions_by_seller_id, get_highest_bid, is_initialized, save_admin, save_auction_by_id,
         save_auction_by_seller, save_auction_token, set_highest_bid, set_initialized, update_admin,
-        validate_input_params, Auction, AuctionStatus, HighestBid, ItemInfo,
+        validate_input_params, Auction, AuctionStatus, AuctionType, HighestBid, ItemInfo,
     },
     token,
 };
@@ -46,6 +46,7 @@ impl MarketplaceContract {
         item_info: ItemInfo,
         seller: Address,
         duration: u64,
+        auction_type: AuctionType,
     ) -> Result<Auction, ContractError> {
         seller.require_auth();
 
@@ -56,6 +57,8 @@ impl MarketplaceContract {
             // placeholder
             &item_info.buy_now_price.unwrap_or(1),
             &item_info.minimum_price.unwrap_or(1),
+            &item_info.penny_price_increment.unwrap_or(1),
+            &item_info.time_extension.unwrap_or(1),
         ];
         validate_input_params(&env, &input_values[..])?;
 
@@ -83,6 +86,7 @@ impl MarketplaceContract {
 
         let auction = Auction {
             id,
+            auction_type,
             item_info,
             seller: seller.clone(),
             highest_bid: None,

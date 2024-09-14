@@ -30,12 +30,22 @@ pub struct ItemInfo {
     pub item_id: u64,
     pub minimum_price: Option<u64>,
     pub buy_now_price: Option<u64>,
+    pub penny_price_increment: Option<u64>,
+    pub time_extension: Option<u64>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub enum AuctionType {
+    English,
+    Penny,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 #[contracttype]
 pub struct Auction {
     pub id: u64,
+    pub auction_type: AuctionType,
     pub item_info: ItemInfo,
     pub seller: Address,
     pub highest_bid: Option<u64>,

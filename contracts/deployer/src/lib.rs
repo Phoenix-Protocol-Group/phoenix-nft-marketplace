@@ -63,7 +63,7 @@ impl CollectionsDeployer {
         let _: Val = env.invoke_contract(&deployed_collection, &init_fn, init_fn_args);
 
         save_collection_with_generic_key(&env, name.clone());
-        save_collection_with_admin_address_as_key(&env, admin, collection_addres, name);
+        save_collection_with_admin_address_as_key(&env, admin, deployed_collection.clone(), name);
 
         deployed_collection
     }
@@ -113,7 +113,7 @@ impl CollectionsDeployer {
 // ---------- Storage types ----------
 
 #[contracttype]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CollectionByCreatorResponse {
     collection: Address,
     name: String,

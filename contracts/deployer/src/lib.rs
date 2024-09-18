@@ -63,7 +63,7 @@ impl CollectionsDeployer {
         let _: Val = env.invoke_contract(&deployed_collection, &init_fn, init_fn_args);
 
         save_collection_with_generic_key(&env, name.clone());
-        save_collection_with_admin_address_as_key(&env, name, admin);
+        save_collection_with_admin_address_as_key(&env, admin, deployed_collection.clone(), name);
 
         deployed_collection
     }
@@ -92,7 +92,7 @@ impl CollectionsDeployer {
     pub fn query_collection_by_creator(
         env: &Env,
         creator: Address,
-    ) -> Result<Vec<String>, ContractError> {
+    ) -> Result<Vec<CollectionByCreatorResponse>, ContractError> {
         let data_key = DataKey::Creator(creator);
         let maybe_collections = env
             .storage()
@@ -111,6 +111,13 @@ impl CollectionsDeployer {
 }
 
 // ---------- Storage types ----------
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct CollectionByCreatorResponse {
+    collection: Address,
+    name: String,
+}
 
 #[contracttype]
 #[derive(Clone)]
@@ -197,16 +204,26 @@ pub fn save_collection_with_generic_key(env: &Env, name: String) {
     );
 }
 
-pub fn save_collection_with_admin_address_as_key(env: &Env, name: String, creator: Address) {
+pub fn save_collection_with_admin_address_as_key(
+    env: &Env,
+    creator: Address,
+    collection_addr: Address,
+    name: String,
+) {
     let data_key = DataKey::Creator(creator);
 
-    let mut existent_collection: Vec<String> = env
+    let mut existent_collection: Vec<CollectionByCreatorResponse> = env
         .storage()
         .persistent()
         .get(&data_key)
         .unwrap_or(vec![&env]);
 
-    existent_collection.push_back(name);
+    let new_collection = CollectionByCreatorResponse {
+        collection: collection_addr,
+        name: name.clone(),
+    };
+
+    existent_collection.push_back(new_collection);
 
     env.storage()
         .persistent()

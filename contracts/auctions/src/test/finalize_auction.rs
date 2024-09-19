@@ -138,7 +138,7 @@ fn fail_to_finalyze_english_auction_when_endtime_not_reached() {
         minimum_price: Some(10),
         buy_now_price: Some(50),
         penny_price_increment: None,
-        time_extension: todo!(),
+        time_extension: None,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);

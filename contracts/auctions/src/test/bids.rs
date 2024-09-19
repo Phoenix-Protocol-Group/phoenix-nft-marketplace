@@ -6,7 +6,7 @@ use soroban_sdk::{
 use crate::{
     contract::{MarketplaceContract, MarketplaceContractClient},
     error::ContractError,
-    storage::{Auction, AuctionStatus, HighestBid, ItemInfo},
+    storage::{Auction, AuctionStatus, AuctionType, HighestBid, ItemInfo},
     test::setup::{
         deploy_token_contract, generate_marketplace_and_collection_client, DAY, FOUR_HOURS, WEEKLY,
     },
@@ -16,7 +16,7 @@ use crate::{
 use super::setup::create_and_initialize_collection;
 
 #[test]
-fn should_place_a_bid() {
+fn should_place_a_bid_in_english_auction() {
     let env = Env::default();
     env.mock_all_auths();
     env.budget().reset_unlimited();
@@ -42,9 +42,11 @@ fn should_place_a_bid() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     mp_client.place_bid(&1, &bidder_a, &10);
     assert_eq!(
@@ -123,9 +125,11 @@ fn fail_to_place_bid_when_auction_inactive() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     env.ledger().with_mut(|li| li.timestamp = WEEKLY + DAY);
 
@@ -162,9 +166,11 @@ fn seller_tries_to_place_a_bid_should_fail() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     env.ledger().with_mut(|li| li.timestamp = DAY);
 
@@ -203,9 +209,11 @@ fn buy_now_should_fail_when_auction_not_active() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &DAY);
+    mp_client.create_auction(&item_info, &seller, &DAY, &AuctionType::English);
 
     env.ledger().with_mut(|li| li.timestamp = WEEKLY);
 
@@ -244,9 +252,11 @@ fn buy_now_should_fail_when_no_buy_now_price_has_been_set() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &DAY);
+    mp_client.create_auction(&item_info, &seller, &DAY, &AuctionType::English);
 
     assert_eq!(
         mp_client.try_buy_now(&1, &fomo_buyer),
@@ -289,9 +299,11 @@ fn buy_now() {
         item_id: 1,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     // 4 hours in and we have a first highest bid
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS);
@@ -348,7 +360,8 @@ fn buy_now() {
             highest_bid: Some(50),
             end_time: WEEKLY,
             status: AuctionStatus::Ended,
-            auction_token: token_client.address
+            auction_token: token_client.address,
+            auction_type: AuctionType::English
         }
     );
 
@@ -381,9 +394,11 @@ fn pause_changes_status_and_second_attempt_fails_to_pause() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     env.ledger().with_mut(|li| li.timestamp = DAY);
 
@@ -432,9 +447,11 @@ fn pause_after_enddate_should_fail() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     env.ledger().with_mut(|li| li.timestamp = WEEKLY + DAY);
 
@@ -472,9 +489,11 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: Some(10),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     env.ledger().with_mut(|li| li.timestamp = DAY);
 
@@ -525,7 +544,7 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
 }
 
 #[test]
-fn multiple_auction_by_multiple_sellers() {
+fn multiple_english_auctions_by_multiple_sellers() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
     env.budget().reset_unlimited();
@@ -565,38 +584,61 @@ fn multiple_auction_by_multiple_sellers() {
         item_id: 1,
         minimum_price: Some(100),
         buy_now_price: Some(500),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
     collection_a_client.mint(&seller_a, &seller_a, &2, &1);
 
-    mp_client.create_auction(&first_item_info_seller_a, &seller_a, &WEEKLY);
+    mp_client.create_auction(
+        &first_item_info_seller_a,
+        &seller_a,
+        &WEEKLY,
+        &AuctionType::English,
+    );
 
     let second_item_info_seller_a = ItemInfo {
         collection_addr: collection_a_client.address.clone(),
         item_id: 2,
         minimum_price: Some(500),
         buy_now_price: Some(900),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&second_item_info_seller_a, &seller_a, &WEEKLY);
+    mp_client.create_auction(
+        &second_item_info_seller_a,
+        &seller_a,
+        &WEEKLY,
+        &AuctionType::English,
+    );
 
     let item_info_seller_b = ItemInfo {
         collection_addr: collection_b_client.address.clone(),
         item_id: 1,
         minimum_price: Some(50),
         buy_now_price: None,
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info_seller_b, &seller_b, &WEEKLY);
+    mp_client.create_auction(
+        &item_info_seller_b,
+        &seller_b,
+        &WEEKLY,
+        &AuctionType::English,
+    );
 
     let item_info_seller_c = ItemInfo {
         collection_addr: collection_c_client.address.clone(),
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info_seller_c, &seller_c, &DAY);
+    mp_client.create_auction(&item_info_seller_c, &seller_c, &DAY, &AuctionType::English);
     // ============ Authorized transfer ============================
     collection_a_client.set_approval_for_transfer(&mp_client.address, &1, &true);
     collection_a_client.set_approval_for_transfer(&mp_client.address, &2, &true);
@@ -616,7 +658,8 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: None,
                 end_time: WEEKLY,
                 status: AuctionStatus::Active,
-                auction_token: token_client.address.clone()
+                auction_token: token_client.address.clone(),
+                auction_type: AuctionType::English
             },
             Auction {
                 id: 2,
@@ -625,7 +668,8 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: None,
                 end_time: WEEKLY,
                 status: AuctionStatus::Active,
-                auction_token: token_client.address.clone()
+                auction_token: token_client.address.clone(),
+                auction_type: AuctionType::English
             }
         ]
     );
@@ -641,7 +685,8 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: None,
                 end_time: WEEKLY,
                 status: AuctionStatus::Active,
-                auction_token: token_client.address.clone()
+                auction_token: token_client.address.clone(),
+                auction_type: AuctionType::English
             },
         ]
     );
@@ -657,7 +702,8 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: None,
                 end_time: DAY,
                 status: AuctionStatus::Active,
-                auction_token: token_client.address.clone()
+                auction_token: token_client.address.clone(),
+                auction_type: AuctionType::English
             },
         ]
     );
@@ -772,7 +818,8 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: Some(500),
                 end_time: WEEKLY,
                 status: AuctionStatus::Ended,
-                auction_token: token_client.address.clone()
+                auction_token: token_client.address.clone(),
+                auction_type: AuctionType::English
             },
             Auction {
                 id: 2,
@@ -781,7 +828,8 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: Some(150),
                 end_time: WEEKLY,
                 status: AuctionStatus::Ended,
-                auction_token: token_client.address.clone()
+                auction_token: token_client.address.clone(),
+                auction_type: AuctionType::English
             }
         ]
     );
@@ -797,7 +845,8 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: Some(150),
                 end_time: WEEKLY,
                 status: AuctionStatus::Ended,
-                auction_token: token_client.address.clone()
+                auction_token: token_client.address.clone(),
+                auction_type: AuctionType::English
             },
         ]
     );
@@ -813,7 +862,8 @@ fn multiple_auction_by_multiple_sellers() {
                 highest_bid: Some(100),
                 end_time: DAY,
                 status: AuctionStatus::Ended,
-                auction_token: token_client.address.clone()
+                auction_token: token_client.address.clone(),
+                auction_type: AuctionType::English
             },
         ]
     );
@@ -871,9 +921,11 @@ fn buy_now_should_fail_when_status_is_different_from_active() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: Some(10),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     env.ledger().with_mut(|li| li.timestamp = DAY);
 
@@ -917,9 +969,11 @@ fn buy_now_should_work_when_no_previous_bid() {
         item_id: 1,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS);
 
@@ -963,9 +1017,11 @@ fn buy_now_should_refund_previous_buyer() {
         item_id: 1,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS);
 

@@ -5,7 +5,7 @@ use soroban_sdk::{
 
 use crate::{
     error::ContractError,
-    storage::{Auction, AuctionStatus, ItemInfo},
+    storage::{Auction, AuctionStatus, AuctionType, ItemInfo},
     test::setup::{
         deploy_token_contract, generate_marketplace_and_collection_client, DAY, FOUR_HOURS, WEEKLY,
     },
@@ -13,7 +13,7 @@ use crate::{
 };
 
 #[test]
-fn finalize_auction() {
+fn finalize_english_auction() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
     env.budget().reset_unlimited();
@@ -44,10 +44,12 @@ fn finalize_auction() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        penny_price_increment: None,
+        time_extension: None,
     };
 
     collections_client.set_approval_for_transfer(&mp_client.address, &1, &true);
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     // 4 hours after the start of the auctions `bidder_a` places a bid
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS);
@@ -112,7 +114,7 @@ fn finalize_auction() {
 }
 
 #[test]
-fn fail_to_finalyze_auction_when_endtime_not_reached() {
+fn fail_to_finalyze_english_auction_when_endtime_not_reached() {
     let env = Env::default();
     env.mock_all_auths();
     env.budget().reset_unlimited();
@@ -135,9 +137,11 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: todo!(),
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     mp_client.place_bid(&1, &bidder, &50);
 
@@ -155,7 +159,7 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
     assert_eq!(token_client.balance(&bidder), 0i128);
 }
 #[test]
-fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
+fn finalize_english_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
     let env = Env::default();
     env.mock_all_auths();
     env.budget().reset_unlimited();
@@ -178,9 +182,11 @@ fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     // we got the highest bid on day #1
     env.ledger().with_mut(|li| li.timestamp = DAY);
@@ -203,7 +209,8 @@ fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
             highest_bid: Some(5),
             end_time: WEEKLY,
             status: AuctionStatus::Ended,
-            auction_token: token_client.address.clone()
+            auction_token: token_client.address.clone(),
+            auction_type: AuctionType::English
         }
     );
     assert_eq!(token_client.balance(&mp_client.address), 0i128);
@@ -211,7 +218,7 @@ fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
 }
 
 #[test]
-fn fail_to_finalyze_auction_when_not_correct_state() {
+fn fail_to_finalyze_english_auction_when_not_correct_state() {
     let env = Env::default();
     env.mock_all_auths();
     env.budget().reset_unlimited();
@@ -231,9 +238,11 @@ fn fail_to_finalyze_auction_when_not_correct_state() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     env.ledger().with_mut(|li| li.timestamp = DAY);
 
@@ -268,6 +277,8 @@ fn get_active_auctions_should_list_correct_number_of_active_auctions() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
     let second_item = ItemInfo {
@@ -275,6 +286,8 @@ fn get_active_auctions_should_list_correct_number_of_active_auctions() {
         item_id: 2u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
     let third_item = ItemInfo {
@@ -282,10 +295,12 @@ fn get_active_auctions_should_list_correct_number_of_active_auctions() {
         item_id: 3u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
-    mp_client.create_auction(&first_item, &seller, &WEEKLY);
-    mp_client.create_auction(&second_item, &seller, &WEEKLY);
-    mp_client.create_auction(&third_item, &seller, &WEEKLY);
+    mp_client.create_auction(&first_item, &seller, &WEEKLY, &AuctionType::English);
+    mp_client.create_auction(&second_item, &seller, &WEEKLY, &AuctionType::English);
+    mp_client.create_auction(&third_item, &seller, &WEEKLY, &AuctionType::English);
 
     assert_eq!(mp_client.get_active_auctions(&None, &None).len(), 3);
 

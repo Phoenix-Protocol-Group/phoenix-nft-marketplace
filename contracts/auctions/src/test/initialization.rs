@@ -5,7 +5,7 @@ use crate::{
     collection,
     contract::{MarketplaceContract, MarketplaceContractClient},
     error::ContractError,
-    storage::{Auction, AuctionStatus, ItemInfo},
+    storage::{Auction, AuctionStatus, AuctionType, ItemInfo},
     test::setup::{create_multiple_auctions, generate_marketplace_and_collection_client, WEEKLY},
 };
 
@@ -29,7 +29,7 @@ fn initialize_and_update_admin_should_work() {
 }
 
 #[test]
-fn mp_should_create_auction() {
+fn mp_should_create_english_auction() {
     let env = Env::default();
     env.mock_all_auths();
     env.budget().reset_unlimited();
@@ -49,11 +49,13 @@ fn mp_should_create_auction() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
     // check if we have minted two
     assert_eq!(nft_collection_client.balance_of(&seller, &1), 2);
-    mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    mp_client.create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English);
 
     assert_eq!(
         mp_client.get_auction(&1),
@@ -64,7 +66,8 @@ fn mp_should_create_auction() {
             highest_bid: None,
             end_time: WEEKLY,
             status: AuctionStatus::Active,
-            auction_token: token_client.address
+            auction_token: token_client.address,
+            auction_type: AuctionType::English
         }
     );
 }
@@ -94,7 +97,7 @@ fn initialize_twice_should_fail() {
 }
 
 #[test]
-fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
+fn mp_should_fail_to_create_english_auction_where_not_enought_balance_of_the_item() {
     let env = Env::default();
     env.mock_all_auths();
     env.budget().reset_unlimited();
@@ -125,10 +128,12 @@ fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        penny_price_increment: None,
+        time_extension: None,
     };
 
     assert_eq!(
-        mp_client.try_create_auction(&item_info, &seller, &WEEKLY),
+        mp_client.try_create_auction(&item_info, &seller, &WEEKLY, &AuctionType::English),
         Err(Ok(ContractError::NotEnoughBalance))
     );
 }

@@ -50,6 +50,31 @@ impl MarketplaceContract {
     ) -> Result<Auction, ContractError> {
         seller.require_auth();
 
+        // verify that the arguments are the correct ones for both auction types
+        match auction_type {
+            AuctionType::English => {
+                if item_info.penny_price_increment.is_some() || item_info.time_extension.is_some() {
+                    log!(
+                        &env,
+                        "Auction: Create auction: provided wrong arguments for english auction: ",
+                        item_info.penny_price_increment.unwrap(),
+                        item_info.time_extension.unwrap()
+                    );
+                    return Err(ContractError::InvalidInputs);
+                }
+            }
+            AuctionType::Penny => {
+                if item_info.buy_now_price.is_some() {
+                    log!(
+                        &env,
+                        "Auction: Create auction: provided wrong arguments for penny auction: ",
+                        item_info.buy_now_price.unwrap()
+                    );
+                    return Err(ContractError::InvalidInputs);
+                }
+            }
+        }
+
         let input_values = [
             &duration,
             &item_info.item_id,

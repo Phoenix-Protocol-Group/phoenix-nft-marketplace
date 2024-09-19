@@ -3,7 +3,7 @@ use soroban_sdk::{testutils::Address as _, xdr::ToXdr, Address, Bytes, Env, Stri
 use crate::{
     collection::{self, Client},
     contract::{MarketplaceContract, MarketplaceContractClient},
-    storage::ItemInfo,
+    storage::{AuctionType, ItemInfo},
     token,
 };
 
@@ -61,8 +61,10 @@ pub fn create_multiple_auctions(
             item_id: idx as u64,
             minimum_price: None,
             buy_now_price: None,
+            penny_price_increment: None,
+            time_extension: None,
         };
-        mp_client.create_auction(&item_info, seller, &WEEKLY);
+        mp_client.create_auction(&item_info, seller, &WEEKLY, &AuctionType::English);
     }
 }
 

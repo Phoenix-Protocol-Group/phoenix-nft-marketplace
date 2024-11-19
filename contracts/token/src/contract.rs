@@ -64,6 +64,7 @@ impl Token {
     }
 
     #[cfg(test)]
+    #[allow(clippy::let_and_return)]
     pub fn get_allowance(e: Env, from: Address, spender: Address) -> Option<AllowanceValue> {
         let key = DataKey::Allowance(AllowanceDataKey { from, spender });
         let allowance = e.storage().temporary().get::<_, AllowanceValue>(&key);

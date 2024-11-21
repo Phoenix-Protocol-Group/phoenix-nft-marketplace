@@ -73,7 +73,7 @@ impl CollectionsDeployer {
             .storage()
             .persistent()
             .get(&DataKey::AllCollections)
-            .ok_or(ContractError::NoCollectionsSaved)?;
+            .unwrap_or(Vec::new(env));
 
         env.storage()
             .persistent()
@@ -98,7 +98,7 @@ impl CollectionsDeployer {
             .storage()
             .persistent()
             .get(&data_key)
-            .ok_or(ContractError::CreatorHasNoCollections)?;
+            .unwrap_or(Vec::new(env));
 
         env.storage().persistent().has(&data_key).then(|| {
             env.storage()

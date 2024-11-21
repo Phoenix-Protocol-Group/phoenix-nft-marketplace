@@ -10,7 +10,6 @@ use crate::{
     test::setup::{
         deploy_token_contract, generate_marketplace_and_collection_client, DAY, FOUR_HOURS, WEEKLY,
     },
-    token,
 };
 
 use super::setup::create_and_initialize_collection;
@@ -26,6 +25,7 @@ fn should_place_a_bid() {
     let bidder_c = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &10);
     let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -54,7 +54,7 @@ fn should_place_a_bid() {
             bidder: bidder_a.clone()
         }
     );
-    assert_eq!(token_client.balance(&mp_client.address), 10i128);
+    assert_eq!(token_client.balance(&mp_client.address), 20i128);
     assert_eq!(token_client.balance(&bidder_a), 0i128);
 
     mp_client.place_bid(&1, &bidder_b, &20);
@@ -65,7 +65,7 @@ fn should_place_a_bid() {
             bidder: bidder_b.clone()
         }
     );
-    assert_eq!(token_client.balance(&mp_client.address), 20i128);
+    assert_eq!(token_client.balance(&mp_client.address), 30i128);
     assert_eq!(token_client.balance(&bidder_a), 10i128);
     assert_eq!(token_client.balance(&bidder_b), 0i128);
 
@@ -74,7 +74,7 @@ fn should_place_a_bid() {
         mp_client.try_place_bid(&1, &bidder_a, &15),
         Err(Ok(ContractError::BidNotEnough))
     );
-    assert_eq!(token_client.balance(&mp_client.address), 20i128);
+    assert_eq!(token_client.balance(&mp_client.address), 30i128);
     assert_eq!(token_client.balance(&bidder_a), 10i128);
     assert_eq!(token_client.balance(&bidder_b), 0i128);
 
@@ -94,7 +94,7 @@ fn should_place_a_bid() {
             bidder: bidder_c.clone()
         }
     );
-    assert_eq!(token_client.balance(&mp_client.address), 40i128);
+    assert_eq!(token_client.balance(&mp_client.address), 50i128);
     assert_eq!(token_client.balance(&bidder_a), 10i128);
     assert_eq!(token_client.balance(&bidder_b), 20i128);
     assert_eq!(token_client.balance(&bidder_c), 0i128);
@@ -108,7 +108,9 @@ fn fail_to_place_bid_when_auction_inactive() {
     let seller = Address::generate(&env);
     let bidder_a = Address::generate(&env);
 
-    let token_client = token::Client::new(&env, &Address::generate(&env));
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &10);
+
     let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -146,7 +148,7 @@ fn seller_tries_to_place_a_bid_should_fail() {
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
-    token_client.mint(&seller, &1);
+    token_client.mint(&seller, &11);
     let (mp_client, collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -186,6 +188,7 @@ fn buy_now_should_fail_when_auction_not_active() {
 
     let token_client = deploy_token_contract(&env, &admin);
 
+    token_client.mint(&seller, &10);
     token_client.mint(&fomo_buyer, &50);
 
     let (mp_client, collections_client) = generate_marketplace_and_collection_client(
@@ -227,6 +230,7 @@ fn buy_now_should_fail_when_no_buy_now_price_has_been_set() {
 
     let token_client = deploy_token_contract(&env, &admin);
 
+    token_client.mint(&seller, &10);
     token_client.mint(&fomo_buyer, &50);
 
     let (mp_client, collections_client) = generate_marketplace_and_collection_client(
@@ -267,6 +271,7 @@ fn buy_now() {
     let fomo_buyer = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+    token_client.mint(&seller, &10);
 
     token_client.mint(&fomo_buyer, &100);
     token_client.mint(&bidder_a, &100);
@@ -297,14 +302,14 @@ fn buy_now() {
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS);
     mp_client.place_bid(&1, &bidder_a, &5);
     assert_eq!(token_client.balance(&bidder_a), 95);
-    assert_eq!(token_client.balance(&mp_client.address), 5);
+    assert_eq!(token_client.balance(&mp_client.address), 15);
 
     // 8 hours in and we have a second highest bid
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 2);
     mp_client.place_bid(&1, &bidder_b, &10);
     assert_eq!(token_client.balance(&bidder_a), 100);
     assert_eq!(token_client.balance(&bidder_b), 90);
-    assert_eq!(token_client.balance(&mp_client.address), 10);
+    assert_eq!(token_client.balance(&mp_client.address), 20);
 
     // 16 hours in and we have a third highest bid
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 4);
@@ -312,7 +317,7 @@ fn buy_now() {
     assert_eq!(token_client.balance(&bidder_a), 100);
     assert_eq!(token_client.balance(&bidder_b), 100);
     assert_eq!(token_client.balance(&fomo_buyer), 75);
-    assert_eq!(token_client.balance(&mp_client.address), 25);
+    assert_eq!(token_client.balance(&mp_client.address), 35);
 
     // 24 hours in and we have a 4th highest bid
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 6);
@@ -320,7 +325,7 @@ fn buy_now() {
     assert_eq!(token_client.balance(&bidder_a), 100);
     assert_eq!(token_client.balance(&bidder_b), 70);
     assert_eq!(token_client.balance(&fomo_buyer), 100);
-    assert_eq!(token_client.balance(&mp_client.address), 30);
+    assert_eq!(token_client.balance(&mp_client.address), 40);
 
     // 36 hours in and we have a 5th highest bid, which is over the buy now price
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 9);
@@ -328,7 +333,7 @@ fn buy_now() {
     assert_eq!(token_client.balance(&bidder_a), 40);
     assert_eq!(token_client.balance(&bidder_b), 100);
     assert_eq!(token_client.balance(&fomo_buyer), 100);
-    assert_eq!(token_client.balance(&mp_client.address), 60);
+    assert_eq!(token_client.balance(&mp_client.address), 70);
 
     // 40 hours in and the fomo buyer sees the previous user mistake and buys now
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 10);
@@ -336,7 +341,8 @@ fn buy_now() {
     assert_eq!(token_client.balance(&bidder_a), 100);
     assert_eq!(token_client.balance(&bidder_b), 100);
     assert_eq!(token_client.balance(&fomo_buyer), 50);
-    assert_eq!(token_client.balance(&mp_client.address), 0);
+    // mp_client has the fees from the auction creation
+    assert_eq!(token_client.balance(&mp_client.address), 10);
     assert_eq!(token_client.balance(&seller), 50);
 
     assert_eq!(
@@ -365,6 +371,7 @@ fn pause_changes_status_and_second_attempt_fails_to_pause() {
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+    token_client.mint(&seller, &10);
 
     let (mp_client, collections_client) = generate_marketplace_and_collection_client(
         &env,
@@ -416,6 +423,7 @@ fn pause_after_enddate_should_fail() {
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+    token_client.mint(&seller, &10);
 
     let (mp_client, collections_client) = generate_marketplace_and_collection_client(
         &env,
@@ -455,6 +463,7 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
     let bidder = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+    token_client.mint(&seller, &10);
     token_client.mint(&bidder, &100);
 
     let (mp_client, collections_client) = generate_marketplace_and_collection_client(
@@ -507,7 +516,7 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
     mp_client.place_bid(&1, &bidder, &100);
 
     assert_eq!(token_client.balance(&bidder), 0);
-    assert_eq!(token_client.balance(&mp_client.address), 100);
+    assert_eq!(token_client.balance(&mp_client.address), 110);
     assert_eq!(
         mp_client.get_highest_bid(&1),
         HighestBid { bid: 100, bidder }
@@ -542,6 +551,10 @@ fn multiple_auction_by_multiple_sellers() {
 
     let token_client = deploy_token_contract(&env, &admin);
 
+    token_client.mint(&seller_a, &20);
+    token_client.mint(&seller_b, &10);
+    token_client.mint(&seller_c, &10);
+
     token_client.mint(&bidder_a, &1_000);
     token_client.mint(&bidder_b, &1_000);
     token_client.mint(&bidder_c, &1_000);
@@ -549,7 +562,7 @@ fn multiple_auction_by_multiple_sellers() {
     let mp_client =
         MarketplaceContractClient::new(&env, &env.register_contract(None, MarketplaceContract {}));
 
-    mp_client.initialize(&admin, &token_client.address);
+    mp_client.initialize(&admin, &token_client.address, &10);
 
     // ============ Collections client setup ============
     let collection_a_client =
@@ -676,7 +689,7 @@ fn multiple_auction_by_multiple_sellers() {
     assert_eq!(token_client.balance(&bidder_a), 900);
     assert_eq!(token_client.balance(&bidder_b), 900);
     assert_eq!(token_client.balance(&bidder_c), 974);
-    assert_eq!(token_client.balance(&mp_client.address), 226);
+    assert_eq!(token_client.balance(&mp_client.address), 266);
 
     // within day #2
     // here auction #4 has ended
@@ -688,7 +701,7 @@ fn multiple_auction_by_multiple_sellers() {
     );
 
     mp_client.finalize_auction(&4);
-    assert_eq!(token_client.balance(&mp_client.address), 126);
+    assert_eq!(token_client.balance(&mp_client.address), 166);
     assert_eq!(token_client.balance(&bidder_a), 900);
     assert_eq!(token_client.balance(&bidder_b), 900);
     assert_eq!(token_client.balance(&bidder_c), 974);
@@ -712,7 +725,7 @@ fn multiple_auction_by_multiple_sellers() {
     // `bidder_c`places a bit for 75 he now has 925 in total
     assert_eq!(token_client.balance(&bidder_c), 925);
     // total of the assets locked in the contract
-    assert_eq!(token_client.balance(&mp_client.address), 225);
+    assert_eq!(token_client.balance(&mp_client.address), 265);
 
     // day #4
     env.ledger().with_mut(|li| li.timestamp = DAY * 4);
@@ -836,7 +849,8 @@ fn multiple_auction_by_multiple_sellers() {
     assert_eq!(token_client.balance(&bidder_c), 1_000);
 
     // make sure that we don't hold any tokens, as we are just intermediary
-    assert_eq!(token_client.balance(&mp_client.address), 0);
+    // market place has kept all the fees for creating the auctions
+    assert_eq!(token_client.balance(&mp_client.address), 40);
 
     // let's check the item info
     // auction #1 sold item #1 from `collection_a` and the winner is `bidder_a`
@@ -859,6 +873,7 @@ fn buy_now_should_fail_when_status_is_different_from_active() {
     let bidder = Address::generate(&env);
 
     let token = deploy_token_contract(&env, &admin);
+    token.mint(&seller, &10);
     token.mint(&bidder, &10);
 
     let (mp_client, collection) =
@@ -898,6 +913,7 @@ fn buy_now_should_work_when_no_previous_bid() {
 
     let token_client = deploy_token_contract(&env, &admin);
 
+    token_client.mint(&seller, &10);
     token_client.mint(&fomo_buyer, &100);
 
     let (mp_client, collections_client) = generate_marketplace_and_collection_client(
@@ -926,7 +942,7 @@ fn buy_now_should_work_when_no_previous_bid() {
     mp_client.buy_now(&1, &fomo_buyer);
 
     assert_eq!(token_client.balance(&fomo_buyer), 50);
-    assert_eq!(token_client.balance(&mp_client.address), 0);
+    assert_eq!(token_client.balance(&mp_client.address), 10);
     assert_eq!(token_client.balance(&seller), 50);
 }
 
@@ -943,6 +959,7 @@ fn buy_now_should_refund_previous_buyer() {
 
     let token_client = deploy_token_contract(&env, &admin);
 
+    token_client.mint(&seller, &10);
     token_client.mint(&fomo_buyer, &100);
     token_client.mint(&bidder, &100);
 
@@ -971,7 +988,7 @@ fn buy_now_should_refund_previous_buyer() {
 
     mp_client.place_bid(&1, &bidder, &40);
     assert_eq!(token_client.balance(&bidder), 60);
-    assert_eq!(token_client.balance(&mp_client.address), 40);
+    assert_eq!(token_client.balance(&mp_client.address), 50);
 
     env.ledger().with_mut(|li| li.timestamp = FOUR_HOURS * 2);
 
@@ -979,6 +996,6 @@ fn buy_now_should_refund_previous_buyer() {
 
     assert_eq!(token_client.balance(&fomo_buyer), 50);
     assert_eq!(token_client.balance(&bidder), 100);
-    assert_eq!(token_client.balance(&mp_client.address), 0);
+    assert_eq!(token_client.balance(&mp_client.address), 10);
     assert_eq!(token_client.balance(&seller), 50);
 }

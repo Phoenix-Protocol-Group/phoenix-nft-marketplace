@@ -104,7 +104,6 @@ pub mod utils {
     }
 
     #[allow(dead_code)]
-    #[cfg(not(tarpaulin_include))]
     pub fn get_config(env: &Env) -> Result<Config, ContractError> {
         let config = env
             .storage()
@@ -121,7 +120,6 @@ pub mod utils {
         Ok(())
     }
 
-    #[cfg(not(tarpaulin_include))]
     pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
         let admin = env
             .storage()

@@ -589,7 +589,6 @@ impl Collections {
     }
 
     #[allow(dead_code)]
-    #[cfg(not(tarpaulin_include))]
     pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
         let admin: Address = get_admin(&env)?;
         admin.require_auth();
@@ -599,14 +598,11 @@ impl Collections {
         Ok(())
     }
 
-    #[cfg(test)]
-    #[allow(dead_code)]
     pub fn show_admin(env: &Env) -> Result<Address, ContractError> {
         let maybe_admin = crate::storage::utils::get_admin(env)?;
         Ok(maybe_admin)
     }
-    #[cfg(test)]
-    #[allow(dead_code)]
+
     pub fn show_config(env: &Env) -> Result<Config, ContractError> {
         let mabye_config = crate::storage::utils::get_config(env)?;
         Ok(mabye_config)

@@ -1,8 +1,8 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contractmeta, contracttype, log, vec, Address, BytesN,
-    Env, IntoVal, String, Symbol, Val, Vec,
+    contract, contractimpl, contractmeta, contracttype, log, vec, Address, BytesN, Env, IntoVal,
+    String, Symbol, Val, Vec,
 };
 
 // Values used to extend the TTL of storage
@@ -51,7 +51,7 @@ impl CollectionsDeployer {
         let deployed_collection = env
             .deployer()
             .with_address(admin.clone(), salt)
-            .deploy(collections_wasm_hash);
+            .deploy_v2(collections_wasm_hash, ());
 
         let init_fn = Symbol::new(&env, "initialize");
         let init_fn_args: Vec<Val> = vec![

@@ -1,8 +1,8 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contractmeta, contracttype, log, vec, Address, BytesN,
-    Env, IntoVal, String, Symbol, Val, Vec,
+    contract, contractimpl, contractmeta, contracttype, log, vec, Address, BytesN, Env, IntoVal,
+    String, Symbol, Val, Vec,
 };
 
 // Values used to extend the TTL of storage
@@ -51,7 +51,7 @@ impl CollectionsDeployer {
         let deployed_collection = env
             .deployer()
             .with_address(admin.clone(), salt)
-            .deploy(collections_wasm_hash);
+            .deploy_v2(collections_wasm_hash, ());
 
         let init_fn = Symbol::new(&env, "initialize");
         let init_fn_args: Vec<Val> = vec![
@@ -68,12 +68,12 @@ impl CollectionsDeployer {
         deployed_collection
     }
 
-    pub fn query_all_collections(env: &Env) -> Result<Vec<String>, ContractError> {
+    pub fn query_all_collections(env: &Env) -> Vec<String> {
         let maybe_all = env
             .storage()
             .persistent()
             .get(&DataKey::AllCollections)
-            .ok_or(ContractError::NoCollectionsSaved)?;
+            .unwrap_or(Vec::new(env));
 
         env.storage()
             .persistent()
@@ -86,19 +86,19 @@ impl CollectionsDeployer {
                 )
             });
 
-        Ok(maybe_all)
+        maybe_all
     }
 
     pub fn query_collection_by_creator(
         env: &Env,
         creator: Address,
-    ) -> Result<Vec<CollectionByCreatorResponse>, ContractError> {
+    ) -> Vec<CollectionByCreatorResponse> {
         let data_key = DataKey::Creator(creator);
         let maybe_collections = env
             .storage()
             .persistent()
             .get(&data_key)
-            .ok_or(ContractError::CreatorHasNoCollections)?;
+            .unwrap_or(Vec::new(env));
 
         env.storage().persistent().has(&data_key).then(|| {
             env.storage()
@@ -106,7 +106,7 @@ impl CollectionsDeployer {
                 .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT)
         });
 
-        Ok(maybe_collections)
+        maybe_collections
     }
 }
 
@@ -126,14 +126,6 @@ pub enum DataKey {
     CollectionsWasmHash,
     AllCollections,
     Creator(Address),
-}
-
-#[contracterror]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-#[repr(u32)]
-pub enum ContractError {
-    NoCollectionsSaved = 0,
-    CreatorHasNoCollections = 1,
 }
 
 pub fn set_initialized(env: &Env) {

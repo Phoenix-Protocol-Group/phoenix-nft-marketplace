@@ -67,11 +67,11 @@ impl Token {
         TokenUtils::new(&e).events().set_admin(admin, new_admin);
     }
 
+    #[cfg_attr(not(test), allow(dead_code))]
     #[cfg(test)]
     pub fn get_allowance(e: Env, from: Address, spender: Address) -> Option<AllowanceValue> {
         let key = DataKey::Allowance(AllowanceDataKey { from, spender });
-        let allowance = e.storage().temporary().get::<_, AllowanceValue>(&key);
-        allowance
+        e.storage().temporary().get::<_, AllowanceValue>(&key)
     }
 }
 

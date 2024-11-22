@@ -45,7 +45,7 @@ fn initialization_should_fail_when_done_twice() {
     let name = &String::from_str(&env, "Stellar kitties");
     let symbol = &String::from_str(&env, "STK");
 
-    let collections = CollectionsClient::new(&env, &env.register(Collections, ()));
+    let collections = CollectionsClient::new(&env, &env.register_contract(None, Collections {}));
 
     collections.initialize(&admin, name, symbol);
 

@@ -8,7 +8,7 @@ pub fn initialize_collection_contract<'a>(
     name: Option<&String>,
     symbol: Option<&String>,
 ) -> CollectionsClient<'a> {
-    let collections = CollectionsClient::new(env, &env.register(Collections, ()));
+    let collections = CollectionsClient::new(env, &env.register_contract(None, Collections {}));
 
     let alt_admin = &Address::generate(env);
     let alt_name = &String::from_str(env, "Stellar kitties");

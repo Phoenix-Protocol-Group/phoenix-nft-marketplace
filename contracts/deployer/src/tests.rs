@@ -16,7 +16,8 @@ mod collections {
 #[test]
 fn test_deploy_collection_from_contract() {
     let env = Env::default();
-    let client = CollectionsDeployerClient::new(&env, &env.register(CollectionsDeployer, ()));
+    let client =
+        CollectionsDeployerClient::new(&env, &env.register_contract(None, CollectionsDeployer));
 
     // Upload the Wasm to be deployed from the deployer contract.
     // This can also be called from within a contract if needed.
@@ -46,7 +47,8 @@ fn test_deploy_multiple_collections() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let client = CollectionsDeployerClient::new(&env, &env.register(CollectionsDeployer, ()));
+    let client =
+        CollectionsDeployerClient::new(&env, &env.register_contract(None, CollectionsDeployer));
 
     // Upload the Wasm to be deployed from the deployer contract.
     // This can also be called from within a contract if needed.
@@ -132,7 +134,7 @@ fn test_deploy_multiple_collections() {
 fn initialize_twice() {
     let env = Env::default();
     let deployer_client =
-        CollectionsDeployerClient::new(&env, &env.register(CollectionsDeployer, ()));
+        CollectionsDeployerClient::new(&env, &env.register_contract(None, CollectionsDeployer));
 
     let wasm_hash = env.deployer().upload_contract_wasm(collections::WASM);
     deployer_client.initialize(&wasm_hash);

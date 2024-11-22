@@ -51,7 +51,7 @@ impl CollectionsDeployer {
         let deployed_collection = env
             .deployer()
             .with_address(admin.clone(), salt)
-            .deploy_v2(collections_wasm_hash, ());
+            .deploy(collections_wasm_hash);
 
         let init_fn = Symbol::new(&env, "initialize");
         let init_fn_args: Vec<Val> = vec![

@@ -4,10 +4,10 @@ use crate::{
     error::ContractError,
     storage::{
         utils::{
-            get_admin, get_balance_of, is_initialized, save_admin, save_config, set_initialized,
-            update_balance_of,
+            get_admin_old, get_balance_of, is_initialized, save_admin_old, save_config,
+            set_initialized, update_balance_of,
         },
-        Config, DataKey, OperatorApprovalKey, TransferApprovalKey, URIValue,
+        Config, DataKey, OperatorApprovalKey, TransferApprovalKey, URIValue, ADMIN,
     },
     ttl::{BUMP_AMOUNT, LIFETIME_THRESHOLD},
 };
@@ -36,7 +36,7 @@ impl Collections {
         }
 
         save_config(&env, config)?;
-        save_admin(&env, &admin)?;
+        save_admin_old(&env, &admin)?;
 
         set_initialized(&env);
 
@@ -95,7 +95,7 @@ impl Collections {
         operator: Address,
         approved: bool,
     ) -> Result<(), ContractError> {
-        let admin = get_admin(&env)?;
+        let admin = get_admin_old(&env)?;
         admin.require_auth();
 
         if admin == operator {
@@ -136,7 +136,7 @@ impl Collections {
         nft_id: u64,
         approved: bool,
     ) -> Result<(), ContractError> {
-        let admin = get_admin(&env)?;
+        let admin = get_admin_old(&env)?;
         admin.require_auth();
 
         if admin == operator {
@@ -590,7 +590,7 @@ impl Collections {
 
     #[allow(dead_code)]
     pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
-        let admin: Address = get_admin(&env)?;
+        let admin: Address = get_admin_old(&env)?;
         admin.require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
@@ -598,8 +598,18 @@ impl Collections {
         Ok(())
     }
 
+    #[allow(dead_code)]
+    pub fn migrate_admin(env: Env) -> Result<(), ContractError> {
+        let admin: Address = get_admin_old(&env)?;
+        admin.require_auth();
+
+        env.storage().instance().set(&ADMIN, &admin);
+
+        Ok(())
+    }
+
     pub fn show_admin(env: &Env) -> Result<Address, ContractError> {
-        let maybe_admin = crate::storage::utils::get_admin(env)?;
+        let maybe_admin = crate::storage::utils::get_admin_old(env)?;
         Ok(maybe_admin)
     }
 
@@ -609,7 +619,7 @@ impl Collections {
     }
 
     fn is_authorized_for_transfer(env: &Env, sender: &Address, nft_id: u64) -> bool {
-        let admin = get_admin(env).expect("no admin found");
+        let admin = get_admin_old(env).expect("no admin found");
 
         admin == sender.clone()
             || Self::is_approved_for_all(env.clone(), admin.clone(), sender.clone())
@@ -617,7 +627,7 @@ impl Collections {
     }
 
     fn is_authorized_for_all(env: &Env, sender: &Address) -> bool {
-        let admin = get_admin(env).expect("no admin found");
+        let admin = get_admin_old(env).expect("no admin found");
 
         admin == sender.clone() || Self::is_approved_for_all(env.clone(), admin, sender.clone())
     }

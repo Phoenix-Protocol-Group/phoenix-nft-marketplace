@@ -1,4 +1,4 @@
-use crate::{CollectionsDeployer, CollectionsDeployerClient};
+use crate::{CollectionByCreatorResponse, CollectionsDeployer, CollectionsDeployerClient};
 #[cfg(test)]
 use soroban_sdk::{testutils::Address as _, vec, Address, BytesN, Env, String};
 
@@ -16,8 +16,7 @@ mod collections {
 #[test]
 fn test_deploy_collection_from_contract() {
     let env = Env::default();
-    let client =
-        CollectionsDeployerClient::new(&env, &env.register_contract(None, CollectionsDeployer));
+    let client = CollectionsDeployerClient::new(&env, &env.register(CollectionsDeployer, ()));
 
     // Upload the Wasm to be deployed from the deployer contract.
     // This can also be called from within a contract if needed.
@@ -33,12 +32,12 @@ fn test_deploy_collection_from_contract() {
     let name = String::from_str(&env, "Stellar Kitties");
     let symbol = String::from_str(&env, "STK");
 
-    client.deploy_new_collection(&salt, &creator, &name, &symbol);
+    let collection = client.deploy_new_collection(&salt, &creator, &name, &symbol);
 
     assert_eq!(client.query_all_collections(), vec![&env, name.clone()]);
     assert_eq!(
         client.query_collection_by_creator(&creator),
-        vec![&env, name]
+        vec![&env, CollectionByCreatorResponse { collection, name }]
     );
 }
 
@@ -47,8 +46,7 @@ fn test_deploy_multiple_collections() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let client =
-        CollectionsDeployerClient::new(&env, &env.register_contract(None, CollectionsDeployer));
+    let client = CollectionsDeployerClient::new(&env, &env.register(CollectionsDeployer, ()));
 
     // Upload the Wasm to be deployed from the deployer contract.
     // This can also be called from within a contract if needed.
@@ -71,19 +69,19 @@ fn test_deploy_multiple_collections() {
     let third_collection_name = String::from_str(&env, "Horror of Cthulhu");
     let third_collection_symbol = String::from_str(&env, "HoC");
 
-    client.deploy_new_collection(
+    let first = client.deploy_new_collection(
         &first_salt,
         &creator,
         &first_collection_name,
         &first_collection_symbol,
     );
-    client.deploy_new_collection(
+    let second = client.deploy_new_collection(
         &second_salt,
         &creator,
         &second_collection_name,
         &second_collection_symbol,
     );
-    client.deploy_new_collection(
+    let third = client.deploy_new_collection(
         &third_salt,
         &bob,
         &third_collection_name,
@@ -102,12 +100,28 @@ fn test_deploy_multiple_collections() {
 
     assert_eq!(
         client.query_collection_by_creator(&creator),
-        vec![&env, first_collection_name, second_collection_name]
+        vec![
+            &env,
+            CollectionByCreatorResponse {
+                collection: first,
+                name: first_collection_name,
+            },
+            CollectionByCreatorResponse {
+                collection: second,
+                name: second_collection_name,
+            },
+        ]
     );
 
     assert_eq!(
         client.query_collection_by_creator(&bob),
-        vec![&env, third_collection_name]
+        vec![
+            &env,
+            CollectionByCreatorResponse {
+                collection: third,
+                name: third_collection_name
+            }
+        ]
     );
 }
 
@@ -118,7 +132,7 @@ fn test_deploy_multiple_collections() {
 fn initialize_twice() {
     let env = Env::default();
     let deployer_client =
-        CollectionsDeployerClient::new(&env, &env.register_contract(None, CollectionsDeployer));
+        CollectionsDeployerClient::new(&env, &env.register(CollectionsDeployer, ()));
 
     let wasm_hash = env.deployer().upload_contract_wasm(collections::WASM);
     deployer_client.initialize(&wasm_hash);

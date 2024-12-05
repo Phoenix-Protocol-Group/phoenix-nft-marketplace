@@ -45,6 +45,7 @@ fn finalize_auction() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        amount: 1,
     };
 
     collections_client.set_approval_for_transfer(&mp_client.address, &1, &true);
@@ -139,6 +140,7 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -185,6 +187,7 @@ fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -240,6 +243,7 @@ fn fail_to_finalyze_auction_when_not_correct_state() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -272,13 +276,19 @@ fn get_active_auctions_should_list_correct_number_of_active_auctions() {
         None,
     );
 
-    nft_collection_client.mint_batch(&seller, &seller, &vec![&env, 1, 2, 3], &vec![&env, 1, 1, 1]);
+    nft_collection_client.mint_batch(
+        &seller,
+        &seller,
+        &vec![&env, 1, 2, 3],
+        &vec![&env, 10, 20, 15],
+    );
 
     let first_item = ItemInfo {
         collection_addr: nft_collection_client.address.clone(),
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 10,
     };
 
     let second_item = ItemInfo {
@@ -286,6 +296,7 @@ fn get_active_auctions_should_list_correct_number_of_active_auctions() {
         item_id: 2u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 20,
     };
 
     let third_item = ItemInfo {
@@ -293,6 +304,7 @@ fn get_active_auctions_should_list_correct_number_of_active_auctions() {
         item_id: 3u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 15,
     };
     mp_client.create_auction(&first_item, &seller, &WEEKLY);
     mp_client.create_auction(&second_item, &seller, &WEEKLY);

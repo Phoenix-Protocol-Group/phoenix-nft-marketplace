@@ -42,6 +42,7 @@ fn should_place_a_bid() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -125,6 +126,7 @@ fn fail_to_place_bid_when_auction_inactive() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -164,6 +166,7 @@ fn seller_tries_to_place_a_bid_should_fail() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -206,6 +209,7 @@ fn buy_now_should_fail_when_auction_not_active() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: Some(50),
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &DAY);
@@ -248,6 +252,7 @@ fn buy_now_should_fail_when_no_buy_now_price_has_been_set() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &DAY);
@@ -285,7 +290,7 @@ fn buy_now() {
         None,
     );
 
-    collections_client.mint(&seller, &seller, &1, &1);
+    collections_client.mint(&seller, &seller, &1, &5);
 
     collections_client.set_approval_for_transfer(&mp_client.address, &1u64, &true);
 
@@ -294,6 +299,7 @@ fn buy_now() {
         item_id: 1,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 5,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -388,6 +394,7 @@ fn pause_changes_status_and_second_attempt_fails_to_pause() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -440,6 +447,7 @@ fn pause_after_enddate_should_fail() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -481,6 +489,7 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: Some(10),
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -578,6 +587,7 @@ fn multiple_auction_by_multiple_sellers() {
         item_id: 1,
         minimum_price: Some(100),
         buy_now_price: Some(500),
+        amount: 1,
     };
 
     collection_a_client.mint(&seller_a, &seller_a, &2, &1);
@@ -589,6 +599,7 @@ fn multiple_auction_by_multiple_sellers() {
         item_id: 2,
         minimum_price: Some(500),
         buy_now_price: Some(900),
+        amount: 1,
     };
 
     mp_client.create_auction(&second_item_info_seller_a, &seller_a, &WEEKLY);
@@ -598,6 +609,7 @@ fn multiple_auction_by_multiple_sellers() {
         item_id: 1,
         minimum_price: Some(50),
         buy_now_price: None,
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info_seller_b, &seller_b, &WEEKLY);
@@ -607,6 +619,7 @@ fn multiple_auction_by_multiple_sellers() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info_seller_c, &seller_c, &DAY);
@@ -886,6 +899,7 @@ fn buy_now_should_fail_when_status_is_different_from_active() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: Some(10),
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -933,6 +947,7 @@ fn buy_now_should_work_when_no_previous_bid() {
         item_id: 1,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
@@ -980,6 +995,7 @@ fn buy_now_should_refund_previous_buyer() {
         item_id: 1,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 1,
     };
 
     mp_client.create_auction(&item_info, &seller, &WEEKLY);

@@ -37,6 +37,7 @@ fn mp_should_create_auction() {
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
     token_client.mint(&seller, &10);
+
     let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -50,6 +51,7 @@ fn mp_should_create_auction() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 1,
     };
 
     // check if we have minted two
@@ -105,6 +107,7 @@ fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
     token_client.mint(&seller, &10);
+
     // we don't want to use the collection from the setup method, as this will automatically
     // mint an item for the auction.
     let (mp_client, _) = generate_marketplace_and_collection_client(
@@ -129,6 +132,7 @@ fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 1,
     };
 
     assert_eq!(
@@ -270,3 +274,34 @@ fn should_fail_to_create_auction_when_seller_cannot_cover_the_fees() {
         Err(Ok(ContractError::AuctionCreationFeeNotCovered))
     );
 }
+
+#[test]
+fn mp_should_not_create_auction_with_item_info_with_zero_amount() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let seller = Address::generate(&env);
+
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
+
+    let item_info = ItemInfo {
+        collection_addr: nft_collection_client.address.clone(),
+        item_id: 1u64,
+        minimum_price: Some(10),
+        buy_now_price: Some(50),
+        amount: 0,
+    };
+
+    assert_eq!(
+        mp_client.try_create_auction(&item_info, &seller, &WEEKLY),
+        Err(Ok(ContractError::InvalidInputs))
+    );
+}
+

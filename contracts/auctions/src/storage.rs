@@ -1,4 +1,6 @@
-use soroban_sdk::{contracttype, log, panic_with_error, vec, Address, Env, Vec};
+use soroban_sdk::{
+    contracttype, log, panic_with_error, symbol_short, vec, Address, Env, Symbol, Vec,
+};
 
 use crate::error::ContractError;
 
@@ -11,6 +13,7 @@ pub const LIFETIME_THRESHOLD: u32 = BUMP_AMOUNT - DAY_IN_LEDGERS;
 // since we start counting from 1, default would be 1 as well
 pub const DEFAULT_INDEX: u64 = 1;
 pub const DEFAULT_LIMIT: u64 = 10;
+pub const ADMIN: Symbol = symbol_short!("ADMIN");
 
 #[contracttype]
 #[derive(Clone)]
@@ -198,14 +201,14 @@ pub fn set_initialized(env: &Env) {
         .set(&DataKey::IsInitialized, &true);
 }
 
-pub fn save_admin(env: &Env, admin: &Address) {
+pub fn save_admin_old(env: &Env, admin: &Address) {
     env.storage().persistent().set(&DataKey::Admin, &admin);
     env.storage()
         .persistent()
         .extend_ttl(&DataKey::Admin, LIFETIME_THRESHOLD, BUMP_AMOUNT);
 }
 
-pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
+pub fn get_admin_old(env: &Env) -> Result<Address, ContractError> {
     let admin = env
         .storage()
         .persistent()
@@ -237,7 +240,7 @@ pub fn get_highest_bid(env: &Env, auction_id: u64) -> Result<HighestBid, Contrac
         .unwrap_or(HighestBid {
             bid: 0,
             // I know
-            bidder: get_admin(env)?,
+            bidder: get_admin_old(env)?,
         });
 
     env.storage()

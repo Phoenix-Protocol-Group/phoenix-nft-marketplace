@@ -1,18 +1,31 @@
-use soroban_sdk::{testutils::Address as _, xdr::ToXdr, Address, Bytes, Env, String};
+use soroban_sdk::{
+    testutils::Address as _, token::TokenClient, xdr::ToXdr, Address, Bytes, Env, FromVal, String,
+};
 
 use crate::{
     collection::{self, Client},
     contract::{MarketplaceContract, MarketplaceContractClient},
     storage::ItemInfo,
-    token,
 };
 
 pub const WEEKLY: u64 = 604_800u64;
 pub const DAY: u64 = 86_400u64;
 pub const FOUR_HOURS: u64 = 14_400u64;
+const TOKEN_WASM: &[u8] =
+    include_bytes!("../../../../target/wasm32-unknown-unknown/release/soroban_token_contract.wasm");
 
-pub fn deploy_token_contract<'a>(env: &Env, admin: &Address) -> token::Client<'a> {
-    token::Client::new(env, &env.register_stellar_asset_contract(admin.clone()))
+pub fn deploy_token_contract<'a>(env: &Env, admin: &Address) -> TokenClient<'a> {
+    let token_contract = env.register(
+        TOKEN_WASM,
+        (
+            admin,
+            7_u32,
+            String::from_val(env, &"name"),
+            String::from_val(env, &"symbol"),
+        ),
+    );
+
+    TokenClient::new(env, &token_contract)
 }
 
 pub mod auctions_wasm {
@@ -28,8 +41,7 @@ pub fn generate_marketplace_and_collection_client<'a>(
     name: Option<String>,
     symbol: Option<String>,
 ) -> (MarketplaceContractClient<'a>, collection::Client<'a>) {
-    let mp_client =
-        MarketplaceContractClient::new(env, &env.register_contract(None, MarketplaceContract {}));
+    let mp_client = MarketplaceContractClient::new(env, &env.register(MarketplaceContract, ()));
 
     mp_client.initialize(admin, auction_token);
 
@@ -38,7 +50,7 @@ pub fn generate_marketplace_and_collection_client<'a>(
 
     let name = name.unwrap_or(alt_name);
     let symbol = symbol.unwrap_or(alt_symbol);
-    let collection_addr = env.register_contract_wasm(None, collection::WASM);
+    let collection_addr = env.register(collection::WASM, ());
 
     let collection_client = collection::Client::new(env, &collection_addr);
     collection_client.initialize(admin, &name, &symbol);
@@ -83,7 +95,7 @@ pub fn create_and_initialize_collection<'a>(
     let collection_addr = env
         .deployer()
         .with_address(Address::generate(env), salt)
-        .deploy(env.deployer().upload_contract_wasm(collection::WASM));
+        .deploy_v2(env.deployer().upload_contract_wasm(collection::WASM), ());
 
     let collection_client = collection::Client::new(env, &collection_addr);
     collection_client.initialize(seller, &collection_name, &collection_symbol);

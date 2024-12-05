@@ -1,8 +1,10 @@
-use soroban_sdk::{contracttype, Address, Bytes, String};
+use soroban_sdk::{contracttype, symbol_short, Address, Bytes, String, Symbol};
 
 type NftId = u64;
 type TokenId = u64;
 type Balance = u64;
+
+pub const ADMIN: Symbol = symbol_short!("ADMIN");
 
 // Struct to represent the operator approval status
 #[derive(Clone)]
@@ -60,7 +62,7 @@ pub mod utils {
 
     use crate::error::ContractError;
 
-    use super::{Balance, Config, DataKey, TokenId};
+    use super::{Balance, Config, DataKey, TokenId, ADMIN};
 
     pub fn get_balance_of(env: &Env, owner: &Address, id: u64) -> Result<u64, ContractError> {
         let balance_map: Map<TokenId, Balance> = env
@@ -114,13 +116,17 @@ pub mod utils {
         Ok(config)
     }
 
-    pub fn save_admin(env: &Env, admin: &Address) -> Result<(), ContractError> {
+    pub fn save_admin_old(env: &Env, admin: &Address) -> Result<(), ContractError> {
         env.storage().persistent().set(&DataKey::Admin, &admin);
 
         Ok(())
     }
 
-    pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
+    pub fn _save_admin(env: &Env, admin: &Address) {
+        env.storage().instance().set(&ADMIN, admin);
+    }
+
+    pub fn get_admin_old(env: &Env) -> Result<Address, ContractError> {
         let admin = env
             .storage()
             .persistent()
@@ -129,6 +135,17 @@ pub mod utils {
 
         Ok(admin)
     }
+
+    pub fn _get_admin(env: &Env) -> Result<Address, ContractError> {
+        let admin = env
+            .storage()
+            .instance()
+            .get(&ADMIN)
+            .ok_or(ContractError::AdminNotSet)?;
+
+        Ok(admin)
+    }
+
     pub fn is_initialized(env: &Env) -> bool {
         env.storage()
             .persistent()

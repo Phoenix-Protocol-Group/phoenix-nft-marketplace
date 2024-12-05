@@ -24,7 +24,7 @@ fn initialize_and_update_admin_should_work() {
     let mp_client =
         MarketplaceContractClient::new(&env, &env.register_contract(None, MarketplaceContract {}));
 
-    mp_client.initialize(&admin, &token_client.address);
+    mp_client.initialize(&admin, &token_client.address, &10);
     mp_client.update_admin(&new_admin);
 }
 
@@ -36,6 +36,8 @@ fn mp_should_create_auction() {
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &10);
+
     let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -80,6 +82,8 @@ fn initialize_twice_should_fail() {
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &admin);
+    token_client.mint(&seller, &10);
+
     let (mp_client, _) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -89,7 +93,7 @@ fn initialize_twice_should_fail() {
     );
 
     assert_eq!(
-        mp_client.try_initialize(&admin, &token_client.address),
+        mp_client.try_initialize(&admin, &token_client.address, &10),
         Err(Ok(ContractError::AlreadyInitialized))
     );
 }
@@ -102,6 +106,8 @@ fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &10);
+
     // we don't want to use the collection from the setup method, as this will automatically
     // mint an item for the auction.
     let (mp_client, _) = generate_marketplace_and_collection_client(
@@ -143,6 +149,7 @@ fn mp_should_be_able_create_multiple_auctions_and_query_them_with_pagination() {
 
     let seller = Address::generate(&env);
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    token_client.mint(&seller, &250);
 
     let (mp_client, collection_client) = generate_marketplace_and_collection_client(
         &env,
@@ -242,6 +249,33 @@ fn get_auction_by_seller_should_return_an_err_when_id_not_found() {
 }
 
 #[test]
+fn should_fail_to_create_auction_when_seller_cannot_cover_the_fees() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let seller = Address::generate(&env);
+
+    let token = deploy_token_contract(&env, &Address::generate(&env));
+
+    let (mp_client, collection) =
+        generate_marketplace_and_collection_client(&env, &seller, &token.address, None, None);
+
+    collection.mint(&seller, &seller, &1, &1);
+
+    let item_info = ItemInfo {
+        collection_addr: collection.address,
+        item_id: 1,
+        minimum_price: None,
+        buy_now_price: None,
+    };
+
+    assert_eq!(
+        mp_client.try_create_auction(&item_info, &seller, &WEEKLY),
+        Err(Ok(ContractError::AuctionCreationFeeNotCovered))
+    );
+}
+
+#[test]
 fn mp_should_not_create_auction_with_item_info_with_zero_amount() {
     let env = Env::default();
     env.mock_all_auths();
@@ -270,3 +304,4 @@ fn mp_should_not_create_auction_with_item_info_with_zero_amount() {
         Err(Ok(ContractError::InvalidInputs))
     );
 }
+

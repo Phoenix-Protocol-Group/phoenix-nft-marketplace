@@ -1,5 +1,5 @@
 extern crate std;
-use soroban_sdk::{testutils::Address as _, token, Address, Env};
+use soroban_sdk::{testutils::Address as _, Address, Env};
 
 use crate::{
     collection,
@@ -35,7 +35,7 @@ fn mp_should_create_auction() {
     env.budget().reset_unlimited();
     let seller = Address::generate(&env);
 
-    let token_client = token::Client::new(&env, &Address::generate(&env));
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
     let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
         &env,
         &seller,
@@ -49,6 +49,7 @@ fn mp_should_create_auction() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 1,
     };
 
     // check if we have minted two
@@ -64,7 +65,7 @@ fn mp_should_create_auction() {
             highest_bid: None,
             end_time: WEEKLY,
             status: AuctionStatus::Active,
-            currency: token_client.address
+            auction_token: token_client.address
         }
     );
 }
@@ -100,7 +101,7 @@ fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
     env.budget().reset_unlimited();
     let seller = Address::generate(&env);
 
-    let token_client = token::Client::new(&env, &Address::generate(&env));
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
     // we don't want to use the collection from the setup method, as this will automatically
     // mint an item for the auction.
     let (mp_client, _) = generate_marketplace_and_collection_client(
@@ -125,6 +126,7 @@ fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
         item_id: 1u64,
         minimum_price: Some(10),
         buy_now_price: Some(50),
+        amount: 1,
     };
 
     assert_eq!(
@@ -237,4 +239,34 @@ fn get_auction_by_seller_should_return_an_err_when_id_not_found() {
         mp_client.try_get_auctions_by_seller(&Address::generate(&env)),
         Err(Ok(ContractError::AuctionNotFound))
     )
+}
+
+#[test]
+fn mp_should_not_create_auction_with_item_info_with_zero_amount() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let seller = Address::generate(&env);
+
+    let token_client = deploy_token_contract(&env, &Address::generate(&env));
+    let (mp_client, nft_collection_client) = generate_marketplace_and_collection_client(
+        &env,
+        &seller,
+        &token_client.address,
+        None,
+        None,
+    );
+
+    let item_info = ItemInfo {
+        collection_addr: nft_collection_client.address.clone(),
+        item_id: 1u64,
+        minimum_price: Some(10),
+        buy_now_price: Some(50),
+        amount: 0,
+    };
+
+    assert_eq!(
+        mp_client.try_create_auction(&item_info, &seller, &WEEKLY),
+        Err(Ok(ContractError::InvalidInputs))
+    );
 }

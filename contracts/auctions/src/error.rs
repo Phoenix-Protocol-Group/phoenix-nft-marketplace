@@ -21,5 +21,5 @@ pub enum ContractError {
     InvalidBidder = 14,
     AdminNotFound = 15,
     NoBidFound = 16,
-    CurrencyNotFound = 17,
+    AuctionTokenNotFound = 17,
 }

@@ -1,4 +1,6 @@
-use soroban_sdk::{contracttype, log, panic_with_error, vec, Address, Env, Vec};
+use soroban_sdk::{
+    contracttype, log, panic_with_error, symbol_short, vec, Address, Env, Symbol, Vec,
+};
 
 use crate::error::ContractError;
 
@@ -11,6 +13,7 @@ pub const LIFETIME_THRESHOLD: u32 = BUMP_AMOUNT - DAY_IN_LEDGERS;
 // since we start counting from 1, default would be 1 as well
 pub const DEFAULT_INDEX: u64 = 1;
 pub const DEFAULT_LIMIT: u64 = 10;
+pub const ADMIN: Symbol = symbol_short!("ADMIN");
 
 #[contracttype]
 #[derive(Clone)]
@@ -30,6 +33,7 @@ pub struct ItemInfo {
     pub item_id: u64,
     pub minimum_price: Option<u64>,
     pub buy_now_price: Option<u64>,
+    pub amount: u64,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -41,7 +45,7 @@ pub struct Auction {
     pub highest_bid: Option<u64>,
     pub end_time: u64,
     pub status: AuctionStatus,
-    pub currency: Address,
+    pub auction_token: Address,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -177,7 +181,8 @@ pub fn validate_input_params(env: &Env, values_to_check: &[&u64]) -> Result<(), 
         if i < &&1 {
             log!(
                 &env,
-                "Auction: Validate input: parameters cannot be less than 1"
+                "Auction: Validate input: parameter is less than 1: ",
+                **i
             );
             panic_with_error!(&env, ContractError::InvalidInputs);
         }
@@ -198,14 +203,14 @@ pub fn set_initialized(env: &Env) {
         .set(&DataKey::IsInitialized, &true);
 }
 
-pub fn save_admin(env: &Env, admin: &Address) {
+pub fn save_admin_old(env: &Env, admin: &Address) {
     env.storage().persistent().set(&DataKey::Admin, &admin);
     env.storage()
         .persistent()
         .extend_ttl(&DataKey::Admin, LIFETIME_THRESHOLD, BUMP_AMOUNT);
 }
 
-pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
+pub fn get_admin_old(env: &Env) -> Result<Address, ContractError> {
     let admin = env
         .storage()
         .persistent()
@@ -237,7 +242,7 @@ pub fn get_highest_bid(env: &Env, auction_id: u64) -> Result<HighestBid, Contrac
         .unwrap_or(HighestBid {
             bid: 0,
             // I know
-            bidder: get_admin(env)?,
+            bidder: get_admin_old(env)?,
         });
 
     env.storage()
@@ -284,7 +289,7 @@ pub fn get_auction_token(env: &Env) -> Result<Address, ContractError> {
         .storage()
         .persistent()
         .get(&DataKey::AuctionToken)
-        .ok_or(ContractError::CurrencyNotFound)?;
+        .ok_or(ContractError::AuctionTokenNotFound)?;
 
     env.storage()
         .persistent()
@@ -307,7 +312,7 @@ mod test {
     use super::validate_input_params;
 
     #[test]
-    #[should_panic(expected = "Auction: Validate input: parameters cannot be less than 1")]
+    #[should_panic(expected = "Auction: Validate input: parameter is less than 1: ")]
     fn validate_input_params_should_fail_with_invalid_input() {
         let env = Env::default();
         let _ = validate_input_params(&env, &[&1, &2, &3, &0]);

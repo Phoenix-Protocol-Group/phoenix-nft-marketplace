@@ -30,7 +30,7 @@ echo "Contracts optimized."
 echo "Deploy and install the deployer contract and capture its contract ID and hash..."
 
 DEPLOYER_ADDR=$(
-stellar contract deploy \
+soroban contract deploy \
   --wasm phoenix_nft_deployer.optimized.wasm \
   --source $IDENTITY_STRING \
   --network $NETWORK
@@ -48,7 +48,7 @@ echo "Deployer contract deployed and installed."
 echo "Deploy and install the collections contract and capture its contract ID and hash..."
 
 COLLECTIONS_ADDR=$(
-stellar contract deploy \
+soroban contract deploy \
   --wasm phoenix_nft_collections.optimized.wasm \
   --source $IDENTITY_STRING \
   --network $NETWORK
@@ -63,7 +63,7 @@ soroban contract install \
 
 echo "Collections contract deployed and installed."
 
-echo "Deploy and install the collections contract and capture its contract ID and hash..."
+echo "Deploy and install the auctions contract and capture its contract ID and hash..."
 
 AUCTION_ADDR=$(
 stellar contract deploy \
@@ -82,7 +82,6 @@ soroban contract install \
 echo "Auctions contract deployed and installed."
 
 echo "Initialize deployer with the collections hash..."
-
 
 soroban contract invoke \
     --id $DEPLOYER_ADDR \

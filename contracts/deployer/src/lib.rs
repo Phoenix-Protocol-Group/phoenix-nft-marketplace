@@ -1,8 +1,8 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contractmeta, contracttype, log, vec, Address, BytesN,
-    Env, IntoVal, String, Symbol, Val, Vec,
+    contract, contractimpl, contractmeta, contracttype, log, vec, Address, BytesN, Env, IntoVal,
+    String, Symbol, Val, Vec,
 };
 
 // Values used to extend the TTL of storage
@@ -51,7 +51,7 @@ impl CollectionsDeployer {
         let deployed_collection = env
             .deployer()
             .with_address(admin.clone(), salt)
-            .deploy(collections_wasm_hash);
+            .deploy_v2(collections_wasm_hash, ());
 
         let init_fn = Symbol::new(&env, "initialize");
         let init_fn_args: Vec<Val> = vec![
@@ -63,17 +63,17 @@ impl CollectionsDeployer {
         let _: Val = env.invoke_contract(&deployed_collection, &init_fn, init_fn_args);
 
         save_collection_with_generic_key(&env, name.clone());
-        save_collection_with_admin_address_as_key(&env, name, admin);
+        save_collection_with_admin_address_as_key(&env, admin, deployed_collection.clone(), name);
 
         deployed_collection
     }
 
-    pub fn query_all_collections(env: &Env) -> Result<Vec<String>, ContractError> {
+    pub fn query_all_collections(env: &Env) -> Vec<String> {
         let maybe_all = env
             .storage()
             .persistent()
             .get(&DataKey::AllCollections)
-            .ok_or(ContractError::NoCollectionsSaved)?;
+            .unwrap_or(Vec::new(env));
 
         env.storage()
             .persistent()
@@ -86,19 +86,19 @@ impl CollectionsDeployer {
                 )
             });
 
-        Ok(maybe_all)
+        maybe_all
     }
 
     pub fn query_collection_by_creator(
         env: &Env,
         creator: Address,
-    ) -> Result<Vec<String>, ContractError> {
+    ) -> Vec<CollectionByCreatorResponse> {
         let data_key = DataKey::Creator(creator);
         let maybe_collections = env
             .storage()
             .persistent()
             .get(&data_key)
-            .ok_or(ContractError::CreatorHasNoCollections)?;
+            .unwrap_or(Vec::new(env));
 
         env.storage().persistent().has(&data_key).then(|| {
             env.storage()
@@ -106,11 +106,18 @@ impl CollectionsDeployer {
                 .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT)
         });
 
-        Ok(maybe_collections)
+        maybe_collections
     }
 }
 
 // ---------- Storage types ----------
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct CollectionByCreatorResponse {
+    collection: Address,
+    name: String,
+}
 
 #[contracttype]
 #[derive(Clone)]
@@ -119,14 +126,6 @@ pub enum DataKey {
     CollectionsWasmHash,
     AllCollections,
     Creator(Address),
-}
-
-#[contracterror]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-#[repr(u32)]
-pub enum ContractError {
-    NoCollectionsSaved = 0,
-    CreatorHasNoCollections = 1,
 }
 
 pub fn set_initialized(env: &Env) {
@@ -197,16 +196,26 @@ pub fn save_collection_with_generic_key(env: &Env, name: String) {
     );
 }
 
-pub fn save_collection_with_admin_address_as_key(env: &Env, name: String, creator: Address) {
+pub fn save_collection_with_admin_address_as_key(
+    env: &Env,
+    creator: Address,
+    collection_addr: Address,
+    name: String,
+) {
     let data_key = DataKey::Creator(creator);
 
-    let mut existent_collection: Vec<String> = env
+    let mut existent_collection: Vec<CollectionByCreatorResponse> = env
         .storage()
         .persistent()
         .get(&data_key)
         .unwrap_or(vec![&env]);
 
-    existent_collection.push_back(name);
+    let new_collection = CollectionByCreatorResponse {
+        collection: collection_addr,
+        name: name.clone(),
+    };
+
+    existent_collection.push_back(new_collection);
 
     env.storage()
         .persistent()

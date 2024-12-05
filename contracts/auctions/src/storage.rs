@@ -304,37 +304,6 @@ pub fn get_config(env: &Env) -> Result<Config, ContractError> {
     Ok(config)?
 }
 
-//pub fn save_auction_token(env: &Env, auction_token: Address) {
-//    env.storage()
-//        .persistent()
-//        .set(&DataKey::AuctionToken, &auction_token);
-//
-//    env.storage()
-//        .persistent()
-//        .extend_ttl(&DataKey::AuctionToken, LIFETIME_THRESHOLD, BUMP_AMOUNT);
-//}
-//
-//pub fn get_auction_token(env: &Env) -> Result<Address, ContractError> {
-//    let auction_token = env
-//        .storage()
-//        .persistent()
-//        .get(&DataKey::AuctionToken)
-//        .ok_or(ContractError::CurrencyNotFound)?;
-//
-//    env.storage()
-//        .persistent()
-//        .has(&DataKey::AuctionToken)
-//        .then(|| {
-//            env.storage().persistent().extend_ttl(
-//                &DataKey::AuctionToken,
-//                LIFETIME_THRESHOLD,
-//                BUMP_AMOUNT,
-//            );
-//        });
-//
-//    Ok(auction_token)
-//}
-
 #[cfg(test)]
 mod test {
     use soroban_sdk::Env;

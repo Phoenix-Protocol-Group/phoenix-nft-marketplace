@@ -73,6 +73,7 @@ pub fn create_multiple_auctions(
             item_id: idx as u64,
             minimum_price: None,
             buy_now_price: None,
+            amount: 1,
         };
         mp_client.create_auction(&item_info, seller, &WEEKLY);
     }

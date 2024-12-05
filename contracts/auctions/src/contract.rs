@@ -57,7 +57,9 @@ impl MarketplaceContract {
             // placeholder
             &item_info.buy_now_price.unwrap_or(1),
             &item_info.minimum_price.unwrap_or(1),
+            &item_info.amount,
         ];
+
         validate_input_params(&env, &input_values[..])?;
 
         let auction_token = get_auction_token(&env)?;
@@ -71,7 +73,7 @@ impl MarketplaceContract {
         );
 
         // we need at least one item to start an auction
-        if item_balance < 1 {
+        if item_balance < item_info.amount {
             log!(
                 &env,
                 "Auction: Create Auction: Not enough balance of the item to sell"
@@ -214,7 +216,7 @@ impl MarketplaceContract {
                 &auction.seller,
                 &highest_bid.bidder,
                 &auction.item_info.item_id,
-                &1,
+                &auction.item_info.amount,
             );
 
             auction.status = AuctionStatus::Ended;

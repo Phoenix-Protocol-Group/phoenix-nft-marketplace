@@ -33,6 +33,7 @@ pub struct ItemInfo {
     pub item_id: u64,
     pub minimum_price: Option<u64>,
     pub buy_now_price: Option<u64>,
+    pub amount: u64,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -180,7 +181,8 @@ pub fn validate_input_params(env: &Env, values_to_check: &[&u64]) -> Result<(), 
         if i < &&1 {
             log!(
                 &env,
-                "Auction: Validate input: parameters cannot be less than 1"
+                "Auction: Validate input: parameter is less than 1: ",
+                **i
             );
             panic_with_error!(&env, ContractError::InvalidInputs);
         }
@@ -310,7 +312,7 @@ mod test {
     use super::validate_input_params;
 
     #[test]
-    #[should_panic(expected = "Auction: Validate input: parameters cannot be less than 1")]
+    #[should_panic(expected = "Auction: Validate input: parameter is less than 1: ")]
     fn validate_input_params_should_fail_with_invalid_input() {
         let env = Env::default();
         let _ = validate_input_params(&env, &[&1, &2, &3, &0]);

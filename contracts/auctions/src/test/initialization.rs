@@ -267,6 +267,7 @@ fn should_fail_to_create_auction_when_seller_cannot_cover_the_fees() {
         item_id: 1,
         minimum_price: None,
         buy_now_price: None,
+        amount: 1,
     };
 
     assert_eq!(

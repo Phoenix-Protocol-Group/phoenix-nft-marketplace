@@ -1,6 +1,4 @@
-use soroban_sdk::{
-    testutils::Address as _, token::TokenClient, xdr::ToXdr, Address, Bytes, Env, FromVal, String,
-};
+use soroban_sdk::{testutils::Address as _, xdr::ToXdr, Address, Bytes, Env, FromVal, String};
 
 use crate::{
     collection::{self, Client},
@@ -14,9 +12,15 @@ pub const FOUR_HOURS: u64 = 14_400u64;
 const TOKEN_WASM: &[u8] =
     include_bytes!("../../../../target/wasm32-unknown-unknown/release/soroban_token_contract.wasm");
 
-pub fn deploy_token_contract<'a>(env: &Env, admin: &Address) -> TokenClient<'a> {
-    let token_contract = env.register(
-        TOKEN_WASM,
+pub mod token_binary {
+    soroban_sdk::contractimport!(
+        file = "../../target/wasm32-unknown-unknown/release/soroban_token_contract.wasm"
+    );
+}
+
+pub fn deploy_token_contract<'a>(env: &Env, admin: &Address) -> token_binary::Client<'a> {
+    let token_addr = env.register(
+        token_binary::WASM,
         (
             admin,
             7_u32,
@@ -24,8 +28,9 @@ pub fn deploy_token_contract<'a>(env: &Env, admin: &Address) -> TokenClient<'a> 
             String::from_val(env, &"symbol"),
         ),
     );
+    let token_client = token_binary::Client::new(env, &token_addr);
 
-    TokenClient::new(env, &token_contract)
+    token_client
 }
 
 pub mod auctions_wasm {

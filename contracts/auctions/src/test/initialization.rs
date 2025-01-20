@@ -15,7 +15,7 @@ use super::setup::deploy_token_contract;
 fn initialize_and_update_admin_should_work() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
     let new_admin = Address::generate(&env);
@@ -32,7 +32,7 @@ fn initialize_and_update_admin_should_work() {
 fn mp_should_create_auction() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
@@ -76,7 +76,7 @@ fn mp_should_create_auction() {
 fn initialize_twice_should_fail() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
     let seller = Address::generate(&env);
@@ -102,7 +102,7 @@ fn initialize_twice_should_fail() {
 fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
@@ -145,7 +145,7 @@ fn mp_should_fail_to_create_auction_where_not_enought_balance_of_the_item() {
 fn mp_should_be_able_create_multiple_auctions_and_query_them_with_pagination() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let seller = Address::generate(&env);
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
@@ -208,7 +208,7 @@ fn mp_should_be_able_create_multiple_auctions_and_query_them_with_pagination() {
 fn get_auction_by_id_should_return_an_err_when_id_not_found() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
@@ -230,7 +230,7 @@ fn get_auction_by_id_should_return_an_err_when_id_not_found() {
 fn get_auction_by_seller_should_return_an_err_when_id_not_found() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));
@@ -304,4 +304,3 @@ fn mp_should_not_create_auction_with_item_info_with_zero_amount() {
         Err(Ok(ContractError::InvalidInputs))
     );
 }
-

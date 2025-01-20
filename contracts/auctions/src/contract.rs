@@ -4,11 +4,10 @@ use crate::{
     collection,
     error::ContractError,
     storage::{
-        generate_auction_id, get_admin_old, get_auction_by_id, get_auction_token, get_auctions,
-        get_auctions_by_seller_id, get_highest_bid, is_initialized, save_admin_old,
-        save_auction_by_id, save_auction_by_seller, save_auction_token, set_highest_bid,
-        set_initialized, update_admin, validate_input_params, Auction, AuctionStatus, HighestBid,
-        ItemInfo,
+        generate_auction_id, get_admin_old, get_auction_by_id, get_auctions,
+        get_auctions_by_seller_id, get_config, get_highest_bid, is_initialized, save_admin_old,
+        save_auction_by_id, save_auction_by_seller, save_config, set_highest_bid, set_initialized,
+        update_admin, validate_input_params, Auction, AuctionStatus, Config, HighestBid, ItemInfo,
     },
     token,
 };

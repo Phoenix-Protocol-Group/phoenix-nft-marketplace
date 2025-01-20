@@ -15,7 +15,7 @@ use crate::{
 fn finalize_auction() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
     let seller = Address::generate(&env);
@@ -118,7 +118,7 @@ fn finalize_auction() {
 fn fail_to_finalyze_auction_when_endtime_not_reached() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
     let seller = Address::generate(&env);
     let bidder = Address::generate(&env);
 
@@ -165,7 +165,7 @@ fn fail_to_finalyze_auction_when_endtime_not_reached() {
 fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let seller = Address::generate(&env);
     let bidder_a = Address::generate(&env);
@@ -224,7 +224,7 @@ fn finalize_auction_when_minimal_price_not_reached_should_refund_last_bidder() {
 fn fail_to_finalyze_auction_when_not_correct_state() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
     let seller = Address::generate(&env);
 
     let token_client = deploy_token_contract(&env, &Address::generate(&env));

@@ -8,7 +8,10 @@ if [ $# -ne 1 ]; then
 fi
 
 IDENTITY_STRING=$1
+ADMIN_ADDRESS=$(soroban keys address $IDENTITY_STRING)
 NETWORK="testnet"
+
+AUCTION_TOKEN="CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"
 
 echo "Build and optimize the contracts...";
 echo "Building the contracts...";
@@ -20,6 +23,7 @@ echo "Contracts compiled."
 echo "Optimizing contracts..."
 
 soroban contract optimize --wasm phoenix_nft_collections.wasm
+soroban contract optimize --wasm phoenix_nft_auctions.wasm
 soroban contract optimize --wasm phoenix_nft_deployer.wasm
 
 echo "Contracts optimized."
@@ -72,6 +76,34 @@ soroban contract invoke \
 
 echo "Deployer initialized."
 
+echo "Deploy and install the Marketplace contract."
+
+MARKETPLACE_WASM_HASH=$(
+soroban contract install \
+    --wasm phoenix_nft_auctions.optimized.wasm \
+    --source $IDENTITY_STRING \
+    --network $NETWORK
+)
+
+MARKETPLACE_ADDRESS=$(
+soroban contract deploy \
+    --wasm phoenix_nft_auctions.optimized.wasm \
+    --source $IDENTITY_STRING \
+    --network $NETWORK
+)
+
+soroban contract invoke \
+    --id $MARKETPLACE_ADDRESS \
+    --source $IDENTITY_STRING \
+    --network $NETWORK \
+    -- \
+    initialize \
+    --admin $ADMIN_ADDRESS \
+    --auction_token $AUCTION_TOKEN \
+    --auction_creation_fee "100"
+
+echo "Marketplace deployed and installed."
+
 echo "#############################"
 
 echo "Setup complete!"
@@ -79,3 +111,5 @@ echo "Deployer address: $DEPLOYER_ADDR"
 echo "Deployer wasm hash: $DEPLOYER_WASM_HASH"
 echo "Collections address: $COLLECTIONS_ADDR"
 echo "Collections wasm hash: $COLLECTIONS_WASM_HASH"
+echo "Marketplace address: " $MARKETPLACE_ADDRESS
+echo "Marketplace wasm hash: " $MARKETPLACE_WASM_HASH

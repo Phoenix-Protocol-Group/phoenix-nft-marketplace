@@ -13,7 +13,7 @@ pub const LIFETIME_THRESHOLD: u32 = BUMP_AMOUNT - DAY_IN_LEDGERS;
 // since we start counting from 1, default would be 1 as well
 pub const DEFAULT_INDEX: u64 = 1;
 pub const DEFAULT_LIMIT: u64 = 10;
-pub const ADMIN: Symbol = symbol_short!("ADMIN");
+pub const _ADMIN: Symbol = symbol_short!("ADMIN");
 
 #[contracttype]
 #[derive(Clone)]

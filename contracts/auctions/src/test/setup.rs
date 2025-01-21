@@ -9,8 +9,6 @@ use crate::{
 pub const WEEKLY: u64 = 604_800u64;
 pub const DAY: u64 = 86_400u64;
 pub const FOUR_HOURS: u64 = 14_400u64;
-const TOKEN_WASM: &[u8] =
-    include_bytes!("../../../../target/wasm32-unknown-unknown/release/soroban_token_contract.wasm");
 
 pub mod token_binary {
     soroban_sdk::contractimport!(

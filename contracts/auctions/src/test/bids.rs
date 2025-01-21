@@ -568,8 +568,7 @@ fn multiple_auction_by_multiple_sellers() {
     token_client.mint(&bidder_b, &1_000);
     token_client.mint(&bidder_c, &1_000);
 
-    let mp_client =
-        MarketplaceContractClient::new(&env, &env.register_contract(None, MarketplaceContract {}));
+    let mp_client = MarketplaceContractClient::new(&env, &env.register(MarketplaceContract, ()));
 
     mp_client.initialize(&admin, &token_client.address, &10);
 

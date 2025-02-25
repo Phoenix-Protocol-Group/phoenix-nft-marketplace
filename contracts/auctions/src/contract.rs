@@ -1,3 +1,4 @@
+use helpers::ttl::{INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL};
 use soroban_sdk::{contract, contractimpl, log, vec, Address, BytesN, Env, Vec};
 
 use crate::{
@@ -8,7 +9,6 @@ use crate::{
         get_auctions_by_seller_id, get_config, get_highest_bid, is_initialized, save_admin_old,
         save_auction_by_id, save_auction_by_seller, save_config, set_highest_bid, set_initialized,
         update_admin, validate_input_params, Auction, AuctionStatus, Config, HighestBid, ItemInfo,
-        INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL,
     },
     token,
 };

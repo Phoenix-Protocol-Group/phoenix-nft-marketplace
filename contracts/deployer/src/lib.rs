@@ -1,14 +1,13 @@
 #![no_std]
 
-use soroban_sdk::{
-    contract, contractimpl, contractmeta, contracttype, log, vec, Address, BytesN, Env, IntoVal,
-    String, Symbol, Val, Vec,
+use helpers::ttl::{
+    INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL, PERSISTENT_RENEWAL_THRESHOLD,
+    PERSISTENT_TARGET_TTL,
 };
-
-// Values used to extend the TTL of storage
-pub const DAY_IN_LEDGERS: u32 = 17280;
-pub const BUMP_AMOUNT: u32 = 7 * DAY_IN_LEDGERS;
-pub const LIFETIME_THRESHOLD: u32 = BUMP_AMOUNT - DAY_IN_LEDGERS;
+use soroban_sdk::{
+    contract, contracterror, contractimpl, contractmeta, contracttype, log, vec, Address, BytesN,
+    Env, IntoVal, String, Symbol, Val, Vec,
+};
 
 // Metadata that is added on to the WASM custom section
 contractmeta!(
@@ -44,9 +43,13 @@ impl CollectionsDeployer {
         admin: Address,
         name: String,
         symbol: String,
-    ) -> Address {
+    ) -> Result<Address, ContractError> {
         admin.require_auth();
-        let collections_wasm_hash = get_wasm_hash(&env);
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
+        let collections_wasm_hash = get_wasm_hash(&env)?;
 
         let deployed_collection = env
             .deployer()
@@ -65,10 +68,14 @@ impl CollectionsDeployer {
         save_collection_with_generic_key(&env, name.clone());
         save_collection_with_admin_address_as_key(&env, admin, deployed_collection.clone(), name);
 
-        deployed_collection
+        Ok(deployed_collection)
     }
 
     pub fn query_all_collections(env: &Env) -> Vec<String> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let maybe_all = env
             .storage()
             .persistent()
@@ -81,8 +88,8 @@ impl CollectionsDeployer {
             .then(|| {
                 env.storage().persistent().extend_ttl(
                     &DataKey::AllCollections,
-                    LIFETIME_THRESHOLD,
-                    BUMP_AMOUNT,
+                    PERSISTENT_RENEWAL_THRESHOLD,
+                    PERSISTENT_TARGET_TTL,
                 )
             });
 
@@ -93,6 +100,10 @@ impl CollectionsDeployer {
         env: &Env,
         creator: Address,
     ) -> Vec<CollectionByCreatorResponse> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let data_key = DataKey::Creator(creator);
         let maybe_collections = env
             .storage()
@@ -101,9 +112,11 @@ impl CollectionsDeployer {
             .unwrap_or(Vec::new(env));
 
         env.storage().persistent().has(&data_key).then(|| {
-            env.storage()
-                .persistent()
-                .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT)
+            env.storage().persistent().extend_ttl(
+                &data_key,
+                PERSISTENT_RENEWAL_THRESHOLD,
+                PERSISTENT_TARGET_TTL,
+            )
         });
 
         maybe_collections
@@ -129,48 +142,62 @@ pub enum DataKey {
 }
 
 pub fn set_initialized(env: &Env) {
-    env.storage().instance().set(&DataKey::IsInitialized, &());
-    env.storage()
-        .instance()
-        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+    env.storage().persistent().set(&DataKey::IsInitialized, &());
+    env.storage().persistent().extend_ttl(
+        &DataKey::IsInitialized,
+        PERSISTENT_RENEWAL_THRESHOLD,
+        PERSISTENT_TARGET_TTL,
+    );
 }
 
 pub fn is_initialized(env: &Env) -> bool {
     let is_initialized = env
         .storage()
-        .instance()
+        .persistent()
         .get::<_, ()>(&DataKey::IsInitialized)
         .is_some();
 
     env.storage()
-        .instance()
-        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+        .persistent()
+        .has(&DataKey::IsInitialized)
+        .then(|| {
+            env.storage().persistent().extend_ttl(
+                &DataKey::IsInitialized,
+                PERSISTENT_RENEWAL_THRESHOLD,
+                PERSISTENT_TARGET_TTL,
+            );
+        });
 
     is_initialized
 }
 
 pub fn set_wasm_hash(env: &Env, hash: &BytesN<32>) {
     env.storage()
-        .instance()
+        .persistent()
         .set(&DataKey::CollectionsWasmHash, hash);
-    env.storage()
-        .instance()
-        .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT);
+    env.storage().persistent().extend_ttl(
+        &DataKey::CollectionsWasmHash,
+        PERSISTENT_RENEWAL_THRESHOLD,
+        PERSISTENT_TARGET_TTL,
+    );
 }
 
-pub fn get_wasm_hash(env: &Env) -> BytesN<32> {
+pub fn get_wasm_hash(env: &Env) -> Result<BytesN<32>, ContractError> {
     let wasm_hash = env
         .storage()
-        .instance()
+        .persistent()
         .get(&DataKey::CollectionsWasmHash)
-        .unwrap();
+        .ok_or(ContractError::WasmHashNotSet)?;
+
     env.storage()
-        .instance()
+        .persistent()
         .has(&DataKey::CollectionsWasmHash)
         .then(|| {
-            env.storage()
-                .instance()
-                .extend_ttl(LIFETIME_THRESHOLD, BUMP_AMOUNT)
+            env.storage().persistent().extend_ttl(
+                &DataKey::CollectionsWasmHash,
+                PERSISTENT_RENEWAL_THRESHOLD,
+                PERSISTENT_TARGET_TTL,
+            )
         });
 
     wasm_hash
@@ -191,8 +218,8 @@ pub fn save_collection_with_generic_key(env: &Env, name: String) {
 
     env.storage().persistent().extend_ttl(
         &DataKey::AllCollections,
-        LIFETIME_THRESHOLD,
-        BUMP_AMOUNT,
+        PERSISTENT_RENEWAL_THRESHOLD,
+        PERSISTENT_TARGET_TTL,
     );
 }
 
@@ -220,9 +247,18 @@ pub fn save_collection_with_admin_address_as_key(
     env.storage()
         .persistent()
         .set(&data_key, &existent_collection);
-    env.storage()
-        .persistent()
-        .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+    env.storage().persistent().extend_ttl(
+        &data_key,
+        PERSISTENT_RENEWAL_THRESHOLD,
+        PERSISTENT_TARGET_TTL,
+    );
+}
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum ContractError {
+    WasmHashNotSet = 0,
 }
 
 #[cfg(test)]

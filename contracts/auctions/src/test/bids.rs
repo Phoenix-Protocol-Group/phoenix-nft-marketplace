@@ -52,7 +52,7 @@ fn should_place_a_bid() {
         mp_client.get_highest_bid(&1),
         HighestBid {
             bid: 10u64,
-            bidder: Some(bidder_a.clone())
+            bidder: bidder_a.clone(),
         }
     );
     assert_eq!(token_client.balance(&mp_client.address), 20i128);
@@ -63,7 +63,7 @@ fn should_place_a_bid() {
         mp_client.get_highest_bid(&1),
         HighestBid {
             bid: 20u64,
-            bidder: Some(bidder_b.clone())
+            bidder: bidder_b.clone()
         }
     );
     assert_eq!(token_client.balance(&mp_client.address), 30i128);
@@ -83,7 +83,7 @@ fn should_place_a_bid() {
         mp_client.get_highest_bid(&1),
         HighestBid {
             bid: 20u64,
-            bidder: Some(bidder_b.clone())
+            bidder: bidder_b.clone()
         }
     );
 
@@ -92,7 +92,7 @@ fn should_place_a_bid() {
         mp_client.get_highest_bid(&1),
         HighestBid {
             bid: 40u64,
-            bidder: Some(bidder_c.clone())
+            bidder: bidder_c.clone()
         }
     );
     assert_eq!(token_client.balance(&mp_client.address), 50i128);
@@ -528,10 +528,7 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
     assert_eq!(token_client.balance(&mp_client.address), 110);
     assert_eq!(
         mp_client.get_highest_bid(&1),
-        HighestBid {
-            bid: 100,
-            bidder: Some(bidder)
-        }
+        HighestBid { bid: 100, bidder }
     );
 
     mp_client.pause(&1);

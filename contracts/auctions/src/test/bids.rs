@@ -52,7 +52,7 @@ fn should_place_a_bid() {
         mp_client.get_highest_bid(&1),
         HighestBid {
             bid: 10u64,
-            bidder: bidder_a.clone()
+            bidder: bidder_a.clone(),
         }
     );
     assert_eq!(token_client.balance(&mp_client.address), 20i128);

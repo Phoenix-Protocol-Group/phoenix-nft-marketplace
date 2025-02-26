@@ -1,3 +1,4 @@
+use helpers::ttl::{INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL};
 use soroban_sdk::{contract, contractimpl, log, vec, Address, BytesN, Env, Vec};
 
 use crate::{
@@ -55,6 +56,9 @@ impl MarketplaceContract {
         duration: u64,
     ) -> Result<Auction, ContractError> {
         seller.require_auth();
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
 
         let input_values = [
             &duration,
@@ -139,6 +143,9 @@ impl MarketplaceContract {
         bid_amount: u64,
     ) -> Result<(), ContractError> {
         bidder.require_auth();
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
 
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
@@ -204,6 +211,10 @@ impl MarketplaceContract {
 
     #[allow(dead_code)]
     pub fn finalize_auction(env: Env, auction_id: u64) -> Result<(), ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
         // Check if the auction can be finalized
@@ -226,10 +237,10 @@ impl MarketplaceContract {
         let highest_bid = get_highest_bid(&env, auction_id)?;
 
         // check if minimum price has been reached
-        if auction.item_info.minimum_price.map_or(true, |min_price| {
+        if auction.item_info.minimum_price.is_none_or(|min_price| {
             auction
                 .highest_bid
-                .map_or(false, |highest_bid| highest_bid >= min_price)
+                .is_some_and(|highest_bid| highest_bid >= min_price)
         }) {
             token_client.transfer(
                 &env.current_contract_address(),
@@ -286,6 +297,9 @@ impl MarketplaceContract {
     #[allow(dead_code)]
     pub fn buy_now(env: Env, auction_id: u64, buyer: Address) -> Result<(), ContractError> {
         buyer.require_auth();
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
 
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
@@ -354,6 +368,9 @@ impl MarketplaceContract {
 
     #[allow(dead_code)]
     pub fn pause(env: Env, auction_id: u64) -> Result<(), ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
         let mut auction = get_auction_by_id(&env, auction_id)?;
         auction.seller.require_auth();
 
@@ -382,6 +399,9 @@ impl MarketplaceContract {
 
     #[allow(dead_code)]
     pub fn unpause(env: &Env, auction_id: u64) -> Result<(), ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
         let mut auction = get_auction_by_id(env, auction_id)?;
         auction.seller.require_auth();
 
@@ -411,6 +431,10 @@ impl MarketplaceContract {
 
     #[allow(dead_code)]
     pub fn get_auction(env: Env, auction_id: u64) -> Result<Auction, ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let auction = get_auction_by_id(&env, auction_id)?;
 
         Ok(auction)
@@ -422,6 +446,10 @@ impl MarketplaceContract {
         start_index: Option<u64>,
         limit: Option<u64>,
     ) -> Result<Vec<Auction>, ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let all_auctions = get_auctions(&env, start_index, limit)?;
 
         let mut filtered_auctions = vec![&env];
@@ -440,6 +468,10 @@ impl MarketplaceContract {
         env: Env,
         seller: Address,
     ) -> Result<Vec<Auction>, ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let seller_auction_list = get_auctions_by_seller_id(&env, &seller)?;
 
         Ok(seller_auction_list)
@@ -447,6 +479,10 @@ impl MarketplaceContract {
 
     #[allow(dead_code)]
     pub fn get_highest_bid(env: Env, auction_id: u64) -> Result<HighestBid, ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let highest_bid_info = get_highest_bid(&env, auction_id)?;
 
         Ok(highest_bid_info)
@@ -454,6 +490,10 @@ impl MarketplaceContract {
 
     #[allow(dead_code)]
     pub fn update_admin(env: Env, new_admin: Address) -> Result<Address, ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let old_admin = get_admin_old(&env)?;
         old_admin.require_auth();
 

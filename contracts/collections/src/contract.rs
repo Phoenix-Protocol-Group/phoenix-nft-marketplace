@@ -1,3 +1,4 @@
+use helpers::ttl::{INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL};
 use soroban_sdk::{contract, contractimpl, log, vec, Address, Bytes, BytesN, Env, String, Vec};
 
 use crate::{
@@ -51,6 +52,10 @@ impl Collections {
     // Returns the balance of the `account` for the token `id`
     #[allow(dead_code)]
     pub fn balance_of(env: Env, account: Address, id: u64) -> Result<u64, ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         Ok(get_balance_of(&env, &account, id))?
     }
 
@@ -61,6 +66,10 @@ impl Collections {
         accounts: Vec<Address>,
         ids: Vec<u64>,
     ) -> Result<Vec<u64>, ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         if accounts.len() != ids.len() {
             log!(
                 &env,
@@ -97,6 +106,10 @@ impl Collections {
     ) -> Result<(), ContractError> {
         let admin = get_admin_old(&env)?;
         admin.require_auth();
+
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
 
         if admin == operator {
             log!(
@@ -139,6 +152,10 @@ impl Collections {
         let admin = get_admin_old(&env)?;
         admin.require_auth();
 
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         if admin == operator {
             log!(
                 &env,
@@ -178,6 +195,9 @@ impl Collections {
     // Returns true if `operator` is approved to manage `owner`'s tokens
     #[allow(dead_code)]
     pub fn is_approved_for_all(env: Env, owner: Address, operator: Address) -> bool {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
         let data_key = DataKey::OperatorApproval(OperatorApprovalKey { owner, operator });
 
         let result = env.storage().persistent().get(&data_key).unwrap_or(false);
@@ -199,6 +219,10 @@ impl Collections {
         operator: Address,
         nft_id: u64,
     ) -> bool {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let data_key = DataKey::TransferApproval(TransferApprovalKey {
             owner,
             nft_id,
@@ -239,6 +263,10 @@ impl Collections {
         }
 
         sender.require_auth();
+
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
 
         let from_balance = get_balance_of(&env, &from, id)?;
         let rcpt_balance = get_balance_of(&env, &to, id)?;
@@ -307,6 +335,10 @@ impl Collections {
 
         sender.require_auth();
 
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         for idx in 0..ids.len() {
             let id = ids.get(idx).ok_or(ContractError::InvalidIdIndex)?;
             let amount = amounts.get(idx).ok_or(ContractError::InvalidAmountIndex)?;
@@ -362,6 +394,10 @@ impl Collections {
 
         sender.require_auth();
 
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let current_balance = get_balance_of(&env, &to, id)?;
         update_balance_of(&env, &to, id, current_balance + amount)?;
 
@@ -387,6 +423,10 @@ impl Collections {
             return Err(ContractError::Unauthorized);
         }
         sender.require_auth();
+
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
 
         if ids.len() != amounts.len() {
             log!(
@@ -432,6 +472,10 @@ impl Collections {
 
         sender.require_auth();
 
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let current_balance = get_balance_of(&env, &from, id)?;
 
         if current_balance < amount {
@@ -470,6 +514,10 @@ impl Collections {
         }
 
         sender.require_auth();
+
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
 
         if ids.len() != amounts.len() {
             log!(
@@ -520,6 +568,10 @@ impl Collections {
         sender.require_auth();
 
         env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
+        env.storage()
             .persistent()
             .set(&DataKey::Uri(id), &URIValue { uri: uri.clone() });
         env.storage()
@@ -541,6 +593,9 @@ impl Collections {
             return Err(ContractError::Unauthorized);
         }
         sender.require_auth();
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
 
         env.storage()
             .persistent()
@@ -559,6 +614,10 @@ impl Collections {
     // Returns the URI for a token type `id`
     #[allow(dead_code)]
     pub fn uri(env: Env, id: u64) -> Result<URIValue, ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         if let Some(uri) = env.storage().persistent().get(&DataKey::Uri(id)) {
             env.storage().persistent().extend_ttl(
                 &DataKey::Uri(id),
@@ -575,6 +634,10 @@ impl Collections {
     // Returns the URI for a token type `id`
     #[allow(dead_code)]
     pub fn collection_uri(env: Env) -> Result<URIValue, ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         if let Some(uri) = env.storage().persistent().get(&DataKey::CollectionUri) {
             env.storage().persistent().extend_ttl(
                 &DataKey::CollectionUri,
@@ -603,17 +666,25 @@ impl Collections {
         let admin: Address = get_admin_old(&env)?;
         admin.require_auth();
 
-        env.storage().instance().set(&ADMIN, &admin);
+        env.storage().persistent().set(&ADMIN, &admin);
 
         Ok(())
     }
 
     pub fn show_admin(env: &Env) -> Result<Address, ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let maybe_admin = crate::storage::utils::get_admin_old(env)?;
         Ok(maybe_admin)
     }
 
     pub fn show_config(env: &Env) -> Result<Config, ContractError> {
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+
         let mabye_config = crate::storage::utils::get_config(env)?;
         Ok(mabye_config)
     }

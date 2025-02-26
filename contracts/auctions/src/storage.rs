@@ -48,7 +48,7 @@ pub struct Auction {
 #[contracttype]
 pub struct HighestBid {
     pub bid: u64,
-    pub bidder: Address,
+    pub bidder: Option<Address>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -293,8 +293,7 @@ pub fn get_highest_bid(env: &Env, auction_id: u64) -> Result<HighestBid, Contrac
         .get(&DataKey::HighestBid(auction_id))
         .unwrap_or(HighestBid {
             bid: 0,
-            // I know, will be fixed in the follow-up PR
-            bidder: get_admin_old(env)?,
+            bidder: None,
         });
 
     env.storage()
@@ -319,7 +318,10 @@ pub fn set_highest_bid(
 ) -> Result<(), ContractError> {
     env.storage().persistent().set(
         &DataKey::HighestBid(auction_id),
-        &HighestBid { bid, bidder },
+        &HighestBid {
+            bid,
+            bidder: Some(bidder),
+        },
     );
 
     env.storage().persistent().extend_ttl(

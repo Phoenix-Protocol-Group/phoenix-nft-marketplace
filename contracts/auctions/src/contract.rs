@@ -175,7 +175,7 @@ impl MarketplaceContract {
                 let old_bid_info = get_highest_bid(&env, auction_id)?;
                 token_client.transfer(
                     &env.current_contract_address(),
-                    &old_bid_info.bidder,
+                    &old_bid_info.bidder.ok_or(ContractError::BidderNotFound)?,
                     &(old_bid_info.bid as i128),
                 );
             }
@@ -252,15 +252,21 @@ impl MarketplaceContract {
             nft_client.safe_transfer_from(
                 &env.current_contract_address(),
                 &auction.seller,
-                &highest_bid.bidder,
+                &highest_bid
+                    .bidder
+                    .as_ref()
+                    .ok_or(ContractError::BidderNotFound)?
+                    .clone(),
                 &auction.item_info.item_id,
                 &auction.item_info.amount,
             );
 
             auction.status = AuctionStatus::Ended;
             save_auction(&env, &auction)?;
-            env.events()
-                .publish(("finalize auction", "highest bidder: "), highest_bid.bidder);
+            env.events().publish(
+                ("finalize auction", "highest bidder: "),
+                highest_bid.bidder.ok_or(ContractError::BidderNotFound)?,
+            );
             env.events()
                 .publish(("finalize auction", "highest bid: "), highest_bid.bid);
         } else if auction.highest_bid.is_none() {
@@ -271,7 +277,7 @@ impl MarketplaceContract {
         } else {
             token_client.transfer(
                 &env.current_contract_address(),
-                &highest_bid.bidder,
+                &highest_bid.bidder.ok_or(ContractError::BidderNotFound)?,
                 &(highest_bid.bid as i128),
             );
             auction.status = AuctionStatus::Ended;
@@ -324,7 +330,9 @@ impl MarketplaceContract {
         if old_highest_bid.bid > 0 {
             token.transfer(
                 &env.current_contract_address(),
-                &old_highest_bid.bidder,
+                &old_highest_bid
+                    .bidder
+                    .ok_or(ContractError::BidderNotFound)?,
                 &(old_highest_bid.bid as i128),
             );
         }

@@ -23,4 +23,6 @@ pub enum ContractError {
     NoBidFound = 16,
     ConfigNotFound = 17,
     AuctionCreationFeeNotCovered = 18,
+    KeyNotFound = 19,
+    BidderNotFound = 20,
 }

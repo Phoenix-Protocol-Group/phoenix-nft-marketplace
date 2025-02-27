@@ -18,7 +18,7 @@ use super::setup::create_and_initialize_collection;
 fn should_place_a_bid() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
     let seller = Address::generate(&env);
     let bidder_a = Address::generate(&env);
     let bidder_b = Address::generate(&env);
@@ -52,7 +52,7 @@ fn should_place_a_bid() {
         mp_client.get_highest_bid(&1),
         HighestBid {
             bid: 10u64,
-            bidder: bidder_a.clone()
+            bidder: Some(bidder_a.clone()),
         }
     );
     assert_eq!(token_client.balance(&mp_client.address), 20i128);
@@ -63,7 +63,7 @@ fn should_place_a_bid() {
         mp_client.get_highest_bid(&1),
         HighestBid {
             bid: 20u64,
-            bidder: bidder_b.clone()
+            bidder: Some(bidder_b.clone())
         }
     );
     assert_eq!(token_client.balance(&mp_client.address), 30i128);
@@ -83,7 +83,7 @@ fn should_place_a_bid() {
         mp_client.get_highest_bid(&1),
         HighestBid {
             bid: 20u64,
-            bidder: bidder_b.clone()
+            bidder: Some(bidder_b.clone())
         }
     );
 
@@ -92,7 +92,7 @@ fn should_place_a_bid() {
         mp_client.get_highest_bid(&1),
         HighestBid {
             bid: 40u64,
-            bidder: bidder_c.clone()
+            bidder: Some(bidder_c.clone())
         }
     );
     assert_eq!(token_client.balance(&mp_client.address), 50i128);
@@ -105,7 +105,7 @@ fn should_place_a_bid() {
 fn fail_to_place_bid_when_auction_inactive() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
     let seller = Address::generate(&env);
     let bidder_a = Address::generate(&env);
 
@@ -145,7 +145,7 @@ fn fail_to_place_bid_when_auction_inactive() {
 fn seller_tries_to_place_a_bid_should_fail() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let seller = Address::generate(&env);
 
@@ -183,7 +183,7 @@ fn seller_tries_to_place_a_bid_should_fail() {
 fn buy_now_should_fail_when_auction_not_active() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
     let seller = Address::generate(&env);
@@ -226,7 +226,7 @@ fn buy_now_should_fail_when_auction_not_active() {
 fn buy_now_should_fail_when_no_buy_now_price_has_been_set() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
     let seller = Address::generate(&env);
@@ -267,7 +267,7 @@ fn buy_now_should_fail_when_no_buy_now_price_has_been_set() {
 fn buy_now() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
     let seller = Address::generate(&env);
@@ -371,7 +371,7 @@ fn buy_now() {
 fn pause_changes_status_and_second_attempt_fails_to_pause() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
     let seller = Address::generate(&env);
@@ -424,7 +424,7 @@ fn pause_changes_status_and_second_attempt_fails_to_pause() {
 fn pause_after_enddate_should_fail() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
     let seller = Address::generate(&env);
@@ -464,7 +464,7 @@ fn pause_after_enddate_should_fail() {
 fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
     let env = Env::default();
     env.mock_all_auths();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
     let seller = Address::generate(&env);
@@ -528,7 +528,10 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
     assert_eq!(token_client.balance(&mp_client.address), 110);
     assert_eq!(
         mp_client.get_highest_bid(&1),
-        HighestBid { bid: 100, bidder }
+        HighestBid {
+            bid: 100,
+            bidder: Some(bidder)
+        }
     );
 
     mp_client.pause(&1);
@@ -546,7 +549,7 @@ fn unpause_changes_status_and_second_attempt_fails_to_unpause() {
 fn multiple_auction_by_multiple_sellers() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
 
@@ -568,8 +571,7 @@ fn multiple_auction_by_multiple_sellers() {
     token_client.mint(&bidder_b, &1_000);
     token_client.mint(&bidder_c, &1_000);
 
-    let mp_client =
-        MarketplaceContractClient::new(&env, &env.register_contract(None, MarketplaceContract {}));
+    let mp_client = MarketplaceContractClient::new(&env, &env.register(MarketplaceContract, ()));
 
     mp_client.initialize(&admin, &token_client.address, &10);
 
@@ -919,7 +921,7 @@ fn buy_now_should_fail_when_status_is_different_from_active() {
 fn buy_now_should_work_when_no_previous_bid() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
     let seller = Address::generate(&env);
@@ -965,7 +967,7 @@ fn buy_now_should_work_when_no_previous_bid() {
 fn buy_now_should_refund_previous_buyer() {
     let env = Env::default();
     env.mock_all_auths_allowing_non_root_auth();
-    env.budget().reset_unlimited();
+    env.cost_estimate().budget().reset_unlimited();
 
     let admin = Address::generate(&env);
     let seller = Address::generate(&env);

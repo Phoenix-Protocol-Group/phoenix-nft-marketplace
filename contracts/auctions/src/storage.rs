@@ -151,9 +151,7 @@ pub fn save_auction_by_seller(
         None => seller_auctions_list.push_back(auction.clone()),
     };
 
-    env.storage()
-        .persistent()
-        .set(&key, &seller_auctions_list);
+    env.storage().persistent().set(&key, &seller_auctions_list);
 
     env.storage().persistent().extend_ttl(
         &key,
@@ -166,14 +164,10 @@ pub fn save_auction_by_seller(
 
 pub fn get_auction_by_id(env: &Env, auction_id: u64) -> Result<Auction, ContractError> {
     let key = DataKey::Auction(auction_id);
-    let auction: Auction = env
-        .storage()
-        .persistent()
-        .get(&key)
-        .ok_or_else(|| {
-            log!(env, "Auction: Get auction by id: Auction not present");
-            ContractError::AuctionNotFound
-        })?;
+    let auction: Auction = env.storage().persistent().get(&key).ok_or_else(|| {
+        log!(env, "Auction: Get auction by id: Auction not present");
+        ContractError::AuctionNotFound
+    })?;
 
     env.storage().persistent().extend_ttl(
         &key,
@@ -189,11 +183,8 @@ pub fn get_auctions_by_seller_id(
     seller: &Address,
 ) -> Result<Vec<Auction>, ContractError> {
     let key = DataKey::SellerAuctions(seller.clone());
-    let seller_auctions_list: Vec<Auction> = env
-        .storage()
-        .persistent()
-        .get(&key)
-        .ok_or_else(|| {
+    let seller_auctions_list: Vec<Auction> =
+        env.storage().persistent().get(&key).ok_or_else(|| {
             log!(env, "Auction: Get auction by seller: No auctions found");
             ContractError::AuctionNotFound
         })?;
@@ -293,14 +284,10 @@ pub fn update_admin(env: &Env, new_admin: &Address) -> Result<Address, ContractE
 
 pub fn get_highest_bid(env: &Env, auction_id: u64) -> Result<HighestBid, ContractError> {
     let key = DataKey::HighestBid(auction_id);
-    let highest_bid: HighestBid = env
-        .storage()
-        .persistent()
-        .get(&key)
-        .unwrap_or(HighestBid {
-            bid: 0,
-            bidder: None,
-        });
+    let highest_bid: HighestBid = env.storage().persistent().get(&key).unwrap_or(HighestBid {
+        bid: 0,
+        bidder: None,
+    });
 
     if highest_bid.bid > 0 {
         env.storage().persistent().extend_ttl(

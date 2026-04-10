@@ -124,9 +124,11 @@ impl Collections {
         });
 
         env.storage().persistent().set(&data_key, &approved);
-        env.storage()
-            .persistent()
-            .extend_ttl(&data_key, PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL);
+        env.storage().persistent().extend_ttl(
+            &data_key,
+            PERSISTENT_RENEWAL_THRESHOLD,
+            PERSISTENT_TARGET_TTL,
+        );
 
         env.events()
             .publish(("Set approval for", "Sender: "), admin);
@@ -169,9 +171,11 @@ impl Collections {
         });
 
         env.storage().persistent().set(&data_key, &approved);
-        env.storage()
-            .persistent()
-            .extend_ttl(&data_key, PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL);
+        env.storage().persistent().extend_ttl(
+            &data_key,
+            PERSISTENT_RENEWAL_THRESHOLD,
+            PERSISTENT_TARGET_TTL,
+        );
 
         env.events()
             .publish(("Set approval for transfer", "Sender: "), admin);
@@ -567,9 +571,11 @@ impl Collections {
         env.storage()
             .persistent()
             .set(&DataKey::Uri(id), &URIValue { uri: uri.clone() });
-        env.storage()
-            .persistent()
-            .extend_ttl(&DataKey::Uri(id), PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL);
+        env.storage().persistent().extend_ttl(
+            &DataKey::Uri(id),
+            PERSISTENT_RENEWAL_THRESHOLD,
+            PERSISTENT_TARGET_TTL,
+        );
 
         env.events().publish(("set uri", "sender: "), sender);
         env.events().publish(("set uri", "id: "), id);
@@ -594,8 +600,8 @@ impl Collections {
             .set(&DataKey::CollectionUri, &URIValue { uri: uri.clone() });
         env.storage().persistent().extend_ttl(
             &DataKey::CollectionUri,
-            LIFETIME_THRESHOLD,
-            BUMP_AMOUNT,
+            PERSISTENT_RENEWAL_THRESHOLD,
+            PERSISTENT_TARGET_TTL,
         );
 
         env.events().publish(("set collection uri", "uri: "), uri);
@@ -612,8 +618,8 @@ impl Collections {
         if let Some(uri) = env.storage().persistent().get(&DataKey::Uri(id)) {
             env.storage().persistent().extend_ttl(
                 &DataKey::Uri(id),
-                LIFETIME_THRESHOLD,
-                BUMP_AMOUNT,
+                PERSISTENT_RENEWAL_THRESHOLD,
+                PERSISTENT_TARGET_TTL,
             );
             Ok(uri)
         } else {
@@ -631,8 +637,8 @@ impl Collections {
         if let Some(uri) = env.storage().persistent().get(&DataKey::CollectionUri) {
             env.storage().persistent().extend_ttl(
                 &DataKey::CollectionUri,
-                LIFETIME_THRESHOLD,
-                BUMP_AMOUNT,
+                PERSISTENT_RENEWAL_THRESHOLD,
+                PERSISTENT_TARGET_TTL,
             );
             Ok(uri)
         } else {

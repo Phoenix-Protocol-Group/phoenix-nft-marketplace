@@ -302,10 +302,7 @@ impl MarketplaceContract {
 
             auction.status = AuctionStatus::Ended;
             save_auction(&env, &auction)?;
-            log!(
-                env,
-                "Auction: Finalize auction: Minimum price not reached"
-            );
+            log!(env, "Auction: Finalize auction: Minimum price not reached");
 
             env.events()
                 .publish(("finalize auction", "auction id: "), auction_id);
@@ -455,7 +452,11 @@ impl MarketplaceContract {
         }
 
         if env.ledger().timestamp() > auction.end_time {
-            log!(&env, "Auction: Cancel: Auction already expired: ", auction_id);
+            log!(
+                &env,
+                "Auction: Cancel: Auction already expired: ",
+                auction_id
+            );
             return Err(ContractError::AuctionStillActive);
         }
 
@@ -503,8 +504,7 @@ impl MarketplaceContract {
 
         env.events()
             .publish(("withdraw fees", "recipient: "), recipient);
-        env.events()
-            .publish(("withdraw fees", "amount: "), amount);
+        env.events().publish(("withdraw fees", "amount: "), amount);
 
         Ok(())
     }

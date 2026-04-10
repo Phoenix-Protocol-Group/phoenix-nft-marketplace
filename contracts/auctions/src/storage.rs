@@ -188,12 +188,18 @@ pub fn get_auctions_by_seller_id(
     env: &Env,
     seller: &Address,
 ) -> Result<Vec<Auction>, ContractError> {
-    let seller_auctions_list = env.storage().persistent().get(seller).unwrap_or_else(|| {
-        log!(env, "Auction: Get auction by seller: No auctions found");
-        panic_with_error!(&env, ContractError::AuctionNotFound);
-    });
+    let key = DataKey::SellerAuctions(seller.clone());
+    let seller_auctions_list: Vec<Auction> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or_else(|| {
+            log!(env, "Auction: Get auction by seller: No auctions found");
+            ContractError::AuctionNotFound
+        })?;
+
     env.storage().persistent().extend_ttl(
-        &seller,
+        &key,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );
@@ -202,36 +208,33 @@ pub fn get_auctions_by_seller_id(
 }
 
 pub fn validate_input_params(env: &Env, values_to_check: &[&u64]) -> Result<(), ContractError> {
-    values_to_check.iter().for_each(|i| {
-        if i < &&1 {
+    for i in values_to_check.iter() {
+        if **i < 1 {
             log!(
                 &env,
                 "Auction: Validate input: parameter is less than 1: ",
                 **i
             );
-            panic_with_error!(&env, ContractError::InvalidInputs);
+            return Err(ContractError::InvalidInputs);
         }
-    });
+    }
 
     Ok(())
 }
 pub fn is_initialized(env: &Env) -> bool {
-    let result = env
+    let result: bool = env
         .storage()
         .persistent()
         .get(&DataKey::IsInitialized)
         .unwrap_or(false);
 
-    env.storage()
-        .persistent()
-        .has(&DataKey::IsInitialized)
-        .then(|| {
-            env.storage().persistent().extend_ttl(
-                &DataKey::IsInitialized,
-                PERSISTENT_RENEWAL_THRESHOLD,
-                PERSISTENT_TARGET_TTL,
-            )
-        });
+    if result {
+        env.storage().persistent().extend_ttl(
+            &DataKey::IsInitialized,
+            PERSISTENT_RENEWAL_THRESHOLD,
+            PERSISTENT_TARGET_TTL,
+        );
+    }
 
     result
 }
@@ -258,21 +261,20 @@ pub fn save_admin_old(env: &Env, admin: &Address) {
 }
 
 pub fn get_admin_old(env: &Env) -> Result<Address, ContractError> {
-    let admin = env
+    let admin: Address = env
         .storage()
         .persistent()
         .get(&DataKey::Admin)
-        .unwrap_or_else(|| {
+        .ok_or_else(|| {
             log!(env, "Auction: Get Admin: Admin not found");
-            Err(ContractError::AdminNotFound)
+            ContractError::AdminNotFound
         })?;
-    env.storage().persistent().has(&DataKey::Admin).then(|| {
-        env.storage().persistent().extend_ttl(
-            &DataKey::Admin,
-            PERSISTENT_RENEWAL_THRESHOLD,
-            PERSISTENT_TARGET_TTL,
-        );
-    });
+
+    env.storage().persistent().extend_ttl(
+        &DataKey::Admin,
+        PERSISTENT_RENEWAL_THRESHOLD,
+        PERSISTENT_TARGET_TTL,
+    );
 
     Ok(admin)
 }

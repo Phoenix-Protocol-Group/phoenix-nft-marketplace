@@ -25,4 +25,5 @@ pub enum ContractError {
     AuctionCreationFeeNotCovered = 18,
     KeyNotFound = 19,
     BidderNotFound = 20,
+    AuctionStillActive = 21,
 }

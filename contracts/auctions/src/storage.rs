@@ -1,7 +1,5 @@
 use helpers::ttl::{PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL};
-use soroban_sdk::{
-    contracttype, log, panic_with_error, symbol_short, vec, Address, Env, Symbol, Vec,
-};
+use soroban_sdk::{contracttype, log, vec, Address, Env, Vec};
 
 use crate::error::ContractError;
 
@@ -9,7 +7,6 @@ use crate::error::ContractError;
 // since we start counting from 1, default would be 1 as well
 pub const DEFAULT_INDEX: u64 = 1;
 pub const DEFAULT_LIMIT: u64 = 10;
-pub const _ADMIN: Symbol = symbol_short!("ADMIN");
 
 #[contracttype]
 #[derive(Clone)]
@@ -20,6 +17,8 @@ pub enum DataKey {
     AllAuctions,
     HighestBid(u64),
     Config,
+    Auction(u64),
+    SellerAuctions(Address),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -106,11 +105,12 @@ pub fn get_auctions(
         PERSISTENT_TARGET_TTL,
     );
 
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(current_highest_id);
+    let limit = limit.unwrap_or(DEFAULT_LIMIT);
+    let end = (start_index + limit - 1).min(current_highest_id);
 
     let mut auctions = vec![&env];
 
-    for id in start_index..=limit {
+    for id in start_index..=end {
         match get_auction_by_id(env, id) {
             Ok(auction) => auctions.push_back(auction),
             Err(ContractError::AuctionNotFound) => continue,
@@ -126,9 +126,10 @@ pub fn save_auction_by_id(
     auction_id: u64,
     auction: &Auction,
 ) -> Result<(), ContractError> {
-    env.storage().persistent().set(&auction_id, auction);
+    let key = DataKey::Auction(auction_id);
+    env.storage().persistent().set(&key, auction);
     env.storage().persistent().extend_ttl(
-        &auction_id,
+        &key,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );
@@ -141,8 +142,9 @@ pub fn save_auction_by_seller(
     seller: &Address,
     auction: &Auction,
 ) -> Result<(), ContractError> {
+    let key = DataKey::SellerAuctions(seller.clone());
     let mut seller_auctions_list: Vec<Auction> =
-        env.storage().persistent().get(seller).unwrap_or(vec![&env]);
+        env.storage().persistent().get(&key).unwrap_or(vec![&env]);
 
     match seller_auctions_list.iter().position(|a| a.id == auction.id) {
         Some(existing_idx) => seller_auctions_list.set(existing_idx as u32, auction.clone()),
@@ -151,10 +153,10 @@ pub fn save_auction_by_seller(
 
     env.storage()
         .persistent()
-        .set(seller, &seller_auctions_list);
+        .set(&key, &seller_auctions_list);
 
     env.storage().persistent().extend_ttl(
-        &seller,
+        &key,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );
@@ -163,22 +165,23 @@ pub fn save_auction_by_seller(
 }
 
 pub fn get_auction_by_id(env: &Env, auction_id: u64) -> Result<Auction, ContractError> {
-    let auction = env
+    let key = DataKey::Auction(auction_id);
+    let auction: Auction = env
         .storage()
         .persistent()
-        .get(&auction_id)
-        .unwrap_or_else(|| {
+        .get(&key)
+        .ok_or_else(|| {
             log!(env, "Auction: Get auction by id: Auction not present");
-            panic_with_error!(&env, ContractError::AuctionNotFound);
-        });
+            ContractError::AuctionNotFound
+        })?;
 
     env.storage().persistent().extend_ttl(
-        &auction_id,
+        &key,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );
 
-    auction
+    Ok(auction)
 }
 
 pub fn get_auctions_by_seller_id(

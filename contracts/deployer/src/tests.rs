@@ -1,4 +1,6 @@
-use crate::{CollectionByCreatorResponse, CollectionsDeployer, CollectionsDeployerClient};
+use crate::{
+    CollectionByCreatorResponse, CollectionsDeployer, CollectionsDeployerClient, ContractError,
+};
 #[cfg(test)]
 use soroban_sdk::{testutils::Address as _, vec, Address, BytesN, Env, String};
 
@@ -126,9 +128,6 @@ fn test_deploy_multiple_collections() {
 }
 
 #[test]
-#[should_panic(
-    expected = "Collections Deployer: Initialize: initializing the contract twice is not allowed"
-)]
 fn initialize_twice() {
     let env = Env::default();
     let deployer_client =
@@ -136,5 +135,8 @@ fn initialize_twice() {
 
     let wasm_hash = env.deployer().upload_contract_wasm(collections::WASM);
     deployer_client.initialize(&wasm_hash);
-    deployer_client.initialize(&wasm_hash);
+    assert_eq!(
+        deployer_client.try_initialize(&wasm_hash),
+        Err(Ok(ContractError::AlreadyInitialized))
+    );
 }

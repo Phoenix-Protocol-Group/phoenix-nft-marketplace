@@ -13,12 +13,17 @@ use crate::{
     token,
 };
 
+fn extend_instance_ttl(env: &Env) {
+    env.storage()
+        .instance()
+        .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+}
+
 #[contract]
 pub struct MarketplaceContract;
 
 #[contractimpl]
 impl MarketplaceContract {
-    #[allow(dead_code)]
     pub fn initialize(
         env: Env,
         admin: Address,

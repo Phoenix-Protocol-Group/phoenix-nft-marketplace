@@ -53,7 +53,6 @@ impl MarketplaceContract {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn create_auction(
         env: Env,
         item_info: ItemInfo,
@@ -61,14 +60,12 @@ impl MarketplaceContract {
         duration: u64,
     ) -> Result<Auction, ContractError> {
         seller.require_auth();
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
 
         let input_values = [
             &duration,
             &item_info.item_id,
-            // we want to valid only valid input, in case of `None` we will simply use 1 as
+            // we want to validate only valid input, in case of `None` we will simply use 1 as
             // placeholder
             &item_info.buy_now_price.unwrap_or(1),
             &item_info.minimum_price.unwrap_or(1),
@@ -86,7 +83,7 @@ impl MarketplaceContract {
         if token_client.balance(&seller) < auction_creation_fee {
             log!(
                 &env,
-                "Auction: Create Auctoin: Not enough balance to cover the auction creation fee. ",
+                "Auction: Create Auction: Not enough balance to cover the auction creation fee. ",
                 "Required: ",
                 auction_creation_fee
             );
@@ -102,12 +99,6 @@ impl MarketplaceContract {
         let nft_client = collection::Client::new(&env, &item_info.collection_addr);
         let item_balance = nft_client.balance_of(&seller, &item_info.item_id);
 
-        nft_client.set_approval_for_transfer(
-            &env.current_contract_address(),
-            &item_info.item_id,
-            &true,
-        );
-
         // we need at least one item to start an auction
         if item_balance < item_info.amount {
             log!(
@@ -116,6 +107,15 @@ impl MarketplaceContract {
             );
             return Err(ContractError::NotEnoughBalance);
         }
+
+        // Escrow the NFT into the contract
+        nft_client.safe_transfer_from(
+            &seller,
+            &seller,
+            &env.current_contract_address(),
+            &item_info.item_id,
+            &item_info.amount,
+        );
 
         let id = generate_auction_id(&env)?;
         let end_time = env.ledger().timestamp() + duration;
@@ -135,12 +135,12 @@ impl MarketplaceContract {
         env.events()
             .publish(("create auction", "auction id: "), auction.id);
         env.events().publish(("create auction", "seller: "), seller);
-        env.events().publish(("initialize", "duration: "), duration);
+        env.events()
+            .publish(("create auction", "duration: "), duration);
 
         Ok(auction)
     }
 
-    #[allow(dead_code)]
     pub fn place_bid(
         env: Env,
         auction_id: u64,
@@ -148,9 +148,7 @@ impl MarketplaceContract {
         bid_amount: u64,
     ) -> Result<(), ContractError> {
         bidder.require_auth();
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
 
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
@@ -214,11 +212,8 @@ impl MarketplaceContract {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn finalize_auction(env: Env, auction_id: u64) -> Result<(), ContractError> {
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
 
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
@@ -239,6 +234,7 @@ impl MarketplaceContract {
         }
 
         let token_client = token::Client::new(&env, &auction.auction_token);
+        let nft_client = collection::Client::new(&env, &auction.item_info.collection_addr);
         let highest_bid = get_highest_bid(&env, auction_id)?;
 
         // check if minimum price has been reached
@@ -247,49 +243,68 @@ impl MarketplaceContract {
                 .highest_bid
                 .is_some_and(|highest_bid| highest_bid >= min_price)
         }) {
+            // Transfer payment to seller
             token_client.transfer(
                 &env.current_contract_address(),
                 &auction.seller,
                 &(highest_bid.bid as i128),
             );
 
-            let nft_client = collection::Client::new(&env, &auction.item_info.collection_addr);
+            // Transfer escrowed NFT to winning bidder
+            let winner = highest_bid
+                .bidder
+                .as_ref()
+                .ok_or(ContractError::BidderNotFound)?
+                .clone();
             nft_client.safe_transfer_from(
                 &env.current_contract_address(),
-                &auction.seller,
-                &highest_bid
-                    .bidder
-                    .as_ref()
-                    .ok_or(ContractError::BidderNotFound)?
-                    .clone(),
+                &env.current_contract_address(),
+                &winner,
                 &auction.item_info.item_id,
                 &auction.item_info.amount,
             );
 
             auction.status = AuctionStatus::Ended;
             save_auction(&env, &auction)?;
-            env.events().publish(
-                ("finalize auction", "highest bidder: "),
-                highest_bid.bidder.ok_or(ContractError::BidderNotFound)?,
-            );
+            env.events()
+                .publish(("finalize auction", "highest bidder: "), winner);
             env.events()
                 .publish(("finalize auction", "highest bid: "), highest_bid.bid);
         } else if auction.highest_bid.is_none() {
+            // No bids - return escrowed NFT to seller
+            nft_client.safe_transfer_from(
+                &env.current_contract_address(),
+                &env.current_contract_address(),
+                &auction.seller,
+                &auction.item_info.item_id,
+                &auction.item_info.amount,
+            );
+
             auction.status = AuctionStatus::Ended;
             save_auction(&env, &auction)?;
 
             env.events().publish(("finalize auction", "no bids"), ());
         } else {
+            // Minimum price not reached - refund bidder and return NFT to seller
             token_client.transfer(
                 &env.current_contract_address(),
                 &highest_bid.bidder.ok_or(ContractError::BidderNotFound)?,
                 &(highest_bid.bid as i128),
             );
+
+            nft_client.safe_transfer_from(
+                &env.current_contract_address(),
+                &env.current_contract_address(),
+                &auction.seller,
+                &auction.item_info.item_id,
+                &auction.item_info.amount,
+            );
+
             auction.status = AuctionStatus::Ended;
             save_auction(&env, &auction)?;
             log!(
                 env,
-                "Auction: Finalize auction: Miniminal price not reached"
+                "Auction: Finalize auction: Minimum price not reached"
             );
 
             env.events()

@@ -292,25 +292,23 @@ pub fn update_admin(env: &Env, new_admin: &Address) -> Result<Address, ContractE
 }
 
 pub fn get_highest_bid(env: &Env, auction_id: u64) -> Result<HighestBid, ContractError> {
-    let highest_bid = env
+    let key = DataKey::HighestBid(auction_id);
+    let highest_bid: HighestBid = env
         .storage()
         .persistent()
-        .get(&DataKey::HighestBid(auction_id))
+        .get(&key)
         .unwrap_or(HighestBid {
             bid: 0,
             bidder: None,
         });
 
-    env.storage()
-        .persistent()
-        .has(&DataKey::HighestBid(auction_id))
-        .then(|| {
-            env.storage().persistent().extend_ttl(
-                &DataKey::HighestBid(auction_id),
-                PERSISTENT_RENEWAL_THRESHOLD,
-                PERSISTENT_TARGET_TTL,
-            )
-        });
+    if highest_bid.bid > 0 {
+        env.storage().persistent().extend_ttl(
+            &key,
+            PERSISTENT_RENEWAL_THRESHOLD,
+            PERSISTENT_TARGET_TTL,
+        );
+    }
 
     Ok(highest_bid)
 }
@@ -348,19 +346,17 @@ pub fn save_config(env: &Env, config: Config) {
 }
 
 pub fn get_config(env: &Env) -> Result<Config, ContractError> {
-    let config = env
+    let config: Config = env
         .storage()
         .persistent()
         .get(&DataKey::Config)
         .ok_or(ContractError::ConfigNotFound)?;
 
-    env.storage().persistent().has(&DataKey::Config).then(|| {
-        env.storage().persistent().extend_ttl(
-            &DataKey::Config,
-            PERSISTENT_RENEWAL_THRESHOLD,
-            PERSISTENT_TARGET_TTL,
-        )
-    });
+    env.storage().persistent().extend_ttl(
+        &DataKey::Config,
+        PERSISTENT_RENEWAL_THRESHOLD,
+        PERSISTENT_TARGET_TTL,
+    );
 
     Ok(config)
 }
@@ -369,13 +365,17 @@ pub fn get_config(env: &Env) -> Result<Config, ContractError> {
 mod test {
     use soroban_sdk::Env;
 
+    use crate::error::ContractError;
+
     use super::validate_input_params;
 
     #[test]
-    #[should_panic(expected = "Auction: Validate input: parameter is less than 1: ")]
     fn validate_input_params_should_fail_with_invalid_input() {
         let env = Env::default();
-        let _ = validate_input_params(&env, &[&1, &2, &3, &0]);
+        assert_eq!(
+            validate_input_params(&env, &[&1, &2, &3, &0]),
+            Err(ContractError::InvalidInputs)
+        );
     }
 
     #[test]

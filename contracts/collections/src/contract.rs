@@ -226,13 +226,15 @@ impl Collections {
             operator,
         });
 
-        let result = env.storage().persistent().get(&data_key).unwrap_or(false);
+        let result: bool = env.storage().persistent().get(&data_key).unwrap_or(false);
 
-        env.storage().persistent().has(&data_key).then(|| {
-            env.storage()
-                .persistent()
-                .extend_ttl(&data_key, PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL)
-        });
+        if result {
+            env.storage().persistent().extend_ttl(
+                &data_key,
+                PERSISTENT_RENEWAL_THRESHOLD,
+                PERSISTENT_TARGET_TTL,
+            );
+        }
 
         result
     }

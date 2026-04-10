@@ -1,4 +1,7 @@
-use helpers::ttl::{INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL};
+use helpers::ttl::{
+    INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL, PERSISTENT_RENEWAL_THRESHOLD,
+    PERSISTENT_TARGET_TTL,
+};
 use soroban_sdk::{contract, contractimpl, log, vec, Address, Bytes, BytesN, Env, String, Vec};
 
 use crate::{
@@ -10,7 +13,6 @@ use crate::{
         },
         Config, DataKey, OperatorApprovalKey, TransferApprovalKey, URIValue, ADMIN,
     },
-    ttl::{BUMP_AMOUNT, LIFETIME_THRESHOLD},
 };
 
 #[contract]
@@ -19,7 +21,6 @@ pub struct Collections;
 #[contractimpl]
 impl Collections {
     // takes an address and uses it as an administrator/owner of the collection
-    #[allow(dead_code)]
     pub fn initialize(
         env: Env,
         admin: Address,
@@ -44,13 +45,12 @@ impl Collections {
         env.events()
             .publish(("initialize", "collection name: "), name);
         env.events()
-            .publish(("initialize", "collectoin symbol: "), symbol);
+            .publish(("initialize", "collection symbol: "), symbol);
 
         Ok(())
     }
 
     // Returns the balance of the `account` for the token `id`
-    #[allow(dead_code)]
     pub fn balance_of(env: Env, account: Address, id: u64) -> Result<u64, ContractError> {
         env.storage()
             .instance()
@@ -60,7 +60,6 @@ impl Collections {
     }
 
     // Returns the balance of multiple `accounts` for multiple `ids`
-    #[allow(dead_code)]
     pub fn balance_of_batch(
         env: Env,
         accounts: Vec<Address>,
@@ -98,7 +97,6 @@ impl Collections {
     }
 
     // Grants or revokes permission to `operator` to manage the caller's assets
-    #[allow(dead_code)]
     pub fn set_approval_for_all(
         env: Env,
         operator: Address,
@@ -128,7 +126,7 @@ impl Collections {
         env.storage().persistent().set(&data_key, &approved);
         env.storage()
             .persistent()
-            .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+            .extend_ttl(&data_key, PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL);
 
         env.events()
             .publish(("Set approval for", "Sender: "), admin);
@@ -142,7 +140,6 @@ impl Collections {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn set_approval_for_transfer(
         env: Env,
         operator: Address,
@@ -174,7 +171,7 @@ impl Collections {
         env.storage().persistent().set(&data_key, &approved);
         env.storage()
             .persistent()
-            .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT);
+            .extend_ttl(&data_key, PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL);
 
         env.events()
             .publish(("Set approval for transfer", "Sender: "), admin);
@@ -193,26 +190,26 @@ impl Collections {
     }
 
     // Returns true if `operator` is approved to manage `owner`'s tokens
-    #[allow(dead_code)]
     pub fn is_approved_for_all(env: Env, owner: Address, operator: Address) -> bool {
         env.storage()
             .instance()
             .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
         let data_key = DataKey::OperatorApproval(OperatorApprovalKey { owner, operator });
 
-        let result = env.storage().persistent().get(&data_key).unwrap_or(false);
+        let result: bool = env.storage().persistent().get(&data_key).unwrap_or(false);
 
-        env.storage().persistent().has(&data_key).then(|| {
-            env.storage()
-                .persistent()
-                .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT)
-        });
+        if result {
+            env.storage().persistent().extend_ttl(
+                &data_key,
+                PERSISTENT_RENEWAL_THRESHOLD,
+                PERSISTENT_TARGET_TTL,
+            );
+        }
 
         result
     }
 
     // Returns true if `operator` is approved to manage `owner`'s tokens
-    #[allow(dead_code)]
     pub fn is_approved_for_transfer(
         env: Env,
         owner: Address,
@@ -234,14 +231,13 @@ impl Collections {
         env.storage().persistent().has(&data_key).then(|| {
             env.storage()
                 .persistent()
-                .extend_ttl(&data_key, LIFETIME_THRESHOLD, BUMP_AMOUNT)
+                .extend_ttl(&data_key, PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL)
         });
 
         result
     }
 
     // Transfers `amount` tokens of token type `id` from `from` to `to`
-    #[allow(dead_code)]
     pub fn safe_transfer_from(
         env: Env,
         sender: Address,
@@ -299,7 +295,6 @@ impl Collections {
     }
 
     // Transfers multiple types and amounts of tokens from `from` to `to`
-    #[allow(dead_code)]
     pub fn safe_batch_transfer_from(
         env: Env,
         sender: Address,
@@ -380,7 +375,6 @@ impl Collections {
     }
 
     // Mints `amount` tokens of token type `id` to `to`
-    #[allow(dead_code)]
     pub fn mint(
         env: Env,
         sender: Address,
@@ -411,7 +405,6 @@ impl Collections {
     }
 
     // Mints multiple types and amounts of tokens to `to`
-    #[allow(dead_code)]
     pub fn mint_batch(
         env: Env,
         sender: Address,
@@ -458,7 +451,6 @@ impl Collections {
     }
 
     // Destroys `amount` tokens of token type `id` from `from`
-    #[allow(dead_code)]
     pub fn burn(
         env: Env,
         sender: Address,
@@ -501,7 +493,6 @@ impl Collections {
     }
 
     // Destroys multiple types and amounts of tokens from `from`
-    #[allow(dead_code)]
     pub fn burn_batch(
         env: Env,
         sender: Address,
@@ -560,7 +551,6 @@ impl Collections {
     }
 
     // Sets a new URI for a token type `id`
-    #[allow(dead_code)]
     pub fn set_uri(env: Env, sender: Address, id: u64, uri: Bytes) -> Result<(), ContractError> {
         if !Self::is_authorized_for_all(&env, &sender) {
             log!(&env, "Collections: Mint: Unauthorized. Sender: ", sender);
@@ -577,7 +567,7 @@ impl Collections {
             .set(&DataKey::Uri(id), &URIValue { uri: uri.clone() });
         env.storage()
             .persistent()
-            .extend_ttl(&DataKey::Uri(id), LIFETIME_THRESHOLD, BUMP_AMOUNT);
+            .extend_ttl(&DataKey::Uri(id), PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL);
 
         env.events().publish(("set uri", "sender: "), sender);
         env.events().publish(("set uri", "id: "), id);
@@ -587,7 +577,6 @@ impl Collections {
     }
 
     // Sets the main image(logo) for the collection
-    #[allow(dead_code)]
     pub fn set_collection_uri(env: Env, sender: Address, uri: Bytes) -> Result<(), ContractError> {
         if !Self::is_authorized_for_all(&env, &sender) {
             log!(&env, "Collections: Mint: Unauthorized. Sender: ", sender);
@@ -613,7 +602,6 @@ impl Collections {
     }
 
     // Returns the URI for a token type `id`
-    #[allow(dead_code)]
     pub fn uri(env: Env, id: u64) -> Result<URIValue, ContractError> {
         env.storage()
             .instance()
@@ -633,7 +621,6 @@ impl Collections {
     }
 
     // Returns the URI for a token type `id`
-    #[allow(dead_code)]
     pub fn collection_uri(env: Env) -> Result<URIValue, ContractError> {
         env.storage()
             .instance()
@@ -652,7 +639,6 @@ impl Collections {
         }
     }
 
-    #[allow(dead_code)]
     pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
         let admin: Address = get_admin_old(&env)?;
         admin.require_auth();
@@ -662,7 +648,6 @@ impl Collections {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn migrate_admin(env: Env) -> Result<(), ContractError> {
         let admin: Address = get_admin_old(&env)?;
         admin.require_auth();

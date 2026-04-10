@@ -63,31 +63,25 @@ pub mod utils {
 
     use crate::error::ContractError;
 
-    use super::{Balance, Config, DataKey, TokenId, ADMIN};
+    use super::{Balance, Config, DataKey, TokenId};
 
     pub fn get_balance_of(env: &Env, owner: &Address, id: u64) -> Result<u64, ContractError> {
+        let key = DataKey::Balance(owner.clone());
         let balance_map: Map<TokenId, Balance> = env
             .storage()
             .persistent()
-            .get(&DataKey::Balance(owner.clone()))
+            .get(&key)
             .unwrap_or(Map::new(env));
 
-        env.storage()
-            .persistent()
-            .has(&DataKey::Balance(owner.clone()))
-            .then(|| {
-                env.storage().persistent().extend_ttl(
-                    &DataKey::Balance(owner.clone()),
-                    PERSISTENT_RENEWAL_THRESHOLD,
-                    PERSISTENT_TARGET_TTL,
-                );
-            });
-
-        if let Some(balance) = balance_map.get(id) {
-            Ok(balance)
-        } else {
-            Ok(0u64)
+        if env.storage().persistent().has(&key) {
+            env.storage().persistent().extend_ttl(
+                &key,
+                PERSISTENT_RENEWAL_THRESHOLD,
+                PERSISTENT_TARGET_TTL,
+            );
         }
+
+        Ok(balance_map.get(id).unwrap_or(0u64))
     }
 
     pub fn update_balance_of(
@@ -96,31 +90,18 @@ pub mod utils {
         id: u64,
         new_amount: u64,
     ) -> Result<(), ContractError> {
+        let key = DataKey::Balance(owner.clone());
         let mut balance_map: Map<TokenId, Balance> = env
             .storage()
             .persistent()
-            .get(&DataKey::Balance(owner.clone()))
+            .get(&key)
             .unwrap_or(Map::new(env));
-
-        env.storage()
-            .persistent()
-            .has(&DataKey::Balance(owner.clone()))
-            .then(|| {
-                env.storage().persistent().extend_ttl(
-                    &DataKey::Balance(owner.clone()),
-                    PERSISTENT_RENEWAL_THRESHOLD,
-                    PERSISTENT_TARGET_TTL,
-                );
-            });
 
         balance_map.set(id, new_amount);
 
-        env.storage()
-            .persistent()
-            .set(&DataKey::Balance(owner.clone()), &balance_map);
-
+        env.storage().persistent().set(&key, &balance_map);
         env.storage().persistent().extend_ttl(
-            &DataKey::Balance(owner.clone()),
+            &key,
             PERSISTENT_RENEWAL_THRESHOLD,
             PERSISTENT_TARGET_TTL,
         );
@@ -169,68 +150,36 @@ pub mod utils {
         Ok(())
     }
 
-    pub fn _save_admin(env: &Env, admin: &Address) {
-        env.storage().persistent().set(&ADMIN, admin);
-
-        env.storage().persistent().extend_ttl(
-            &ADMIN,
-            PERSISTENT_RENEWAL_THRESHOLD,
-            PERSISTENT_TARGET_TTL,
-        );
-    }
-
     pub fn get_admin_old(env: &Env) -> Result<Address, ContractError> {
-        let admin = env
+        let admin: Address = env
             .storage()
             .persistent()
             .get(&DataKey::Admin)
             .ok_or(ContractError::AdminNotSet)?;
 
-        env.storage().persistent().has(&DataKey::Admin).then(|| {
-            env.storage().persistent().extend_ttl(
-                &DataKey::Admin,
-                PERSISTENT_RENEWAL_THRESHOLD,
-                PERSISTENT_TARGET_TTL,
-            );
-        });
-
-        Ok(admin)
-    }
-
-    pub fn _get_admin(env: &Env) -> Result<Address, ContractError> {
-        let admin = env
-            .storage()
-            .persistent()
-            .get(&ADMIN)
-            .ok_or(ContractError::AdminNotSet)?;
-        env.storage().persistent().has(&ADMIN).then(|| {
-            env.storage().persistent().extend_ttl(
-                &ADMIN,
-                PERSISTENT_RENEWAL_THRESHOLD,
-                PERSISTENT_TARGET_TTL,
-            );
-        });
+        env.storage().persistent().extend_ttl(
+            &DataKey::Admin,
+            PERSISTENT_RENEWAL_THRESHOLD,
+            PERSISTENT_TARGET_TTL,
+        );
 
         Ok(admin)
     }
 
     pub fn is_initialized(env: &Env) -> bool {
-        let result = env
+        let result: bool = env
             .storage()
             .persistent()
             .get(&DataKey::IsInitialized)
             .unwrap_or(false);
 
-        env.storage()
-            .persistent()
-            .has(&DataKey::IsInitialized)
-            .then(|| {
-                env.storage().persistent().extend_ttl(
-                    &DataKey::IsInitialized,
-                    PERSISTENT_RENEWAL_THRESHOLD,
-                    PERSISTENT_TARGET_TTL,
-                );
-            });
+        if result {
+            env.storage().persistent().extend_ttl(
+                &DataKey::IsInitialized,
+                PERSISTENT_RENEWAL_THRESHOLD,
+                PERSISTENT_TARGET_TTL,
+            );
+        }
 
         result
     }

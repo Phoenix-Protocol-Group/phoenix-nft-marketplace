@@ -320,8 +320,9 @@ impl Collections {
             return Err(ContractError::IdsAmountsLengthMismatch);
         }
 
-        for id in 0..ids.len() {
-            if sender != from && !Self::is_authorized_for_transfer(&env, &sender, id.into()) {
+        for idx in 0..ids.len() {
+            let nft_id = ids.get(idx).ok_or(ContractError::InvalidIdIndex)?;
+            if sender != from && !Self::is_authorized_for_transfer(&env, &sender, nft_id) {
                 log!(
                     &env,
                     "Collection: Safe Transfer From: Unauthorized.",

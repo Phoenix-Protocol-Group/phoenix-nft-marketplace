@@ -56,6 +56,8 @@ fn mp_should_create_auction() {
     // check if we have minted two
     assert_eq!(nft_collection_client.balance_of(&seller, &1), 2);
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    // After escrow, seller has 1 left
+    assert_eq!(nft_collection_client.balance_of(&seller, &1), 1);
 
     assert_eq!(
         mp_client.get_auction(&1),

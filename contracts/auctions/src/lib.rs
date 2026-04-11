@@ -8,7 +8,6 @@ mod storage;
 mod test;
 
 pub mod collection {
-    type NftId = u64;
     soroban_sdk::contractimport!(
         file = "../../target/wasm32v1-none/release/phoenix_nft_collections.wasm"
     );

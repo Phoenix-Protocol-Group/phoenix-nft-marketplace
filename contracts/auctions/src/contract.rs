@@ -29,6 +29,7 @@ impl MarketplaceContract {
         admin: Address,
         auction_token: Address,
         auction_creation_fee: u128,
+        min_bid_increment: u64,
     ) -> Result<(), ContractError> {
         admin.require_auth();
 
@@ -42,6 +43,7 @@ impl MarketplaceContract {
         let config = Config {
             auction_token,
             auction_creation_fee,
+            min_bid_increment,
         };
 
         save_config(&env, config);
@@ -170,10 +172,13 @@ impl MarketplaceContract {
             return Err(ContractError::InvalidBidder);
         }
 
+        let config = get_config(&env)?;
         let token_client = token::Client::new(&env, &auction.auction_token);
 
         match auction.highest_bid {
-            Some(current_highest_bid) if bid_amount > current_highest_bid => {
+            Some(current_highest_bid)
+                if bid_amount >= current_highest_bid + config.min_bid_increment =>
+            {
                 // refund the previous highest bidder
                 let old_bid_info = get_highest_bid(&env, auction_id)?;
                 token_client.transfer(

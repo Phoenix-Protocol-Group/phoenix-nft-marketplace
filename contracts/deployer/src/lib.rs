@@ -74,21 +74,26 @@ impl CollectionsDeployer {
             .instance()
             .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
 
-        let maybe_all: Vec<String> = env
+        let count: u64 = env
             .storage()
             .persistent()
-            .get(&DataKey::AllCollections)
-            .unwrap_or(Vec::new(env));
+            .get(&DataKey::CollectionCount)
+            .unwrap_or(0);
 
-        if !maybe_all.is_empty() {
-            env.storage().persistent().extend_ttl(
-                &DataKey::AllCollections,
-                PERSISTENT_RENEWAL_THRESHOLD,
-                PERSISTENT_TARGET_TTL,
-            );
+        let mut result: Vec<String> = Vec::new(env);
+        for i in 1..=count {
+            let key = DataKey::Collection(i);
+            if let Some(name) = env.storage().persistent().get::<_, String>(&key) {
+                env.storage().persistent().extend_ttl(
+                    &key,
+                    PERSISTENT_RENEWAL_THRESHOLD,
+                    PERSISTENT_TARGET_TTL,
+                );
+                result.push_back(name);
+            }
         }
 
-        maybe_all
+        result
     }
 
     pub fn query_collection_by_creator(
@@ -132,7 +137,8 @@ pub struct CollectionByCreatorResponse {
 pub enum DataKey {
     IsInitialized,
     CollectionsWasmHash,
-    AllCollections,
+    CollectionCount,
+    Collection(u64),
     Creator(Address),
 }
 
@@ -191,20 +197,25 @@ pub fn get_wasm_hash(env: &Env) -> Result<BytesN<32>, ContractError> {
 }
 
 pub fn save_collection_with_generic_key(env: &Env, name: String) {
-    let mut existent_collection: Vec<String> = env
+    let count: u64 = env
         .storage()
         .persistent()
-        .get(&DataKey::AllCollections)
-        .unwrap_or(vec![&env]);
+        .get(&DataKey::CollectionCount)
+        .unwrap_or(0);
 
-    existent_collection.push_back(name);
+    let new_count = count + 1;
+    let key = DataKey::Collection(new_count);
+
+    env.storage().persistent().set(&key, &name);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL);
 
     env.storage()
         .persistent()
-        .set(&DataKey::AllCollections, &existent_collection);
-
+        .set(&DataKey::CollectionCount, &new_count);
     env.storage().persistent().extend_ttl(
-        &DataKey::AllCollections,
+        &DataKey::CollectionCount,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );

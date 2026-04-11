@@ -570,7 +570,7 @@ fn multiple_auction_by_multiple_sellers() {
 
     let mp_client = MarketplaceContractClient::new(&env, &env.register(MarketplaceContract, ()));
 
-    mp_client.initialize(&admin, &token_client.address, &10);
+    mp_client.initialize(&admin, &token_client.address, &10, &1);
 
     // ============ Collections client setup ============
     let collection_a_client =

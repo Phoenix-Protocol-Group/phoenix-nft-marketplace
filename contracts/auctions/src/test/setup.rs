@@ -46,7 +46,7 @@ pub fn generate_marketplace_and_collection_client<'a>(
 ) -> (MarketplaceContractClient<'a>, collection::Client<'a>) {
     let mp_client = MarketplaceContractClient::new(env, &env.register(MarketplaceContract, ()));
 
-    mp_client.initialize(admin, auction_token, &10);
+    mp_client.initialize(admin, auction_token, &10, &1);
 
     let alt_name = String::from_str(env, "Stellar kitties");
     let alt_symbol = String::from_str(env, "STK");

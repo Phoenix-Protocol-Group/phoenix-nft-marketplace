@@ -23,7 +23,7 @@ fn initialize_and_update_admin_should_work() {
     let token_client = deploy_token_contract(&env, &admin);
     let mp_client = MarketplaceContractClient::new(&env, &env.register(MarketplaceContract, ()));
 
-    mp_client.initialize(&admin, &token_client.address, &10);
+    mp_client.initialize(&admin, &token_client.address, &10, &1);
     mp_client.update_admin(&new_admin);
 }
 
@@ -94,7 +94,7 @@ fn initialize_twice_should_fail() {
     );
 
     assert_eq!(
-        mp_client.try_initialize(&admin, &token_client.address, &10),
+        mp_client.try_initialize(&admin, &token_client.address, &10, &1),
         Err(Ok(ContractError::AlreadyInitialized))
     );
 }

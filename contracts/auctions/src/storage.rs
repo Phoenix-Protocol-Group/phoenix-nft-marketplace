@@ -64,6 +64,7 @@ pub enum AuctionStatus {
 pub struct Config {
     pub auction_token: Address,
     pub auction_creation_fee: u128,
+    pub min_bid_increment: u64,
 }
 
 pub fn generate_auction_id(env: &Env) -> Result<u64, ContractError> {
@@ -143,15 +144,17 @@ pub fn save_auction_by_seller(
     auction: &Auction,
 ) -> Result<(), ContractError> {
     let key = DataKey::SellerAuctions(seller.clone());
-    let mut seller_auctions_list: Vec<Auction> =
+    let mut seller_auction_ids: Vec<u64> =
         env.storage().persistent().get(&key).unwrap_or(vec![&env]);
 
-    match seller_auctions_list.iter().position(|a| a.id == auction.id) {
-        Some(existing_idx) => seller_auctions_list.set(existing_idx as u32, auction.clone()),
-        None => seller_auctions_list.push_back(auction.clone()),
-    };
+    // Only add the ID if not already present
+    if !seller_auction_ids.iter().any(|id| id == auction.id) {
+        seller_auction_ids.push_back(auction.id);
+    }
 
-    env.storage().persistent().set(&key, &seller_auctions_list);
+    env.storage()
+        .persistent()
+        .set(&key, &seller_auction_ids);
 
     env.storage().persistent().extend_ttl(
         &key,
@@ -183,7 +186,7 @@ pub fn get_auctions_by_seller_id(
     seller: &Address,
 ) -> Result<Vec<Auction>, ContractError> {
     let key = DataKey::SellerAuctions(seller.clone());
-    let seller_auctions_list: Vec<Auction> =
+    let seller_auction_ids: Vec<u64> =
         env.storage().persistent().get(&key).ok_or_else(|| {
             log!(env, "Auction: Get auction by seller: No auctions found");
             ContractError::AuctionNotFound
@@ -195,7 +198,12 @@ pub fn get_auctions_by_seller_id(
         PERSISTENT_TARGET_TTL,
     );
 
-    Ok(seller_auctions_list)
+    let mut auctions = vec![env];
+    for id in seller_auction_ids.iter() {
+        auctions.push_back(get_auction_by_id(env, id)?);
+    }
+
+    Ok(auctions)
 }
 
 pub fn validate_input_params(env: &Env, values_to_check: &[&u64]) -> Result<(), ContractError> {

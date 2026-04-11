@@ -21,6 +21,10 @@ jobs:
           toolchain: ${{ matrix.rust-version }}
           target: wasm32v1-none
           override: true
+      - name: Install Stellar CLI dependencies
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev pkg-config
+      - name: Install Stellar CLI
+        run: cargo install stellar-cli --locked
       - name: Build artifacts
         run: make build
       - name: Generate checksums

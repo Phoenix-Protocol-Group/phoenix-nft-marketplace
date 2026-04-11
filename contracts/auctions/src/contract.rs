@@ -5,8 +5,8 @@ use crate::{
     collection,
     error::ContractError,
     storage::{
-        generate_auction_id, get_admin_old, get_auction_by_id, get_auctions,
-        get_auctions_by_seller_id, get_config, get_highest_bid, is_initialized, save_admin_old,
+        generate_auction_id, get_admin, get_auction_by_id, get_auctions,
+        get_auctions_by_seller_id, get_config, get_highest_bid, is_initialized, save_admin,
         save_auction_by_id, save_auction_by_seller, save_config, set_highest_bid, set_initialized,
         update_admin, validate_input_params, Auction, AuctionStatus, Config, HighestBid, ItemInfo,
     },
@@ -118,7 +118,7 @@ impl MarketplaceContract {
             return Err(ContractError::AlreadyInitialized);
         }
 
-        save_admin_old(&env, &admin);
+        save_admin(&env, &admin);
 
         let config = Config {
             auction_token,
@@ -567,7 +567,7 @@ impl MarketplaceContract {
     pub fn withdraw_fees(env: Env, recipient: Address, amount: i128) -> Result<(), ContractError> {
         extend_instance_ttl(&env);
 
-        let admin = get_admin_old(&env)?;
+        let admin = get_admin(&env)?;
         admin.require_auth();
 
         let config = get_config(&env)?;
@@ -625,7 +625,7 @@ impl MarketplaceContract {
     pub fn update_admin(env: Env, new_admin: Address) -> Result<Address, ContractError> {
         extend_instance_ttl(&env);
 
-        let old_admin = get_admin_old(&env)?;
+        let old_admin = get_admin(&env)?;
         old_admin.require_auth();
 
         UpdateAdminEvent {
@@ -638,7 +638,7 @@ impl MarketplaceContract {
     }
 
     pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
-        let admin: Address = get_admin_old(&env)?;
+        let admin: Address = get_admin(&env)?;
         admin.require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);

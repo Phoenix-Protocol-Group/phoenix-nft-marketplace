@@ -10,10 +10,10 @@ use crate::{
     error::ContractError,
     storage::{
         utils::{
-            get_admin_old, get_balance_of, is_initialized, save_admin_old, save_config,
+            get_admin, get_balance_of, is_initialized, save_admin, save_config,
             set_initialized, update_balance_of,
         },
-        Config, DataKey, OperatorApprovalKey, TransferApprovalKey, URIValue, ADMIN,
+        Config, DataKey, OperatorApprovalKey, TransferApprovalKey, URIValue,
     },
 };
 
@@ -122,7 +122,7 @@ impl Collections {
         }
 
         save_config(&env, config)?;
-        save_admin_old(&env, &admin)?;
+        save_admin(&env, &admin)?;
 
         set_initialized(&env);
 
@@ -179,7 +179,7 @@ impl Collections {
         operator: Address,
         approved: bool,
     ) -> Result<(), ContractError> {
-        let admin = get_admin_old(&env)?;
+        let admin = get_admin(&env)?;
         admin.require_auth();
 
         env.storage()
@@ -223,7 +223,7 @@ impl Collections {
         nft_id: u64,
         approved: bool,
     ) -> Result<(), ContractError> {
-        let admin = get_admin_old(&env)?;
+        let admin = get_admin(&env)?;
         admin.require_auth();
 
         env.storage()
@@ -714,19 +714,10 @@ impl Collections {
     }
 
     pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
-        let admin: Address = get_admin_old(&env)?;
+        let admin: Address = get_admin(&env)?;
         admin.require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
-
-        Ok(())
-    }
-
-    pub fn migrate_admin(env: Env) -> Result<(), ContractError> {
-        let admin: Address = get_admin_old(&env)?;
-        admin.require_auth();
-
-        env.storage().persistent().set(&ADMIN, &admin);
 
         Ok(())
     }
@@ -736,7 +727,7 @@ impl Collections {
             .instance()
             .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
 
-        let maybe_admin = crate::storage::utils::get_admin_old(env)?;
+        let maybe_admin = crate::storage::utils::get_admin(env)?;
         Ok(maybe_admin)
     }
 
@@ -750,7 +741,7 @@ impl Collections {
     }
 
     fn is_authorized_for_transfer(env: &Env, sender: &Address, nft_id: u64) -> bool {
-        let admin = get_admin_old(env).expect("no admin found");
+        let admin = get_admin(env).expect("no admin found");
 
         admin == sender.clone()
             || Self::is_approved_for_all(env.clone(), admin.clone(), sender.clone())
@@ -758,7 +749,7 @@ impl Collections {
     }
 
     fn is_authorized_for_all(env: &Env, sender: &Address) -> bool {
-        let admin = get_admin_old(env).expect("no admin found");
+        let admin = get_admin(env).expect("no admin found");
 
         admin == sender.clone() || Self::is_approved_for_all(env.clone(), admin, sender.clone())
     }

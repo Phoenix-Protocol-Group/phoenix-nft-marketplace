@@ -1,5 +1,5 @@
 use helpers::ttl::{PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL};
-use soroban_sdk::{contracttype, log, vec, Address, Env, Vec};
+use soroban_sdk::{contracttype, log, symbol_short, vec, Address, Env, Symbol, Vec};
 
 use crate::error::ContractError;
 
@@ -7,11 +7,11 @@ use crate::error::ContractError;
 // since we start counting from 1, default would be 1 as well
 pub const DEFAULT_INDEX: u64 = 1;
 pub const DEFAULT_LIMIT: u64 = 10;
+pub const ADMIN: Symbol = symbol_short!("ADMIN");
 
 #[contracttype]
 #[derive(Clone)]
 pub enum DataKey {
-    Admin,
     IsInitialized,
     AuctionId,
     AllAuctions,
@@ -250,27 +250,27 @@ pub fn set_initialized(env: &Env) {
     );
 }
 
-pub fn save_admin_old(env: &Env, admin: &Address) {
-    env.storage().persistent().set(&DataKey::Admin, &admin);
+pub fn save_admin(env: &Env, admin: &Address) {
+    env.storage().persistent().set(&ADMIN, admin);
     env.storage().persistent().extend_ttl(
-        &DataKey::Admin,
+        &ADMIN,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );
 }
 
-pub fn get_admin_old(env: &Env) -> Result<Address, ContractError> {
+pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
     let admin: Address = env
         .storage()
         .persistent()
-        .get(&DataKey::Admin)
+        .get(&ADMIN)
         .ok_or_else(|| {
             log!(env, "Auction: Get Admin: Admin not found");
             ContractError::AdminNotFound
         })?;
 
     env.storage().persistent().extend_ttl(
-        &DataKey::Admin,
+        &ADMIN,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );
@@ -279,10 +279,10 @@ pub fn get_admin_old(env: &Env) -> Result<Address, ContractError> {
 }
 
 pub fn update_admin(env: &Env, new_admin: &Address) -> Result<Address, ContractError> {
-    env.storage().persistent().set(&DataKey::Admin, new_admin);
+    env.storage().persistent().set(&ADMIN, new_admin);
 
     env.storage().persistent().extend_ttl(
-        &DataKey::Admin,
+        &ADMIN,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );

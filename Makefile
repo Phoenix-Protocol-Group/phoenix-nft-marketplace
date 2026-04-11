@@ -6,7 +6,10 @@ default: build
 all: test
 
 build:
-	stellar contract build
+	stellar contract build --package soroban-token-contract
+	stellar contract build --package phoenix-nft-collections
+	stellar contract build --package phoenix-nft-auctions
+	stellar contract build --package phoenix-nft-deployer
 
 test: build
 	@for dir in $(SUBDIRS) ; do \

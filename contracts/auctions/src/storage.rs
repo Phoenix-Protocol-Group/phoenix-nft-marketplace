@@ -1,5 +1,5 @@
 use helpers::ttl::{PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL};
-use soroban_sdk::{contracttype, log, vec, Address, Env, Vec};
+use soroban_sdk::{contracttype, log, symbol_short, vec, Address, Env, Symbol, Vec};
 
 use crate::error::ContractError;
 
@@ -7,11 +7,11 @@ use crate::error::ContractError;
 // since we start counting from 1, default would be 1 as well
 pub const DEFAULT_INDEX: u64 = 1;
 pub const DEFAULT_LIMIT: u64 = 10;
+pub const ADMIN: Symbol = symbol_short!("ADMIN");
 
 #[contracttype]
 #[derive(Clone)]
 pub enum DataKey {
-    Admin,
     IsInitialized,
     AuctionId,
     AllAuctions,
@@ -64,6 +64,7 @@ pub enum AuctionStatus {
 pub struct Config {
     pub auction_token: Address,
     pub auction_creation_fee: u128,
+    pub min_bid_increment: u64,
 }
 
 pub fn generate_auction_id(env: &Env) -> Result<u64, ContractError> {
@@ -143,15 +144,17 @@ pub fn save_auction_by_seller(
     auction: &Auction,
 ) -> Result<(), ContractError> {
     let key = DataKey::SellerAuctions(seller.clone());
-    let mut seller_auctions_list: Vec<Auction> =
+    let mut seller_auction_ids: Vec<u64> =
         env.storage().persistent().get(&key).unwrap_or(vec![&env]);
 
-    match seller_auctions_list.iter().position(|a| a.id == auction.id) {
-        Some(existing_idx) => seller_auctions_list.set(existing_idx as u32, auction.clone()),
-        None => seller_auctions_list.push_back(auction.clone()),
-    };
+    // Only add the ID if not already present
+    if !seller_auction_ids.iter().any(|id| id == auction.id) {
+        seller_auction_ids.push_back(auction.id);
+    }
 
-    env.storage().persistent().set(&key, &seller_auctions_list);
+    env.storage()
+        .persistent()
+        .set(&key, &seller_auction_ids);
 
     env.storage().persistent().extend_ttl(
         &key,
@@ -183,7 +186,7 @@ pub fn get_auctions_by_seller_id(
     seller: &Address,
 ) -> Result<Vec<Auction>, ContractError> {
     let key = DataKey::SellerAuctions(seller.clone());
-    let seller_auctions_list: Vec<Auction> =
+    let seller_auction_ids: Vec<u64> =
         env.storage().persistent().get(&key).ok_or_else(|| {
             log!(env, "Auction: Get auction by seller: No auctions found");
             ContractError::AuctionNotFound
@@ -195,7 +198,12 @@ pub fn get_auctions_by_seller_id(
         PERSISTENT_TARGET_TTL,
     );
 
-    Ok(seller_auctions_list)
+    let mut auctions = vec![env];
+    for id in seller_auction_ids.iter() {
+        auctions.push_back(get_auction_by_id(env, id)?);
+    }
+
+    Ok(auctions)
 }
 
 pub fn validate_input_params(env: &Env, values_to_check: &[&u64]) -> Result<(), ContractError> {
@@ -242,27 +250,27 @@ pub fn set_initialized(env: &Env) {
     );
 }
 
-pub fn save_admin_old(env: &Env, admin: &Address) {
-    env.storage().persistent().set(&DataKey::Admin, &admin);
+pub fn save_admin(env: &Env, admin: &Address) {
+    env.storage().persistent().set(&ADMIN, admin);
     env.storage().persistent().extend_ttl(
-        &DataKey::Admin,
+        &ADMIN,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );
 }
 
-pub fn get_admin_old(env: &Env) -> Result<Address, ContractError> {
+pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
     let admin: Address = env
         .storage()
         .persistent()
-        .get(&DataKey::Admin)
+        .get(&ADMIN)
         .ok_or_else(|| {
             log!(env, "Auction: Get Admin: Admin not found");
             ContractError::AdminNotFound
         })?;
 
     env.storage().persistent().extend_ttl(
-        &DataKey::Admin,
+        &ADMIN,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );
@@ -271,10 +279,10 @@ pub fn get_admin_old(env: &Env) -> Result<Address, ContractError> {
 }
 
 pub fn update_admin(env: &Env, new_admin: &Address) -> Result<Address, ContractError> {
-    env.storage().persistent().set(&DataKey::Admin, new_admin);
+    env.storage().persistent().set(&ADMIN, new_admin);
 
     env.storage().persistent().extend_ttl(
-        &DataKey::Admin,
+        &ADMIN,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );

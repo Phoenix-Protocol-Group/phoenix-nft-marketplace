@@ -4,11 +4,9 @@ use crate::admin::{read_administrator, write_administrator};
 use crate::allowance::{read_allowance, spend_allowance, write_allowance};
 use crate::balance::{read_balance, receive_balance, spend_balance};
 use crate::metadata::{read_decimal, read_name, read_symbol, write_metadata};
-#[cfg(test)]
-use crate::storage_types::{AllowanceDataKey, AllowanceValue, DataKey};
 use crate::storage_types::{INSTANCE_BUMP_AMOUNT, INSTANCE_LIFETIME_THRESHOLD};
-use soroban_sdk::token::{self, Interface as _};
-use soroban_sdk::{contract, contractimpl, Address, Env, String};
+use soroban_sdk::token;
+use soroban_sdk::{contract, contractimpl, Address, Env, MuxedAddress, String};
 use soroban_token_sdk::metadata::TokenMetadata;
 use soroban_token_sdk::TokenUtils;
 
@@ -21,6 +19,7 @@ fn check_nonnegative_amount(amount: i128) {
 #[contract]
 pub struct Token;
 
+#[allow(deprecated)]
 #[contractimpl]
 impl Token {
     pub fn __constructor(e: Env, admin: Address, decimal: u32, name: String, symbol: String) {
@@ -62,14 +61,9 @@ impl Token {
         write_administrator(&e, &new_admin);
         TokenUtils::new(&e).events().set_admin(admin, new_admin);
     }
-
-    #[cfg(test)]
-    pub fn get_allowance(e: Env, from: Address, spender: Address) -> Option<AllowanceValue> {
-        let key = DataKey::Allowance(AllowanceDataKey { from, spender });
-        e.storage().temporary().get::<_, AllowanceValue>(&key)
-    }
 }
 
+#[allow(deprecated)]
 #[contractimpl]
 impl token::Interface for Token {
     fn allowance(e: Env, from: Address, spender: Address) -> i128 {
@@ -101,7 +95,7 @@ impl token::Interface for Token {
         read_balance(&e, id)
     }
 
-    fn transfer(e: Env, from: Address, to: Address, amount: i128) {
+    fn transfer(e: Env, from: Address, to: MuxedAddress, amount: i128) {
         from.require_auth();
 
         check_nonnegative_amount(amount);
@@ -110,9 +104,10 @@ impl token::Interface for Token {
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
 
+        let to_addr = to.address();
         spend_balance(&e, from.clone(), amount);
-        receive_balance(&e, to.clone(), amount);
-        TokenUtils::new(&e).events().transfer(from, to, amount);
+        receive_balance(&e, to_addr.clone(), amount);
+        TokenUtils::new(&e).events().transfer(from, to_addr, amount);
     }
 
     fn transfer_from(e: Env, spender: Address, from: Address, to: Address, amount: i128) {

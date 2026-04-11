@@ -1,4 +1,4 @@
-SUBDIRS := contracts/token contracts/collections contracts/auctions contracts/deployer 
+SUBDIRS := contracts/token contracts/collections contracts/auctions contracts/deployer
 BUILD_FLAGS ?=
 
 default: build
@@ -6,9 +6,10 @@ default: build
 all: test
 
 build:
-	@for dir in $(SUBDIRS) ; do \
-		$(MAKE) -C $$dir build BUILD_FLAGS=$(BUILD_FLAGS) || exit 1; \
-	done
+	stellar contract build --package soroban-token-contract
+	stellar contract build --package phoenix-nft-collections
+	stellar contract build --package phoenix-nft-auctions
+	stellar contract build --package phoenix-nft-deployer
 
 test: build
 	@for dir in $(SUBDIRS) ; do \

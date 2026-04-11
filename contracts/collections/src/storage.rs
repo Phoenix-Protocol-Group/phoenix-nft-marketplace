@@ -1,8 +1,5 @@
 use soroban_sdk::{contracttype, symbol_short, Address, Bytes, String, Symbol};
 
-type NftId = u64;
-type TokenId = u64;
-type Balance = u64;
 
 pub const ADMIN: Symbol = symbol_short!("ADMIN");
 
@@ -32,11 +29,10 @@ pub struct TransferApprovalKey {
 #[derive(Clone)]
 #[contracttype]
 pub enum DataKey {
-    Admin,
     Balance(Address),
     OperatorApproval(OperatorApprovalKey),
     TransferApproval(TransferApprovalKey),
-    Uri(NftId),
+    Uri(u64),
     CollectionUri,
     Config,
     IsInitialized,
@@ -63,11 +59,11 @@ pub mod utils {
 
     use crate::error::ContractError;
 
-    use super::{Balance, Config, DataKey, TokenId};
+    use super::{Config, DataKey, ADMIN};
 
     pub fn get_balance_of(env: &Env, owner: &Address, id: u64) -> Result<u64, ContractError> {
         let key = DataKey::Balance(owner.clone());
-        let balance_map: Map<TokenId, Balance> = env
+        let balance_map: Map<u64, u64> = env
             .storage()
             .persistent()
             .get(&key)
@@ -91,7 +87,7 @@ pub mod utils {
         new_amount: u64,
     ) -> Result<(), ContractError> {
         let key = DataKey::Balance(owner.clone());
-        let mut balance_map: Map<TokenId, Balance> = env
+        let mut balance_map: Map<u64, u64> = env
             .storage()
             .persistent()
             .get(&key)
@@ -138,11 +134,11 @@ pub mod utils {
         Ok(config)
     }
 
-    pub fn save_admin_old(env: &Env, admin: &Address) -> Result<(), ContractError> {
-        env.storage().persistent().set(&DataKey::Admin, &admin);
+    pub fn save_admin(env: &Env, admin: &Address) -> Result<(), ContractError> {
+        env.storage().persistent().set(&ADMIN, admin);
 
         env.storage().persistent().extend_ttl(
-            &DataKey::Admin,
+            &ADMIN,
             PERSISTENT_RENEWAL_THRESHOLD,
             PERSISTENT_TARGET_TTL,
         );
@@ -150,15 +146,15 @@ pub mod utils {
         Ok(())
     }
 
-    pub fn get_admin_old(env: &Env) -> Result<Address, ContractError> {
+    pub fn get_admin(env: &Env) -> Result<Address, ContractError> {
         let admin: Address = env
             .storage()
             .persistent()
-            .get(&DataKey::Admin)
+            .get(&ADMIN)
             .ok_or(ContractError::AdminNotSet)?;
 
         env.storage().persistent().extend_ttl(
-            &DataKey::Admin,
+            &ADMIN,
             PERSISTENT_RENEWAL_THRESHOLD,
             PERSISTENT_TARGET_TTL,
         );

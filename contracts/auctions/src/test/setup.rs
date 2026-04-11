@@ -12,7 +12,7 @@ pub const FOUR_HOURS: u64 = 14_400u64;
 
 pub mod token_binary {
     soroban_sdk::contractimport!(
-        file = "../../target/wasm32-unknown-unknown/release/soroban_token_contract.wasm"
+        file = "../../target/wasm32v1-none/release/soroban_token_contract.wasm"
     );
 }
 
@@ -33,7 +33,7 @@ pub fn deploy_token_contract<'a>(env: &Env, admin: &Address) -> token_binary::Cl
 
 pub mod auctions_wasm {
     soroban_sdk::contractimport!(
-        file = "../../target/wasm32-unknown-unknown/release/phoenix_nft_auctions.wasm"
+        file = "../../target/wasm32v1-none/release/phoenix_nft_auctions.wasm"
     );
 }
 
@@ -46,7 +46,7 @@ pub fn generate_marketplace_and_collection_client<'a>(
 ) -> (MarketplaceContractClient<'a>, collection::Client<'a>) {
     let mp_client = MarketplaceContractClient::new(env, &env.register(MarketplaceContract, ()));
 
-    mp_client.initialize(admin, auction_token, &10);
+    mp_client.initialize(admin, auction_token, &10, &1);
 
     let alt_name = String::from_str(env, "Stellar kitties");
     let alt_symbol = String::from_str(env, "STK");

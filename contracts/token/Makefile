@@ -6,7 +6,7 @@ test: build
 	cargo test
 
 build:
-	cargo build --target wasm32-unknown-unknown --release
+	cd ../.. && stellar contract build --package soroban-token-contract
 
 fmt:
 	cargo fmt --all

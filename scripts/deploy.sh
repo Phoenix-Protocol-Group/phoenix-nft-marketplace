@@ -1,115 +1,121 @@
-# Ensure the script exits on any errors
-set -e
+#!/bin/bash
+set -euo pipefail
 
-# Check if the arguments are provided
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <identity_string>"
+retry() {
+    local max_attempts=3
+    local delay=5
+    local attempt=1
+
+    while [ $attempt -le $max_attempts ]; do
+        if [ $attempt -gt 1 ]; then
+            echo "  Retry attempt $attempt/$max_attempts (waiting ${delay}s)..."
+            sleep $delay
+            delay=$((delay * 2))
+        fi
+
+        if "$@"; then
+            return 0
+        fi
+
+        local exit_code=$?
+        attempt=$((attempt + 1))
+
+        if [ $attempt -gt $max_attempts ]; then
+            echo "  Failed after $max_attempts attempts."
+            return $exit_code
+        fi
+    done
+}
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+    echo "Usage: $0 <identity_string> [network]"
+    echo "  network: testnet (default) or mainnet"
     exit 1
 fi
 
 IDENTITY_STRING=$1
-ADMIN_ADDRESS=$(soroban keys address $IDENTITY_STRING)
-NETWORK="testnet"
+NETWORK="${2:-testnet}"
+ADMIN_ADDRESS=$(stellar keys address "$IDENTITY_STRING")
 
 AUCTION_TOKEN="CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"
+AUCTION_CREATION_FEE="100"
+MIN_BID_INCREMENT="1"
 
-echo "Build and optimize the contracts...";
-echo "Building the contracts...";
+WASM_DIR="target/wasm32v1-none/release"
 
-make build > /dev/null
-cd target/wasm32-unknown-unknown/release
+echo "========================================"
+echo "Phoenix NFT Marketplace Deployment"
+echo "========================================"
+echo "Network:  $NETWORK"
+echo "Admin:    $ADMIN_ADDRESS"
+echo "========================================"
 
-echo "Contracts compiled."
-echo "Optimizing contracts..."
+echo ""
+echo "Building contracts..."
+make build
+echo "Contracts built."
 
-soroban contract optimize --wasm phoenix_nft_collections.wasm
-soroban contract optimize --wasm phoenix_nft_auctions.wasm
-soroban contract optimize --wasm phoenix_nft_deployer.wasm
+for wasm in phoenix_nft_deployer.wasm phoenix_nft_collections.wasm phoenix_nft_auctions.wasm; do
+    if [ ! -f "$WASM_DIR/$wasm" ]; then
+        echo "ERROR: $WASM_DIR/$wasm not found"
+        exit 1
+    fi
+done
 
-echo "Contracts optimized."
+echo ""
+echo "Deploying deployer contract..."
+DEPLOYER_ADDR=$(retry stellar contract deploy \
+    --wasm "$WASM_DIR/phoenix_nft_deployer.wasm" \
+    --source "$IDENTITY_STRING" \
+    --network "$NETWORK")
+echo "Deployer deployed: $DEPLOYER_ADDR"
 
-echo "Deploy and install the deployer contract and capture its contract ID and hash..."
+echo ""
+echo "Uploading collections WASM..."
+COLLECTIONS_WASM_HASH=$(retry stellar contract upload \
+    --wasm "$WASM_DIR/phoenix_nft_collections.wasm" \
+    --source "$IDENTITY_STRING" \
+    --network "$NETWORK")
+echo "Collections WASM hash: $COLLECTIONS_WASM_HASH"
 
-DEPLOYER_ADDR=$(
-soroban contract deploy \
-  --wasm phoenix_nft_deployer.optimized.wasm \
-  --source $IDENTITY_STRING \
-  --network $NETWORK
-)
-
-DEPLOYER_WASM_HASH=$(
-soroban contract install \
-    --wasm phoenix_nft_deployer.optimized.wasm \
-    --source $IDENTITY_STRING  \
-    --network $NETWORK
-)
-
-echo "Deployer contract deployed and installed."
-
-echo "Deploy and install the collections contract and capture its contract ID and hash..."
-
-COLLECTIONS_ADDR=$(
-soroban contract deploy \
-  --wasm phoenix_nft_collections.optimized.wasm \
-  --source $IDENTITY_STRING \
-  --network $NETWORK
-)
-
-COLLECTIONS_WASM_HASH=$(
-soroban contract install \
-    --wasm phoenix_nft_collections.optimized.wasm \
-    --source $IDENTITY_STRING \
-    --network $NETWORK
-)
-
-echo "Collections contract deployed and installed."
-
-echo "Initialize deployer with the collections hash..."
-
-soroban contract invoke \
-    --id $DEPLOYER_ADDR \
-    --source $IDENTITY_STRING \
-    --network $NETWORK \
+echo ""
+echo "Initializing deployer..."
+retry stellar contract invoke \
+    --id "$DEPLOYER_ADDR" \
+    --source "$IDENTITY_STRING" \
+    --network "$NETWORK" \
     -- \
     initialize \
-    --collections_wasm_hash $COLLECTIONS_WASM_HASH
-
+    --collections_wasm_hash "$COLLECTIONS_WASM_HASH"
 echo "Deployer initialized."
 
-echo "Deploy and install the Marketplace contract."
+echo ""
+echo "Deploying marketplace contract..."
+MARKETPLACE_ADDRESS=$(retry stellar contract deploy \
+    --wasm "$WASM_DIR/phoenix_nft_auctions.wasm" \
+    --source "$IDENTITY_STRING" \
+    --network "$NETWORK")
+echo "Marketplace deployed: $MARKETPLACE_ADDRESS"
 
-MARKETPLACE_WASM_HASH=$(
-soroban contract install \
-    --wasm phoenix_nft_auctions.optimized.wasm \
-    --source $IDENTITY_STRING \
-    --network $NETWORK
-)
-
-MARKETPLACE_ADDRESS=$(
-soroban contract deploy \
-    --wasm phoenix_nft_auctions.optimized.wasm \
-    --source $IDENTITY_STRING \
-    --network $NETWORK
-)
-
-soroban contract invoke \
-    --id $MARKETPLACE_ADDRESS \
-    --source $IDENTITY_STRING \
-    --network $NETWORK \
+echo ""
+echo "Initializing marketplace..."
+retry stellar contract invoke \
+    --id "$MARKETPLACE_ADDRESS" \
+    --source "$IDENTITY_STRING" \
+    --network "$NETWORK" \
     -- \
     initialize \
-    --admin $ADMIN_ADDRESS \
-    --auction_token $AUCTION_TOKEN \
-    --auction_creation_fee "100"
+    --admin "$ADMIN_ADDRESS" \
+    --auction_token "$AUCTION_TOKEN" \
+    --auction_creation_fee "$AUCTION_CREATION_FEE" \
+    --min_bid_increment "$MIN_BID_INCREMENT"
+echo "Marketplace initialized."
 
-echo "Marketplace deployed and installed."
-
-echo "#############################"
-
-echo "Setup complete!"
-echo "Deployer address: $DEPLOYER_ADDR"
-echo "Deployer wasm hash: $DEPLOYER_WASM_HASH"
-echo "Collections address: $COLLECTIONS_ADDR"
-echo "Collections wasm hash: $COLLECTIONS_WASM_HASH"
-echo "Marketplace address: " $MARKETPLACE_ADDRESS
-echo "Marketplace wasm hash: " $MARKETPLACE_WASM_HASH
+echo ""
+echo "========================================"
+echo "Deployment Complete!"
+echo "========================================"
+echo "Deployer address:       $DEPLOYER_ADDR"
+echo "Collections WASM hash:  $COLLECTIONS_WASM_HASH"
+echo "Marketplace address:    $MARKETPLACE_ADDRESS"
+echo "========================================"

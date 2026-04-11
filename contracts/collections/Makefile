@@ -6,7 +6,7 @@ test: build # because of token dependency
 	cargo test
 
 build:
-	cargo build --target wasm32-unknown-unknown --release
+	cd ../.. && stellar contract build --package phoenix-nft-collections
 
 lint: fmt clippy
 

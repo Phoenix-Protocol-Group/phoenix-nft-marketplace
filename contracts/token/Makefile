@@ -6,7 +6,7 @@ test: build
 	cargo test
 
 build:
-	stellar contract build
+	cd ../.. && stellar contract build --package soroban-token-contract
 
 fmt:
 	cargo fmt --all

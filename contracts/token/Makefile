@@ -6,7 +6,7 @@ test: build
 	cargo test
 
 build:
-	cargo build --target wasm32-unknown-unknown --release
+	stellar contract build
 
 fmt:
 	cargo fmt --all

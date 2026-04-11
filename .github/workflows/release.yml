@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust-version: [1.82.0]
+        rust-version: [1.92.0]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
@@ -19,21 +19,21 @@ jobs:
         with:
           profile: minimal
           toolchain: ${{ matrix.rust-version }}
-          target: wasm32-unknown-unknown
+          target: wasm32v1-none
           override: true
       - name: Build artifacts
         run: make build
       - name: Generate checksums
         run: |
-          cd target/wasm32-unknown-unknown/release/
+          cd target/wasm32v1-none/release/
           sha256sum *.wasm > checksums.txt
       - name: Release
         env:
           GH_TOKEN: ${{ secrets.JAKUB_SECRET_CI }}
         run: >-
           gh release create ${{ github.ref_name }}
-          target/wasm32-unknown-unknown/release/*.wasm
-          target/wasm32-unknown-unknown/release/checksums.txt
+          target/wasm32v1-none/release/*.wasm
+          target/wasm32v1-none/release/checksums.txt
           --generate-notes
           --title "${{ github.ref_name }}"
 

@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        rust-version: [1.82.0]
+        rust-version: [1.92.0]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
@@ -22,7 +22,7 @@ jobs:
         with:
           profile: minimal
           toolchain: ${{ matrix.rust-version }}
-          target: wasm32-unknown-unknown
+          target: wasm32v1-none
           override: true
       - name: Install tarpaulin
         uses: actions-rs/cargo@v1

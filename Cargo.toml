@@ -9,8 +9,8 @@ license = "GPL-3.0"
 repository = "https://github.com/Phoenix-Protocol-Group/phoenix-nft-marketplace"
 
 [workspace.dependencies]
-soroban-sdk = "22.0.4"
-soroban-token-sdk = "22.0.4"
+soroban-sdk = "25.3.1"
+soroban-token-sdk = "25.3.1"
 test-case = "3.3"
 helpers = { path = "./helpers" }
 

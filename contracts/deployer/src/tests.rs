@@ -4,12 +4,8 @@ use crate::{
 #[cfg(test)]
 use soroban_sdk::{testutils::Address as _, vec, Address, BytesN, Env, String};
 
-pub type NftId = u64;
-
 // The contract that will be deployed by the deployer contract.
 mod collections {
-    use crate::tests::NftId;
-
     soroban_sdk::contractimport!(
         file = "../../target/wasm32v1-none/release/phoenix_nft_collections.wasm"
     );

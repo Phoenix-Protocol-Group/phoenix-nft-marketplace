@@ -56,6 +56,8 @@ fn mp_should_create_auction() {
     // check if we have minted two
     assert_eq!(nft_collection_client.balance_of(&seller, &1), 2);
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
+    // After escrow, seller has 1 left
+    assert_eq!(nft_collection_client.balance_of(&seller, &1), 1);
 
     assert_eq!(
         mp_client.get_auction(&1),
@@ -160,8 +162,7 @@ fn mp_should_be_able_create_multiple_auctions_and_query_them_with_pagination() {
 
     create_multiple_auctions(&mp_client, &seller, &collection_client, 25);
 
-    //we have created 25 auctions and if we don't specify anything the default search would be
-    //from 1..=10
+    // We have created 25 auctions. Default search returns first 10 (start=1, limit=10)
     let result = mp_client.get_active_auctions(&None, &None);
     assert_eq!(
         result
@@ -171,7 +172,7 @@ fn mp_should_be_able_create_multiple_auctions_and_query_them_with_pagination() {
         std::vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     );
 
-    // manual from 1..=10
+    // Explicit: start=1, limit=10 -> IDs 1..=10
     let result = mp_client.get_active_auctions(&Some(1), &Some(10));
     assert_eq!(
         result
@@ -181,8 +182,8 @@ fn mp_should_be_able_create_multiple_auctions_and_query_them_with_pagination() {
         std::vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     );
 
-    // manaul from 10..=20
-    let result = mp_client.get_active_auctions(&Some(10), &Some(20));
+    // start=10, limit=11 -> IDs 10..=20
+    let result = mp_client.get_active_auctions(&Some(10), &Some(11));
     assert_eq!(
         result
             .into_iter()
@@ -191,14 +192,13 @@ fn mp_should_be_able_create_multiple_auctions_and_query_them_with_pagination() {
         std::vec![10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     );
 
-    // manaul from 1..=25
+    // start=1, limit=25 -> IDs 1..=25
     let result = mp_client.get_active_auctions(&Some(1), &Some(25));
     assert_eq!(
         result
             .into_iter()
             .map(|a| a.id)
             .collect::<std::vec::Vec<u64>>(),
-        // I'm lazy kek
         (1..=25).collect::<std::vec::Vec<u64>>()
     );
 }

@@ -13,12 +13,17 @@ use crate::{
     token,
 };
 
+fn extend_instance_ttl(env: &Env) {
+    env.storage()
+        .instance()
+        .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+}
+
 #[contract]
 pub struct MarketplaceContract;
 
 #[contractimpl]
 impl MarketplaceContract {
-    #[allow(dead_code)]
     pub fn initialize(
         env: Env,
         admin: Address,
@@ -48,7 +53,6 @@ impl MarketplaceContract {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn create_auction(
         env: Env,
         item_info: ItemInfo,
@@ -56,14 +60,12 @@ impl MarketplaceContract {
         duration: u64,
     ) -> Result<Auction, ContractError> {
         seller.require_auth();
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
 
         let input_values = [
             &duration,
             &item_info.item_id,
-            // we want to valid only valid input, in case of `None` we will simply use 1 as
+            // we want to validate only valid input, in case of `None` we will simply use 1 as
             // placeholder
             &item_info.buy_now_price.unwrap_or(1),
             &item_info.minimum_price.unwrap_or(1),
@@ -81,7 +83,7 @@ impl MarketplaceContract {
         if token_client.balance(&seller) < auction_creation_fee {
             log!(
                 &env,
-                "Auction: Create Auctoin: Not enough balance to cover the auction creation fee. ",
+                "Auction: Create Auction: Not enough balance to cover the auction creation fee. ",
                 "Required: ",
                 auction_creation_fee
             );
@@ -97,12 +99,6 @@ impl MarketplaceContract {
         let nft_client = collection::Client::new(&env, &item_info.collection_addr);
         let item_balance = nft_client.balance_of(&seller, &item_info.item_id);
 
-        nft_client.set_approval_for_transfer(
-            &env.current_contract_address(),
-            &item_info.item_id,
-            &true,
-        );
-
         // we need at least one item to start an auction
         if item_balance < item_info.amount {
             log!(
@@ -111,6 +107,15 @@ impl MarketplaceContract {
             );
             return Err(ContractError::NotEnoughBalance);
         }
+
+        // Escrow the NFT into the contract
+        nft_client.safe_transfer_from(
+            &seller,
+            &seller,
+            &env.current_contract_address(),
+            &item_info.item_id,
+            &item_info.amount,
+        );
 
         let id = generate_auction_id(&env)?;
         let end_time = env.ledger().timestamp() + duration;
@@ -130,12 +135,12 @@ impl MarketplaceContract {
         env.events()
             .publish(("create auction", "auction id: "), auction.id);
         env.events().publish(("create auction", "seller: "), seller);
-        env.events().publish(("initialize", "duration: "), duration);
+        env.events()
+            .publish(("create auction", "duration: "), duration);
 
         Ok(auction)
     }
 
-    #[allow(dead_code)]
     pub fn place_bid(
         env: Env,
         auction_id: u64,
@@ -143,9 +148,7 @@ impl MarketplaceContract {
         bid_amount: u64,
     ) -> Result<(), ContractError> {
         bidder.require_auth();
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
 
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
@@ -209,11 +212,8 @@ impl MarketplaceContract {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn finalize_auction(env: Env, auction_id: u64) -> Result<(), ContractError> {
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
 
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
@@ -234,6 +234,7 @@ impl MarketplaceContract {
         }
 
         let token_client = token::Client::new(&env, &auction.auction_token);
+        let nft_client = collection::Client::new(&env, &auction.item_info.collection_addr);
         let highest_bid = get_highest_bid(&env, auction_id)?;
 
         // check if minimum price has been reached
@@ -242,50 +243,66 @@ impl MarketplaceContract {
                 .highest_bid
                 .is_some_and(|highest_bid| highest_bid >= min_price)
         }) {
+            // Transfer payment to seller
             token_client.transfer(
                 &env.current_contract_address(),
                 &auction.seller,
                 &(highest_bid.bid as i128),
             );
 
-            let nft_client = collection::Client::new(&env, &auction.item_info.collection_addr);
+            // Transfer escrowed NFT to winning bidder
+            let winner = highest_bid
+                .bidder
+                .as_ref()
+                .ok_or(ContractError::BidderNotFound)?
+                .clone();
             nft_client.safe_transfer_from(
                 &env.current_contract_address(),
-                &auction.seller,
-                &highest_bid
-                    .bidder
-                    .as_ref()
-                    .ok_or(ContractError::BidderNotFound)?
-                    .clone(),
+                &env.current_contract_address(),
+                &winner,
                 &auction.item_info.item_id,
                 &auction.item_info.amount,
             );
 
             auction.status = AuctionStatus::Ended;
             save_auction(&env, &auction)?;
-            env.events().publish(
-                ("finalize auction", "highest bidder: "),
-                highest_bid.bidder.ok_or(ContractError::BidderNotFound)?,
-            );
+            env.events()
+                .publish(("finalize auction", "highest bidder: "), winner);
             env.events()
                 .publish(("finalize auction", "highest bid: "), highest_bid.bid);
         } else if auction.highest_bid.is_none() {
+            // No bids - return escrowed NFT to seller
+            nft_client.safe_transfer_from(
+                &env.current_contract_address(),
+                &env.current_contract_address(),
+                &auction.seller,
+                &auction.item_info.item_id,
+                &auction.item_info.amount,
+            );
+
             auction.status = AuctionStatus::Ended;
             save_auction(&env, &auction)?;
 
             env.events().publish(("finalize auction", "no bids"), ());
         } else {
+            // Minimum price not reached - refund bidder and return NFT to seller
             token_client.transfer(
                 &env.current_contract_address(),
                 &highest_bid.bidder.ok_or(ContractError::BidderNotFound)?,
                 &(highest_bid.bid as i128),
             );
+
+            nft_client.safe_transfer_from(
+                &env.current_contract_address(),
+                &env.current_contract_address(),
+                &auction.seller,
+                &auction.item_info.item_id,
+                &auction.item_info.amount,
+            );
+
             auction.status = AuctionStatus::Ended;
             save_auction(&env, &auction)?;
-            log!(
-                env,
-                "Auction: Finalize auction: Miniminal price not reached"
-            );
+            log!(env, "Auction: Finalize auction: Minimum price not reached");
 
             env.events()
                 .publish(("finalize auction", "auction id: "), auction_id);
@@ -300,12 +317,9 @@ impl MarketplaceContract {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn buy_now(env: Env, auction_id: u64, buyer: Address) -> Result<(), ContractError> {
         buyer.require_auth();
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
 
         let mut auction = get_auction_by_id(&env, auction_id)?;
 
@@ -314,13 +328,16 @@ impl MarketplaceContract {
             return Err(ContractError::AuctionNotActive);
         }
 
-        if auction.item_info.buy_now_price.is_none() {
-            log!(
-                env,
-                "Auction: Buy Now: trying to buy an item that does not allow `buy now`"
-            );
-            return Err(ContractError::NoBuyNowOption);
-        }
+        let buy_now_price = match auction.item_info.buy_now_price {
+            Some(price) => price,
+            None => {
+                log!(
+                    env,
+                    "Auction: Buy Now: trying to buy an item that does not allow `buy now`"
+                );
+                return Err(ContractError::NoBuyNowOption);
+            }
+        };
 
         let old_highest_bid = get_highest_bid(&env, auction_id)?;
 
@@ -337,33 +354,21 @@ impl MarketplaceContract {
             );
         }
 
-        // pay for the item
-        token.transfer(
-            &buyer,
-            &auction.seller,
-            &(auction
-                .item_info
-                .buy_now_price
-                .expect("Auction: Buy Now: Buy now price has not been set") as i128),
-        );
+        // pay for the item - payment goes directly to seller
+        token.transfer(&buyer, &auction.seller, &(buy_now_price as i128));
 
+        // Transfer escrowed NFT to buyer
         let collection_client = collection::Client::new(&env, &auction.item_info.collection_addr);
-
         collection_client.safe_transfer_from(
             &env.current_contract_address(),
-            &auction.seller,
+            &env.current_contract_address(),
             &buyer,
             &auction.item_info.item_id,
-            &1,
+            &auction.item_info.amount,
         );
 
         auction.status = AuctionStatus::Ended;
-        auction.highest_bid = Some(
-            auction
-                .item_info
-                .buy_now_price
-                .expect("Auction: Buy Now: Buy now price has not been set"),
-        );
+        auction.highest_bid = Some(buy_now_price);
 
         save_auction(&env, &auction)?;
 
@@ -374,11 +379,8 @@ impl MarketplaceContract {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn pause(env: Env, auction_id: u64) -> Result<(), ContractError> {
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
         let mut auction = get_auction_by_id(&env, auction_id)?;
         auction.seller.require_auth();
 
@@ -405,12 +407,9 @@ impl MarketplaceContract {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    pub fn unpause(env: &Env, auction_id: u64) -> Result<(), ContractError> {
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
-        let mut auction = get_auction_by_id(env, auction_id)?;
+    pub fn unpause(env: Env, auction_id: u64) -> Result<(), ContractError> {
+        extend_instance_ttl(&env);
+        let mut auction = get_auction_by_id(&env, auction_id)?;
         auction.seller.require_auth();
 
         if auction.status != AuctionStatus::Paused {
@@ -423,13 +422,13 @@ impl MarketplaceContract {
         }
 
         if env.ledger().timestamp() > auction.end_time {
-            log!(env, "Auction: Unpause: Auction expired: ", auction_id);
+            log!(&env, "Auction: Unpause: Auction expired: ", auction_id);
             return Err(ContractError::AuctionNotActive);
         }
 
         auction.status = AuctionStatus::Active;
 
-        save_auction(env, &auction)?;
+        save_auction(&env, &auction)?;
 
         env.events()
             .publish(("unpause", "auction id: "), auction_id);
@@ -437,26 +436,93 @@ impl MarketplaceContract {
         Ok(())
     }
 
-    #[allow(dead_code)]
+    pub fn cancel_auction(env: Env, auction_id: u64) -> Result<(), ContractError> {
+        extend_instance_ttl(&env);
+
+        let mut auction = get_auction_by_id(&env, auction_id)?;
+        auction.seller.require_auth();
+
+        if auction.status != AuctionStatus::Active && auction.status != AuctionStatus::Paused {
+            log!(
+                &env,
+                "Auction: Cancel: Cannot cancel ended auction: ",
+                auction_id
+            );
+            return Err(ContractError::AuctionNotActive);
+        }
+
+        if env.ledger().timestamp() > auction.end_time {
+            log!(
+                &env,
+                "Auction: Cancel: Auction already expired: ",
+                auction_id
+            );
+            return Err(ContractError::AuctionStillActive);
+        }
+
+        let nft_client = collection::Client::new(&env, &auction.item_info.collection_addr);
+        let token_client = token::Client::new(&env, &auction.auction_token);
+
+        // Refund highest bidder if there is one
+        let highest_bid = get_highest_bid(&env, auction_id)?;
+        if highest_bid.bid > 0 {
+            token_client.transfer(
+                &env.current_contract_address(),
+                &highest_bid.bidder.ok_or(ContractError::BidderNotFound)?,
+                &(highest_bid.bid as i128),
+            );
+        }
+
+        // Return escrowed NFT to seller
+        nft_client.safe_transfer_from(
+            &env.current_contract_address(),
+            &env.current_contract_address(),
+            &auction.seller,
+            &auction.item_info.item_id,
+            &auction.item_info.amount,
+        );
+
+        auction.status = AuctionStatus::Cancelled;
+        save_auction(&env, &auction)?;
+
+        env.events()
+            .publish(("cancel auction", "auction id: "), auction_id);
+
+        Ok(())
+    }
+
+    pub fn withdraw_fees(env: Env, recipient: Address, amount: i128) -> Result<(), ContractError> {
+        extend_instance_ttl(&env);
+
+        let admin = get_admin_old(&env)?;
+        admin.require_auth();
+
+        let config = get_config(&env)?;
+        let token_client = token::Client::new(&env, &config.auction_token);
+
+        token_client.transfer(&env.current_contract_address(), &recipient, &amount);
+
+        env.events()
+            .publish(("withdraw fees", "recipient: "), recipient);
+        env.events().publish(("withdraw fees", "amount: "), amount);
+
+        Ok(())
+    }
+
     pub fn get_auction(env: Env, auction_id: u64) -> Result<Auction, ContractError> {
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
 
         let auction = get_auction_by_id(&env, auction_id)?;
 
         Ok(auction)
     }
 
-    #[allow(dead_code)]
     pub fn get_active_auctions(
         env: Env,
         start_index: Option<u64>,
         limit: Option<u64>,
     ) -> Result<Vec<Auction>, ContractError> {
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
 
         let all_auctions = get_auctions(&env, start_index, limit)?;
 
@@ -471,36 +537,27 @@ impl MarketplaceContract {
         Ok(filtered_auctions)
     }
 
-    #[allow(dead_code)]
     pub fn get_auctions_by_seller(
         env: Env,
         seller: Address,
     ) -> Result<Vec<Auction>, ContractError> {
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
 
         let seller_auction_list = get_auctions_by_seller_id(&env, &seller)?;
 
         Ok(seller_auction_list)
     }
 
-    #[allow(dead_code)]
     pub fn get_highest_bid(env: Env, auction_id: u64) -> Result<HighestBid, ContractError> {
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
 
         let highest_bid_info = get_highest_bid(&env, auction_id)?;
 
         Ok(highest_bid_info)
     }
 
-    #[allow(dead_code)]
     pub fn update_admin(env: Env, new_admin: Address) -> Result<Address, ContractError> {
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
+        extend_instance_ttl(&env);
 
         let old_admin = get_admin_old(&env)?;
         old_admin.require_auth();
@@ -513,7 +570,6 @@ impl MarketplaceContract {
         Ok(update_admin(&env, &new_admin))?
     }
 
-    #[allow(dead_code)]
     pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
         let admin: Address = get_admin_old(&env)?;
         admin.require_auth();

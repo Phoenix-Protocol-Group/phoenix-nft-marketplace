@@ -48,7 +48,6 @@ fn finalize_auction() {
         amount: 1,
     };
 
-    collections_client.set_approval_for_transfer(&mp_client.address, &1, &true);
     mp_client.create_auction(&item_info, &seller, &WEEKLY);
 
     // 4 hours after the start of the auctions `bidder_a` places a bid

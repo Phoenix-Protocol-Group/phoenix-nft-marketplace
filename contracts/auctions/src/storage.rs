@@ -1,7 +1,5 @@
 use helpers::ttl::{PERSISTENT_RENEWAL_THRESHOLD, PERSISTENT_TARGET_TTL};
-use soroban_sdk::{
-    contracttype, log, panic_with_error, symbol_short, vec, Address, Env, Symbol, Vec,
-};
+use soroban_sdk::{contracttype, log, vec, Address, Env, Vec};
 
 use crate::error::ContractError;
 
@@ -9,7 +7,6 @@ use crate::error::ContractError;
 // since we start counting from 1, default would be 1 as well
 pub const DEFAULT_INDEX: u64 = 1;
 pub const DEFAULT_LIMIT: u64 = 10;
-pub const _ADMIN: Symbol = symbol_short!("ADMIN");
 
 #[contracttype]
 #[derive(Clone)]
@@ -20,6 +17,8 @@ pub enum DataKey {
     AllAuctions,
     HighestBid(u64),
     Config,
+    Auction(u64),
+    SellerAuctions(Address),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -106,11 +105,12 @@ pub fn get_auctions(
         PERSISTENT_TARGET_TTL,
     );
 
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(current_highest_id);
+    let limit = limit.unwrap_or(DEFAULT_LIMIT);
+    let end = (start_index + limit - 1).min(current_highest_id);
 
     let mut auctions = vec![&env];
 
-    for id in start_index..=limit {
+    for id in start_index..=end {
         match get_auction_by_id(env, id) {
             Ok(auction) => auctions.push_back(auction),
             Err(ContractError::AuctionNotFound) => continue,
@@ -126,9 +126,10 @@ pub fn save_auction_by_id(
     auction_id: u64,
     auction: &Auction,
 ) -> Result<(), ContractError> {
-    env.storage().persistent().set(&auction_id, auction);
+    let key = DataKey::Auction(auction_id);
+    env.storage().persistent().set(&key, auction);
     env.storage().persistent().extend_ttl(
-        &auction_id,
+        &key,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );
@@ -141,20 +142,19 @@ pub fn save_auction_by_seller(
     seller: &Address,
     auction: &Auction,
 ) -> Result<(), ContractError> {
+    let key = DataKey::SellerAuctions(seller.clone());
     let mut seller_auctions_list: Vec<Auction> =
-        env.storage().persistent().get(seller).unwrap_or(vec![&env]);
+        env.storage().persistent().get(&key).unwrap_or(vec![&env]);
 
     match seller_auctions_list.iter().position(|a| a.id == auction.id) {
         Some(existing_idx) => seller_auctions_list.set(existing_idx as u32, auction.clone()),
         None => seller_auctions_list.push_back(auction.clone()),
     };
 
-    env.storage()
-        .persistent()
-        .set(seller, &seller_auctions_list);
+    env.storage().persistent().set(&key, &seller_auctions_list);
 
     env.storage().persistent().extend_ttl(
-        &seller,
+        &key,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );
@@ -163,34 +163,34 @@ pub fn save_auction_by_seller(
 }
 
 pub fn get_auction_by_id(env: &Env, auction_id: u64) -> Result<Auction, ContractError> {
-    let auction = env
-        .storage()
-        .persistent()
-        .get(&auction_id)
-        .unwrap_or_else(|| {
-            log!(env, "Auction: Get auction by id: Auction not present");
-            panic_with_error!(&env, ContractError::AuctionNotFound);
-        });
+    let key = DataKey::Auction(auction_id);
+    let auction: Auction = env.storage().persistent().get(&key).ok_or_else(|| {
+        log!(env, "Auction: Get auction by id: Auction not present");
+        ContractError::AuctionNotFound
+    })?;
 
     env.storage().persistent().extend_ttl(
-        &auction_id,
+        &key,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );
 
-    auction
+    Ok(auction)
 }
 
 pub fn get_auctions_by_seller_id(
     env: &Env,
     seller: &Address,
 ) -> Result<Vec<Auction>, ContractError> {
-    let seller_auctions_list = env.storage().persistent().get(seller).unwrap_or_else(|| {
-        log!(env, "Auction: Get auction by seller: No auctions found");
-        panic_with_error!(&env, ContractError::AuctionNotFound);
-    });
+    let key = DataKey::SellerAuctions(seller.clone());
+    let seller_auctions_list: Vec<Auction> =
+        env.storage().persistent().get(&key).ok_or_else(|| {
+            log!(env, "Auction: Get auction by seller: No auctions found");
+            ContractError::AuctionNotFound
+        })?;
+
     env.storage().persistent().extend_ttl(
-        &seller,
+        &key,
         PERSISTENT_RENEWAL_THRESHOLD,
         PERSISTENT_TARGET_TTL,
     );
@@ -199,36 +199,33 @@ pub fn get_auctions_by_seller_id(
 }
 
 pub fn validate_input_params(env: &Env, values_to_check: &[&u64]) -> Result<(), ContractError> {
-    values_to_check.iter().for_each(|i| {
-        if i < &&1 {
+    for i in values_to_check.iter() {
+        if **i < 1 {
             log!(
                 &env,
                 "Auction: Validate input: parameter is less than 1: ",
                 **i
             );
-            panic_with_error!(&env, ContractError::InvalidInputs);
+            return Err(ContractError::InvalidInputs);
         }
-    });
+    }
 
     Ok(())
 }
 pub fn is_initialized(env: &Env) -> bool {
-    let result = env
+    let result: bool = env
         .storage()
         .persistent()
         .get(&DataKey::IsInitialized)
         .unwrap_or(false);
 
-    env.storage()
-        .persistent()
-        .has(&DataKey::IsInitialized)
-        .then(|| {
-            env.storage().persistent().extend_ttl(
-                &DataKey::IsInitialized,
-                PERSISTENT_RENEWAL_THRESHOLD,
-                PERSISTENT_TARGET_TTL,
-            )
-        });
+    if result {
+        env.storage().persistent().extend_ttl(
+            &DataKey::IsInitialized,
+            PERSISTENT_RENEWAL_THRESHOLD,
+            PERSISTENT_TARGET_TTL,
+        );
+    }
 
     result
 }
@@ -255,21 +252,20 @@ pub fn save_admin_old(env: &Env, admin: &Address) {
 }
 
 pub fn get_admin_old(env: &Env) -> Result<Address, ContractError> {
-    let admin = env
+    let admin: Address = env
         .storage()
         .persistent()
         .get(&DataKey::Admin)
-        .unwrap_or_else(|| {
+        .ok_or_else(|| {
             log!(env, "Auction: Get Admin: Admin not found");
-            Err(ContractError::AdminNotFound)
+            ContractError::AdminNotFound
         })?;
-    env.storage().persistent().has(&DataKey::Admin).then(|| {
-        env.storage().persistent().extend_ttl(
-            &DataKey::Admin,
-            PERSISTENT_RENEWAL_THRESHOLD,
-            PERSISTENT_TARGET_TTL,
-        );
-    });
+
+    env.storage().persistent().extend_ttl(
+        &DataKey::Admin,
+        PERSISTENT_RENEWAL_THRESHOLD,
+        PERSISTENT_TARGET_TTL,
+    );
 
     Ok(admin)
 }
@@ -287,25 +283,19 @@ pub fn update_admin(env: &Env, new_admin: &Address) -> Result<Address, ContractE
 }
 
 pub fn get_highest_bid(env: &Env, auction_id: u64) -> Result<HighestBid, ContractError> {
-    let highest_bid = env
-        .storage()
-        .persistent()
-        .get(&DataKey::HighestBid(auction_id))
-        .unwrap_or(HighestBid {
-            bid: 0,
-            bidder: None,
-        });
+    let key = DataKey::HighestBid(auction_id);
+    let highest_bid: HighestBid = env.storage().persistent().get(&key).unwrap_or(HighestBid {
+        bid: 0,
+        bidder: None,
+    });
 
-    env.storage()
-        .persistent()
-        .has(&DataKey::HighestBid(auction_id))
-        .then(|| {
-            env.storage().persistent().extend_ttl(
-                &DataKey::HighestBid(auction_id),
-                PERSISTENT_RENEWAL_THRESHOLD,
-                PERSISTENT_TARGET_TTL,
-            )
-        });
+    if highest_bid.bid > 0 {
+        env.storage().persistent().extend_ttl(
+            &key,
+            PERSISTENT_RENEWAL_THRESHOLD,
+            PERSISTENT_TARGET_TTL,
+        );
+    }
 
     Ok(highest_bid)
 }
@@ -343,19 +333,17 @@ pub fn save_config(env: &Env, config: Config) {
 }
 
 pub fn get_config(env: &Env) -> Result<Config, ContractError> {
-    let config = env
+    let config: Config = env
         .storage()
         .persistent()
         .get(&DataKey::Config)
         .ok_or(ContractError::ConfigNotFound)?;
 
-    env.storage().persistent().has(&DataKey::Config).then(|| {
-        env.storage().persistent().extend_ttl(
-            &DataKey::Config,
-            PERSISTENT_RENEWAL_THRESHOLD,
-            PERSISTENT_TARGET_TTL,
-        )
-    });
+    env.storage().persistent().extend_ttl(
+        &DataKey::Config,
+        PERSISTENT_RENEWAL_THRESHOLD,
+        PERSISTENT_TARGET_TTL,
+    );
 
     Ok(config)
 }
@@ -364,13 +352,17 @@ pub fn get_config(env: &Env) -> Result<Config, ContractError> {
 mod test {
     use soroban_sdk::Env;
 
+    use crate::error::ContractError;
+
     use super::validate_input_params;
 
     #[test]
-    #[should_panic(expected = "Auction: Validate input: parameter is less than 1: ")]
     fn validate_input_params_should_fail_with_invalid_input() {
         let env = Env::default();
-        let _ = validate_input_params(&env, &[&1, &2, &3, &0]);
+        assert_eq!(
+            validate_input_params(&env, &[&1, &2, &3, &0]),
+            Err(ContractError::InvalidInputs)
+        );
     }
 
     #[test]

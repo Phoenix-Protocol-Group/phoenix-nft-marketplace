@@ -59,6 +59,9 @@ pub fn generate_marketplace_and_collection_client<'a>(
     collection_client.initialize(admin, &name, &symbol);
     collection_client.mint(admin, admin, &1, &2);
 
+    // Approve marketplace for transfers so escrow works
+    collection_client.set_approval_for_all(&mp_client.address, &true);
+
     (mp_client, collection_client)
 }
 

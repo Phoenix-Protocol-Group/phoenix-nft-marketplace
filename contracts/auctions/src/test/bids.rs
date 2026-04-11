@@ -119,8 +119,6 @@ fn fail_to_place_bid_when_auction_inactive() {
         None,
         None,
     );
-    nft_collection_client.set_approval_for_all(&mp_client.address, &true);
-
     let item_info = ItemInfo {
         collection_addr: nft_collection_client.address.clone(),
         item_id: 1u64,
@@ -292,8 +290,6 @@ fn buy_now() {
 
     collections_client.mint(&seller, &seller, &1, &5);
 
-    collections_client.set_approval_for_transfer(&mp_client.address, &1u64, &true);
-
     let item_info = ItemInfo {
         collection_addr: collections_client.address.clone(),
         item_id: 1,
@@ -364,7 +360,8 @@ fn buy_now() {
         }
     );
 
-    assert_eq!(collections_client.balance_of(&fomo_buyer, &1), 1);
+    // buy_now transfers the full auction amount (5)
+    assert_eq!(collections_client.balance_of(&fomo_buyer, &1), 5);
 }
 
 #[test]

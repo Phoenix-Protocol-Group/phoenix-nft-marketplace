@@ -20,23 +20,21 @@ pub struct CollectionsDeployer;
 
 #[contractimpl]
 impl CollectionsDeployer {
-    #[allow(dead_code)]
-    pub fn initialize(env: Env, collections_wasm_hash: BytesN<32>) {
+    pub fn initialize(env: Env, collections_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
         if is_initialized(&env) {
             log!(
                 &env,
                 "Collections Deployer: Initialize: initializing the contract twice is not allowed"
             );
-            panic!(
-                "Collections Deployer: Initialize: initializing the contract twice is not allowed"
-            );
+            return Err(ContractError::AlreadyInitialized);
         }
         set_initialized(&env);
 
         set_wasm_hash(&env, &collections_wasm_hash);
+
+        Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn deploy_new_collection(
         env: Env,
         salt: BytesN<32>,
@@ -76,22 +74,19 @@ impl CollectionsDeployer {
             .instance()
             .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
 
-        let maybe_all = env
+        let maybe_all: Vec<String> = env
             .storage()
             .persistent()
             .get(&DataKey::AllCollections)
             .unwrap_or(Vec::new(env));
 
-        env.storage()
-            .persistent()
-            .has(&DataKey::AllCollections)
-            .then(|| {
-                env.storage().persistent().extend_ttl(
-                    &DataKey::AllCollections,
-                    PERSISTENT_RENEWAL_THRESHOLD,
-                    PERSISTENT_TARGET_TTL,
-                )
-            });
+        if !maybe_all.is_empty() {
+            env.storage().persistent().extend_ttl(
+                &DataKey::AllCollections,
+                PERSISTENT_RENEWAL_THRESHOLD,
+                PERSISTENT_TARGET_TTL,
+            );
+        }
 
         maybe_all
     }
@@ -105,19 +100,19 @@ impl CollectionsDeployer {
             .extend_ttl(INSTANCE_RENEWAL_THRESHOLD, INSTANCE_TARGET_TTL);
 
         let data_key = DataKey::Creator(creator);
-        let maybe_collections = env
+        let maybe_collections: Vec<CollectionByCreatorResponse> = env
             .storage()
             .persistent()
             .get(&data_key)
             .unwrap_or(Vec::new(env));
 
-        env.storage().persistent().has(&data_key).then(|| {
+        if !maybe_collections.is_empty() {
             env.storage().persistent().extend_ttl(
                 &data_key,
                 PERSISTENT_RENEWAL_THRESHOLD,
                 PERSISTENT_TARGET_TTL,
-            )
-        });
+            );
+        }
 
         maybe_collections
     }
@@ -157,16 +152,13 @@ pub fn is_initialized(env: &Env) -> bool {
         .get::<_, ()>(&DataKey::IsInitialized)
         .is_some();
 
-    env.storage()
-        .persistent()
-        .has(&DataKey::IsInitialized)
-        .then(|| {
-            env.storage().persistent().extend_ttl(
-                &DataKey::IsInitialized,
-                PERSISTENT_RENEWAL_THRESHOLD,
-                PERSISTENT_TARGET_TTL,
-            );
-        });
+    if is_initialized {
+        env.storage().persistent().extend_ttl(
+            &DataKey::IsInitialized,
+            PERSISTENT_RENEWAL_THRESHOLD,
+            PERSISTENT_TARGET_TTL,
+        );
+    }
 
     is_initialized
 }
@@ -183,24 +175,19 @@ pub fn set_wasm_hash(env: &Env, hash: &BytesN<32>) {
 }
 
 pub fn get_wasm_hash(env: &Env) -> Result<BytesN<32>, ContractError> {
-    let wasm_hash = env
+    let wasm_hash: BytesN<32> = env
         .storage()
         .persistent()
         .get(&DataKey::CollectionsWasmHash)
         .ok_or(ContractError::WasmHashNotSet)?;
 
-    env.storage()
-        .persistent()
-        .has(&DataKey::CollectionsWasmHash)
-        .then(|| {
-            env.storage().persistent().extend_ttl(
-                &DataKey::CollectionsWasmHash,
-                PERSISTENT_RENEWAL_THRESHOLD,
-                PERSISTENT_TARGET_TTL,
-            )
-        });
+    env.storage().persistent().extend_ttl(
+        &DataKey::CollectionsWasmHash,
+        PERSISTENT_RENEWAL_THRESHOLD,
+        PERSISTENT_TARGET_TTL,
+    );
 
-    wasm_hash
+    Ok(wasm_hash)
 }
 
 pub fn save_collection_with_generic_key(env: &Env, name: String) {
@@ -259,6 +246,7 @@ pub fn save_collection_with_admin_address_as_key(
 #[repr(u32)]
 pub enum ContractError {
     WasmHashNotSet = 0,
+    AlreadyInitialized = 1,
 }
 
 #[cfg(test)]
